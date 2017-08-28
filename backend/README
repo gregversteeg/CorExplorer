@@ -1,0 +1,55 @@
+Enrichment:
+
+make_group_files.php		make the group list files used by string_annos.R
+string_annos.R				get enrichments using stringDB
+load_enrich.php				load to DB
+
+map_ensg_names				Mapping the ENSG gene names in lung data to ENSP using 
+							Gencode mapping table and StringDB api
+							(Gencode gives the Hugo names, then StringDB gives the ENSP)
+
+
+How to load a new project:
+(note most of the scripts need to be edited before running to specify project IDs)
+
+1. head -1 weights_layer0.txt > genelist.txt. 
+	Edit to remove 'factor' as the first gene. 
+2. cut -f 1 -d ',' labels.txt > samples.txt
+
+3.  data_load.php. 
+	It should run all the way through but if not then
+	the globals $DSID etc can be set on succeeding passes. 
+
+4. load_labels.php : discrete and continuous factor labels
+
+5.  load_expr.php  : loading raw expression matrix
+	 fill_logz.php : compute logz expression values
+
+# gene names and annotation
+6. build_gene_table.php : make the table mapping genes to hugo and ensp
+	(or create the table by other means)
+7. load_gene_table.php 
+
+# enrichment
+8. make_group_files.php : simple files listing genes per group
+9. stringdb_annos.R : send group files to stringdb for enrichment
+
+# survival
+10. load_samp_data.php : this will need to be modifed per-dataset, to
+						load survival-related info for the samples.
+						Note, done in subdirectory, e.g. "lung".
+						Note, may have to load sample alias names first (sampalias table). 
+11. build_survial_files.php : make Rdata.tsv
+12. do_survival.php
+
+##################################################################
+
+Initializing the gene name tables, GOs etc:
+
+
+1. run load_prot_names.php to load all the ENSP names and descriptions, 
+		as obtained from StringDB (note we need the ones from StringDB
+		since they are compatible with the PPI graph, also from StringDB)
+2. load_hugo_tables.php : load the true HGNC names, descriptions, some aliases,
+		and then ENSG mappings from Gencode. 
+3. load_stringdb_tables.php : load ENSP and GO mappings from StringDB
