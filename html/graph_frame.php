@@ -24,6 +24,8 @@ $level_colors = array("1" => "black", "2" => "#0000cc", "3" => "#9900cc");
 $numNodes=0;
 $gids_shown = array();
 $graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown);
+
+$go2clst = array();
 ?>
 
 <head>
@@ -68,7 +70,7 @@ $graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown);
 				<tr>
 					<td  title="<?php print tip_text('genechoose') ?>" >
 						Gene: <?php print gene_sel("gid",$GID_sel,$MinWt,$gids_shown) ?> 
-					<td >GO enriched (0.005):<?php print go_enrich_sel("goterm",$Goterm) ?>
+					<td >GO enriched (0.005):<?php print go_enrich_sel("goterm",$Goterm,$go2clst) ?>
 				</tr>
 			</table>
 			<table cellspacing=10>
@@ -137,6 +139,7 @@ if ($numNodes == 0)
 <?php
 	print $graph_html;
 
+	dump_go2clst($go2clst);
 #
 # If the graph is in the first frame, then we capture clicks on level one clusters
 # and propagate them to the parent window.
@@ -231,9 +234,10 @@ else
 }); 
 $(document).ready(function() 
 {
-	// First set of functions highlights selected cluster or gene node,
+	// First set of functions highlights selected cluster or gene node
 	var sel_cid = $("#sel_cid");
 	var sel_gid = $("#sel_gid");
+	var sel_goterm = $("#sel_goterm");
 
 <?php
 # But we don't want to highlight the cluster if only one cluster
@@ -254,6 +258,38 @@ if ($CID_sel == 0)
 		//$("#sel_gid").val("0");  // clst changed, unselect gene
 	});
 	node_highlight(sel_cid.val(), "C" + sel_cid.val(), 1);
+END;
+}
+# Likewise no need to highlight the clusters with GOs if that's all
+# we are showing!
+if ($Goterm == 0)
+{
+	echo <<<END
+
+	sel_goterm.change(function(data)
+	{
+		var term = $(this).val();
+		var all = cy.elements("node");
+		// First we have to clear the old cluster highlights, then add these
+		for (i = 0; i < all.length; i++) 
+		{
+			var cynode = all[i];
+			var lbl = cynode.data('lbl');
+			if (lbl.startsWith("L1_"))
+			{
+				cynode.removeClass('nodehlt');
+			}
+		}
+		if (!go2clst[term]) 
+		{
+			return;
+		}
+		for (var i = 0; i < go2clst[term].length; i++)
+		{
+			var cid = go2clst[term][i];
+			node_highlight(1,"C" + cid,1);
+		}
+	});
 END;
 }
 ?>
@@ -277,6 +313,7 @@ END;
 });
 function node_highlight(idnum,idstr,onoff)
 {
+	//TODO not sure why next line is needed or even the idnum argument
 	if (idnum == 0) {return; }
 	var cynode = cy.getElementById(idstr);
 	if (onoff == 1)
@@ -651,7 +688,7 @@ END;
 	return $html;
 }
 
-function go_enrich_sel($name, $sel)
+function go_enrich_sel($name, $sel,&$go2clst)
 {
 	global $CRID;
 	global $go_enrich_pval;
@@ -661,13 +698,23 @@ function go_enrich_sel($name, $sel)
 	$selected = ($Goterm == 0 ? " selected " : "");
 	$opts[] = "<option value='0' $selected>none</option>";
 	$terms_seen = array();
-	$res = dbq("select gos.term as term, gos.descr as descr from clst2go join gos on gos.term=clst2go.term ".
+	$res = dbq("select gos.term as term, gos.descr as descr,clst.id as cid ".
+				" from clst2go join gos on gos.term=clst2go.term ".
 				" join clst on clst.ID=clst2go.CID ".
-				" where clst.CRID=$CRID and clst2go.pval <= $go_enrich_pval order by term asc ");
+				" where clst.CRID=$CRID and clst2go.pval <= $go_enrich_pval ".
+				" and gos.CRID=$CRID order by term asc, clst.ID asc ");
 	while ($r = $res->fetch_assoc())
 	{
 		$term = $r["term"];
 		$descr = $r["descr"];
+		$cid = $r["cid"];
+	
+		if (!isset($go2clst[$term]))
+		{
+			$go2clst[$term] = array();
+		}
+		$go2clst[$term][$cid] = 1;
+
 		if (strlen($descr) > 25)
 		{
 			$descr = substr($descr,0,22)."...";
@@ -681,7 +728,7 @@ function go_enrich_sel($name, $sel)
 		$goname = go_name($term);
 		$opts[] = "<option value='$term' $selected>$goname $descr</option>";
 	}
-	return "<select name='$name'>\n".implode("\n",$opts)."\s</select>\n";
+	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
 }
 function kegg_enrich_sel($name, $sel)
 {
@@ -801,4 +848,15 @@ function get_gene_cids(&$cids,&$gene_wts,$GID,$CRID,$minwt,$Bestinc=0)
 		$cids[] = $CID;	
 		$gene_wts[$cnum] = array("wt" => $wt, "mi" => $mi);
 	}
+}
+function dump_go2clst(&$g2c)
+{
+	# note, must already be inside a script block!
+	print "var go2clst = new Array();\n";
+	foreach ($g2c as $term => $carr)
+	{
+		$astr = implode("','",array_keys($carr));
+		print "go2clst[$term] = new Array('$astr');\n";
+	}
+
 }
