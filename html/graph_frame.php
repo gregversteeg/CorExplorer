@@ -26,6 +26,7 @@ $gids_shown = array();
 $graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown);
 
 $go2clst = array();
+$kegg2clst = array();
 ?>
 
 <head>
@@ -93,7 +94,7 @@ $go2clst = array();
 					<td title="<?php print tip_text('hugo_names') ?>">HUGO names:
 						 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo,0) ?>>
 					</td>
-					<td >Kegg enriched (0.005):<?php print kegg_enrich_sel("keggterm",$Keggterm) ?>
+					<td >Kegg enriched (0.005):<?php print kegg_enrich_sel("keggterm",$Keggterm,$kegg2clst) ?>
 					<td colspan=2 align=left><input type="submit" value="Apply"></td>
 				</tr>
 			</table>
@@ -140,6 +141,7 @@ if ($numNodes == 0)
 	print $graph_html;
 
 	dump_go2clst($go2clst);
+	dump_kegg2clst($kegg2clst);
 #
 # If the graph is in the first frame, then we capture clicks on level one clusters
 # and propagate them to the parent window.
@@ -238,6 +240,7 @@ $(document).ready(function()
 	var sel_cid = $("#sel_cid");
 	var sel_gid = $("#sel_gid");
 	var sel_goterm = $("#sel_goterm");
+	var sel_keggterm = $("#sel_keggterm");
 
 <?php
 # But we don't want to highlight the cluster if only one cluster
@@ -287,6 +290,37 @@ if ($Goterm == 0)
 		for (var i = 0; i < go2clst[term].length; i++)
 		{
 			var cid = go2clst[term][i];
+			node_highlight(1,"C" + cid,1);
+		}
+	});
+END;
+}
+# Similar for Keggs
+if ($Keggterm == 0)
+{
+	echo <<<END
+
+	sel_keggterm.change(function(data)
+	{
+		var term = $(this).val();
+		var all = cy.elements("node");
+		// First we have to clear the old cluster highlights, then add these
+		for (i = 0; i < all.length; i++) 
+		{
+			var cynode = all[i];
+			var lbl = cynode.data('lbl');
+			if (lbl.startsWith("L1_"))
+			{
+				cynode.removeClass('nodehlt');
+			}
+		}
+		if (!kegg2clst[term]) 
+		{
+			return;
+		}
+		for (var i = 0; i < kegg2clst[term].length; i++)
+		{
+			var cid = kegg2clst[term][i];
 			node_highlight(1,"C" + cid,1);
 		}
 	});
@@ -730,7 +764,7 @@ function go_enrich_sel($name, $sel,&$go2clst)
 	}
 	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
 }
-function kegg_enrich_sel($name, $sel)
+function kegg_enrich_sel($name, $sel,&$kegg2clst)
 {
 	global $CRID;
 	global $kegg_enrich_pval;
@@ -740,17 +774,24 @@ function kegg_enrich_sel($name, $sel)
 	$selected = ($Keggterm == 0 ? " selected " : "");
 	$opts[] = "<option value='0' $selected>none</option>";
 	$terms_seen = array();
-	$res = dbq("select kegg.term as term, kegg.descr as descr from clst2kegg join kegg on kegg.term=clst2kegg.term ".
-				" join clst on clst.ID=clst2kegg.CID ".
-				" where clst.CRID=$CRID and clst2kegg.pval <= $kegg_enrich_pval order by term asc ");
+	$res = dbq("select kegg.term as term, kegg.descr as descr, clst.id as cid ".
+				"  from clst2kegg join kegg on kegg.term=clst2kegg.term ".
+				" join clst on clst.ID=clst2kegg.CID where kegg.CRID=$CRID and ".
+				"  clst.CRID=$CRID and clst2kegg.pval <= $kegg_enrich_pval order by term asc ");
 	while ($r = $res->fetch_assoc())
 	{
 		$term = $r["term"];
 		$descr = $r["descr"];
+		$cid = $r["cid"];
 		if (strlen($descr) > 25)
 		{
 			$descr = substr($descr,0,22)."...";
 		}
+		if (!isset($kegg2clst[$term]))
+		{
+			$kegg2clst[$term] = array();
+		}
+		$kegg2clst[$term][$cid] = 1;
 		if (isset($terms_seen[$term]))
 		{
 			continue;
@@ -760,7 +801,7 @@ function kegg_enrich_sel($name, $sel)
 		$keggname = kegg_name($term);
 		$opts[] = "<option value='$term' $selected>$keggname $descr</option>";
 	}
-	return "<select name='$name'>\n".implode("\n",$opts)."\s</select>\n";
+	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
 }
 function get_clst_level($cid)
 {
@@ -857,6 +898,17 @@ function dump_go2clst(&$g2c)
 	{
 		$astr = implode("','",array_keys($carr));
 		print "go2clst[$term] = new Array('$astr');\n";
+	}
+
+}
+function dump_kegg2clst(&$k2c)
+{
+	# note, must already be inside a script block!
+	print "var kegg2clst = new Array();\n";
+	foreach ($k2c as $term => $carr)
+	{
+		$astr = implode("','",array_keys($carr));
+		print "kegg2clst[$term] = new Array('$astr');\n";
 	}
 
 }
