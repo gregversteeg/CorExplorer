@@ -57,7 +57,8 @@ a
 .footer {
     position: relative;
     width: 100%;
-    height: 100px;
+    height: 50px;
+	background-color:#f5f5f5
 }
 .header a
 {
@@ -66,10 +67,10 @@ a
 	font-size:17px;
 	margin:8px;
 }
-.header a.selected
+a.head_selected
 {
-	color:#3786c2;
-	#text-decoration:underline;
+	color:black;
+	text-decoration:underline;
 }
 .header a:hover
 {

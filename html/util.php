@@ -177,6 +177,7 @@ function head_section($title)
 <title>$title</title>
 <meta http-equiv="content-type" content="text/html" charset="utf-8" />
 <link rel="stylesheet" type="text/css" href="corex.css"> 
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 </head>
 
 END;
@@ -191,34 +192,44 @@ function body_start()
 END;
 }
 
-function header_section($selected)
-{
-	$opts = array("over","exp","how","dl","pub");
-	$lbls = array("Overview","Explore","How-To","Download","Publications");
-	$pgs = array("overview.html","index.html","howto.html",
+$page_opts = array("","over","dset","how","dl","pub");
+$page_lbls = array("","Overview","Datasets","How-To","Download","Publications");
+$page_pgs = array("welcome.html","overview.html","datasets.html","howto.html",
 				"download.html","publications.html");
+
+
+function header_bar()
+{
+	global $page_opts, $page_lbls, $page_pgs;
+	$cur_opt = $_GET["opt"];
 
 	echo <<<END
 <div class="header">
 	<table>
 		<tr>
-			<td valign="middle" style="padding:0px 30px 0px 5px;">
+			<td valign="middle" style="padding:0px 30px 0px 5px;cursor:pointer" 
+				onclick="location.href='/index2.html'">
 <span class="logotext" >Cor<span style='color:#cc6666'>Ex</span></span>
 			</td>
 END;
 
-	foreach ($opts as $i => $option)
+	# Note that the first "option" is the welcome text 
+	# which does not have menu entry
+	$numopts = count($page_opts);
+	for($i = 1; $i < $numopts; $i++)
 	{
-		$lbl = $lbls[$i];
-		$pg = $pgs[$i];
+		$option = $page_opts[$i];
+		$lbl = $page_lbls[$i];
+		#$pg = $page_pgs[$i];
+		$link = "/index2.html?opt=$option";
 		print "<td valign='middle'>\n";
-		if ($option == $selected)
+		if ($option == $cur_opt)
 		{
-			print "<span class='head_selected'>$lbl</span>\n";
+			print "<a class='head_selected'>$lbl</a>\n";
 		}
 		else
 		{
-			print "<a href='$pg' >$lbl</a>\n";
+			print "<a href='$link' >$lbl</a>\n";
 		}
 		print "</td>\n";
 	}
@@ -230,6 +241,22 @@ END;
 END;
 
 }
+function load_content_html()
+{
+	$opt = $_GET["opt"];
+	global $page_opts, $page_lbls, $page_pgs;
+	for ($i = 1; $i < count($page_opts); $i++)
+	{
+		if ($page_opts[$i] == $opt)
+		{
+			require_once($page_pgs[$i]);
+			return;
+		}	
+	}	
+	require_once($page_pgs[0]);
+}
+
+##################################################################
 
 function crid_default()
 {
