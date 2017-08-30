@@ -165,6 +165,71 @@ function clst_sel($name,$CID,$singlelvl=-1,$defstr="all")
 }
 
 #####################################################################
+#
+#	Functions for printing the standard page parts like banners
+#
+####################################################################
+
+function head_section($title)
+{
+	echo <<<END
+<head>
+<title>$title</title>
+<meta http-equiv="content-type" content="text/html" charset="utf-8" />
+<link rel="stylesheet" type="text/css" href="corex.css"> 
+</head>
+
+END;
+}
+##################################################################
+
+function body_start()
+{
+	echo <<<END
+<body>
+<div class="outer">
+END;
+}
+
+function header_section($selected)
+{
+	$opts = array("over","exp","how","dl","pub");
+	$lbls = array("Overview","Explore","How-To","Download","Publications");
+	$pgs = array("overview.html","index.html","howto.html",
+				"download.html","publications.html");
+
+	echo <<<END
+<div class="header">
+	<table>
+		<tr>
+			<td valign="middle" style="padding:0px 30px 0px 5px;">
+<span class="logotext" >Cor<span style='color:#cc6666'>Ex</span></span>
+			</td>
+END;
+
+	foreach ($opts as $i => $option)
+	{
+		$lbl = $lbls[$i];
+		$pg = $pgs[$i];
+		print "<td valign='middle'>\n";
+		if ($option == $selected)
+		{
+			print "<span class='head_selected'>$lbl</span>\n";
+		}
+		else
+		{
+			print "<a href='$pg' >$lbl</a>\n";
+		}
+		print "</td>\n";
+	}
+
+	echo <<<END
+		</tr>
+	</table>
+</div>
+END;
+
+}
 
 function crid_default()
 {
