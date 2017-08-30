@@ -2,140 +2,46 @@
 require_once("db.php");
 require_once("util.php");
 
-$CRID = getval("crid",crid_default());
-
+head_section("CorEx Portal");
+body_start();
+header_bar();
 ?>
-<head>
-<title>CorEx</title>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-</head>
-<table width='100%' height='100%' cellpadding=0 cellspacing=0 
-		style="border-color:#0088cc;border-style:solid;border-width:1px 1px 2px 1px" >
-	<tr>
-		<td width='100%' height='20' align=left colspan=2>
-			<table  width=100% style="background-color:#cceeff;padding:5px; 
-					border-color:#0088cc;border-style:solid;border-width:1px 1px 2px 1px" >
-				<tr>
-					<td align=left style="cursor:pointer" onclick="location.href='/'">
-							<h1>CorEx<span style='color:#cc6666'>plorer</span></h1>
-					</td>
-					<td style="padding-left:20px" align=left>
-						Dataset: <?php print run_sel("crid",$CRID) ?>
-					</td>
-					<td style="padding-right:50px" align=right>
-						Frame1: <?php print frame_sel(1,1) ?> <b>&nbsp;&nbsp;</b>
-						Frame2: <?php print frame_sel(2,2) ?> <b>&nbsp;&nbsp;</b>
-						Frame3: <?php print frame_sel(3,3) ?>
-					</td>
-				</tr>
-			</table>
-		</td>
-	</tr>
-	<tr>
-		<td rowspan=2 width='60%' >
-<iframe id="frame1" width='100%' height='100%' src='/frame.php?ft=graph&fn=1&crid=<?php echo $CRID ?>' 
-	style=' border:1px solid #0088cc'></iframe>
-		</td>
-		<td width='40%'>
-<iframe id="frame2" width='100%' height='100%' src='/frame.php?ft=heatmap&fn=2&crid=<?php echo $CRID ?>'
-	style=' border:1px solid #0088cc'></iframe>
-		</td>
-	</tr>
-	<tr>
-		<td width='40%'>
-<iframe id="frame3" width='100%' height='100%' src='/frame.php?ft=ppi&fn=3&crid=<?php echo $CRID ?>'
-	style=' border:1px solid #0088cc'></iframe>
-		</td>
-	</tr>
-</table>
+<div class="content">
+    <div class="content-inner" >
+<?php load_content_html() ?>
+	</div>
+    <div class="sidebar right">
+		<div class="side-header">
+			News
+		</div>
+        <div class="sidebar-inner">
+			<ul>
+			<li> News
+			<li> Dataset stats
+			</ul>
+		</div>
+    </div>
+	<div class="clear"></div>
+</div>
+<div class="footer">
+    <div style="text-align:center">
+This work supported by GRANTS A,B,C
+<br>
+We love feedback! <span id="fbem"></span>
+	</div>
+</div>
+</div>
+</body>
 <script>
-<?php 
-	print_js_cluster_array();
-?>
-window.addEventListener("message", receiveMessage, false);
-function receiveMessage(event)
+$(document).ready(function() 
 {
-	var lbl = event.data;
-	var cid = lbl2cid[lbl];
-	$('#frame2').contents().find('#sel_cid').val(cid);
-	$('#frame2').contents().find('#sel_cid').closest('form').submit();;
-	$('#frame3').contents().find('#sel_cid').val(cid);
-	$('#frame3').contents().find('#sel_cid').closest('form').submit();;
-}
-function change_iframe(fnum,val) 
-{
-    var $iframe = $("#frame" + fnum );
-	var cid = $iframe.contents().find('#sel_cid').val();
-	//alert("keep cid=" +  cid);
-	var url = "/frame.php?ft=" + val + "&crid=<?php echo $CRID ?>";
-	if (cid != 0)
+	setTimeout(function()
 	{
-		url += "&cid=" + cid;
-	}
-    if ( $iframe.length ) 
-	{
-        $iframe.attr("src",url);   
-        return false;
-    }
-    return true;
-}
-var ftypes = ["","graph","heatmap","ppi","survival","annotation"];
-$('#frame_sel1').change(function() 
-{
-	var newval = this.value;
-	change_iframe(1,ftypes[newval]);	
+		var ema = new Array("g","r","e","g","v","@","i","s","i",".","e","d","u");
+		var emaj = ema.join("");
+		$("#fbem").html("<a href='mailto:" + emaj + "'>" + emaj + "</a>");
+
+	},100);
 });
-$('#frame_sel2').change(function() 
-{
-	var newval = this.value;
-	change_iframe(2,ftypes[newval]);	
-});
-$('#frame_sel3').change(function() 
-{
-	var newval = this.value;
-	var lbl = ftypes[newval];	
-	//alert("change frame 3 to " + lbl);
-	change_iframe(3,lbl);	
-});
-$('#sel_crid').change(function() 
-{
-	var new_crid = this.value;
-	location.href = "/?crid=" + new_crid;
-});
+
 </script>
-
-<?php
-
-###########################################################################
-
-function print_js_cluster_array()
-{
-	global $CRID;
-	
-	print "var lbl2cid = new Array();\n";
-	$res = dbq("select id,lbl from clst where crid=$CRID and lvl=0");
-	while ($r = $res->fetch_assoc())
-	{
-		$cid = $r["id"];
-		$lbl = $r["lbl"];
-		print "lbl2cid['L1_$lbl']=$cid;\n";	
-	}
-}
-
-###########################################################################
-
-function frame_sel($fnum, $defnum)
-{
-	$lbls = array("--choose--","graph","heatmap","ppi","survival","annotation");
-	
-	for ($val = 0; $val < count($lbls); $val++)
-	{
-		$lbl = $lbls[$val];
-		$selected = ($val == $defnum ? " selected " : "");
-		$opts[] = "<option $selected value='$val'>$lbl</option>";
-	}
-	$id = "frame_sel$fnum";
-	return "<select id='$id'>\n".implode("\n",$opts)."</select>\n";
-
-}
-?>

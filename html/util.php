@@ -208,7 +208,7 @@ function header_bar()
 	<table>
 		<tr>
 			<td valign="middle" style="padding:0px 30px 0px 5px;cursor:pointer" 
-				onclick="location.href='/index2.html'">
+				onclick="location.href='/'">
 <span class="logotext" >Cor<span style='color:#cc6666'>Ex</span></span>
 			</td>
 END;
@@ -221,7 +221,7 @@ END;
 		$option = $page_opts[$i];
 		$lbl = $page_lbls[$i];
 		#$pg = $page_pgs[$i];
-		$link = "/index2.html?opt=$option";
+		$link = "/index.html?opt=$option";
 		print "<td valign='middle'>\n";
 		if ($option == $cur_opt)
 		{
