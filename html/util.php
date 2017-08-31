@@ -111,7 +111,7 @@ function tip_text($tag)
 # Specific form elements
 #
 ###################################################
-function run_sel($name,$CRID)
+function run_sel($name,$CRID,$def="")
 {
 	$res = dbq("select ID, lbl from clr order by ID asc");
 	while ($r = $res->fetch_assoc())
@@ -121,7 +121,14 @@ function run_sel($name,$CRID)
 		$selected = ($ID == $CRID ? " selected " : "");
 		$opts[] = "<option value=$ID $selected>$lbl</option>";
 	}
-	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
+	$html = "<select name='$name' id='sel_$name'>\n";
+	if ($def != "")
+	{
+		$selected = ($CRID==0 ? " selected " : "");
+		$html .= "<option $selected value='0'>$def</option>\n";
+	}
+	$html .= implode("\n",$opts)."\n</select>\n";
+	return $html;
 }
 function clst_sel($name,$CID,$singlelvl=-1,$defstr="all")
 {
@@ -201,7 +208,7 @@ $page_pgs = array("welcome.html","overview.html","datasets.html","howto.html",
 function header_bar()
 {
 	global $page_opts, $page_lbls, $page_pgs;
-	$cur_opt = $_GET["opt"];
+	$cur_opt = getval("opt","");
 
 	echo <<<END
 <div class="header">

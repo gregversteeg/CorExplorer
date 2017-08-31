@@ -1,0 +1,117 @@
+<?php
+require_once("util.php");
+
+$Gene = getval("gene","");
+$CRID = getval("crid",0);
+
+if (!is_numeric($CRID)) {die("bad CRID\n");}
+?>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+</head>
+<form>
+<table>
+	<tr>
+		<td>
+Gene: 
+		</td>
+		<td>
+<input name="gene" type="text" size="10" value="<?php echo $Gene ?>">
+		</td>
+		<td>
+Dataset:
+		</td>
+		<td>
+<?php print run_sel("crid",$CRID,"all datasets") ?>
+		</td>
+		<td>
+<input type="submit" value="Search">
+		</td>
+		<td align=right style="width:150px">
+			<span id="popout_btn" title="Open in a new window" style="cursor:pointer">
+				&nbsp;&#9654;&nbsp;</span>
+		</td>
+	</tr>
+</table>
+</form>
+<script>
+$('#popout_btn').click(function()
+{
+ 	var win = window.open(window.location.href, '_blank');
+  	win.focus();
+});
+</script>
+
+<?php
+if ($Gene == "")
+{
+	exit(0);
+}
+# First get the GID's using both project and hugo names
+# This query might get slow since it can't use an index...deal with it then
+$gid2name = array();
+$gid2hugo = array();
+$crid2name = array();
+$crid_where = ($CRID==0 ? "" : " and clr.crid=$CRID ");
+$gquery = preg_replace('/\*/','%',$Gene);
+$st = $DB->prepare("select glist.lbl,glist.hugo,glist.id,clr.id,clr.lbl as cname ".
+	" from glist ".
+	" join clr on glist.glid=clr.glid ".
+	" where glist.lbl like ? or glist.hugo like ?"); 
+$st->bind_param("ss",$gquery,$gquery);
+$st->execute();
+$st->bind_result($lbl,$hugo,$GID,$crid,$cname);
+while ($st->fetch())
+{
+	$gid2name[$GID] = $lbl;
+	$gid2hugo[$GID] = $hugo;
+	$crid2name[$crid] = $cname; # filled redundantly - no matter
+}
+
+if (0 == count($gid2name))
+{
+	print "No genes found!";
+	exit(0);
+}
+# Now get the factors for each GID
+ksort($gid2name);
+$gidset = "(".implode(",",array_keys($gid2name)).")";  
+$st = $DB->prepare("select g2c.gid, clst.lbl, clst.id, g2c.wt, g2c.mi,clst.crid ".
+			" from g2c join clst on g2c.cid=clst.id ".
+			" where g2c.gid in $gidset ".
+			" order by g2c.gid asc, wt desc ");
+$st->execute();
+$st->bind_result($GID,$clbl,$cid,$wt,$mi,$crid);
+print "<table rules=all border=true cellpadding=3>\n";
+print "<tr><td>Gene</td><td>Hugo</td><td>Dataset</td><td>Factor</td><td>Weight</td><td>MI</td></tr>\n";
+$prev_name = "";
+$prev_crid = 0;
+$toggle_state = TRUE; # controls the shading to help distinguish genes
+while ($st->fetch())
+{
+	$gname = $gid2name[$GID];
+	$hugo = $gid2hugo[$GID];
+	$pname = $crid2name[$crid];
+
+	if ($gname != $prev_name || $crid != $prev_crid)
+	{
+		$toggle_state = !$toggle_state;
+	}
+	$style = ($toggle_state ? " style='background-color:e6ffff' " : "");
+
+	print <<<END
+	<tr $style><td>$gname</td><td>$hugo</td><td>$pname</td>
+			<td><a href="/explorer.html?crid=$crid&cid=$cid" target="_blank">$clbl<a></td>
+			<td>$wt</td><td>$mi</td>
+	</tr>
+END;
+
+	$prev_name = $gname;
+	$prev_crid = $crid;
+}
+print "</table>\n";
+
+?>
+
+
+
