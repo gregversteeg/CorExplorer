@@ -1,0 +1,91 @@
+<?php
+require_once("util.php");
+?>
+
+<h4>Datasets</h4>
+<table rules=all border=1 cellpadding=3>
+	<tr>
+		<td>Run</td>
+		<td>#Samples</td>
+		<td>#Genes</td>
+	</tr>
+<?php
+
+$ngenes = array();
+$nsamps = array();
+
+$res = dbq("select glists.id,count(*) as ngenes ".
+		" from glists join glist on glist.glid=glists.id ".
+		" group by glists.id");
+while ($r = $res->fetch_assoc())
+{
+	$id = $r["id"];
+	$num = $r["ngenes"];
+	$ngenes[$id] = $num;
+}
+
+$res = dbq("select dset.id,count(*) as nsamp ".
+		" from samp join dset on dset.id=samp.dsid ".
+		" group by dset.id");
+while ($r = $res->fetch_assoc())
+{
+	$id = $r["id"];
+	$num = $r["nsamp"];
+	$nsamps[$id] = $num;
+}
+
+
+$res = dbq("select id,glid,dsid,lbl,meth from clr");
+while ($r = $res->fetch_assoc())
+{
+	$crid = $r["id"];
+	$glid = $r["glid"];	
+	$dsid = $r["dsid"];	
+	$lbl = $r["lbl"];	
+
+	$ngene = $ngenes[$glid];
+	$nsamp = $nsamps[$dsid];
+
+	echo <<<END
+	<tr>
+		<td><a href="/explorer.html?crid=$crid">$lbl</a></td>
+		<td>$nsamp</td>
+		<td>$ngene</td>
+	</tr>
+END;
+}
+?>
+</table>
+<p>
+<h4>Gene Search</h4>
+Enter gene name (case-insensitive). 
+<br>
+To match just part
+ of the gene name use '*', e.g. <tt>PTP*</tt>.
+<p>
+<iframe id="geneFrame" src="gene_search.html"  style="border:none;width:100%;height:100px">
+</iframe>
+<script>
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+	var msg = event.data;
+	if (msg == "GeneSearch")
+	{
+		$("#geneFrame").height(400);
+	}
+	else if (msg == "GeneClear")
+	{
+		$("#geneFrame").height(100);
+	}
+}
+</script>
+
+<?php
+
+?>
+
+</table>
+
+
+

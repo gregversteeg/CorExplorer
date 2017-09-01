@@ -36,11 +36,12 @@ Dataset:
 			 <input name="mi" type="text" size="4" value="<?php print $MinMI ?>">
 		</td>
 		<td>
-<input type="submit" value="Search">
+<input type="submit" value="Search" 
+	onclick='parent.postMessage("GeneSearch","*")';>
 		</td>
 		<td>
 <input type="submit" value="Clear" 
-		onclick="window.location = window.location.href.split('?')[0];return false;" >
+		onclick="parent.postMessage('GeneClear','*');window.location = window.location.href.split('?')[0];return false;" >
 		</td>
 		<td align=right style="width:150px">
 			<span id="popout_btn" title="Open in a new window" style="cursor:pointer">
