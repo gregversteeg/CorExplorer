@@ -3,12 +3,15 @@ require_once("util.php");
 
 $Gene = getval("gene","");
 $CRID = getval("crid",0);
+$MinWt = getval("mw",0.05);
+$MinMI = getval("mi",0.05);
 
 if (!is_numeric($CRID)) {die("bad CRID\n");}
 ?>
 <head>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 </head>
+<body style="margin:0px">
 <form>
 <table>
 	<tr>
@@ -24,8 +27,20 @@ Dataset:
 		<td>
 <?php print run_sel("crid",$CRID,"all datasets") ?>
 		</td>
+		<td>Weight:</td>
+		<td>
+			 <input name="mw" type="text" size="4" value="<?php print $MinWt ?>">
+		</td>
+		<td>MI:</td>
+		<td>
+			 <input name="mi" type="text" size="4" value="<?php print $MinMI ?>">
+		</td>
 		<td>
 <input type="submit" value="Search">
+		</td>
+		<td>
+<input type="submit" value="Clear" 
+		onclick="window.location = window.location.href.split('?')[0];return false;" >
 		</td>
 		<td align=right style="width:150px">
 			<span id="popout_btn" title="Open in a new window" style="cursor:pointer">
@@ -52,12 +67,12 @@ if ($Gene == "")
 $gid2name = array();
 $gid2hugo = array();
 $crid2name = array();
-$crid_where = ($CRID==0 ? "" : " and clr.crid=$CRID ");
+$crid_where = ($CRID==0 ? "" : " and clr.id=$CRID ");
 $gquery = preg_replace('/\*/','%',$Gene);
 $st = $DB->prepare("select glist.lbl,glist.hugo,glist.id,clr.id,clr.lbl as cname ".
 	" from glist ".
 	" join clr on glist.glid=clr.glid ".
-	" where glist.lbl like ? or glist.hugo like ?"); 
+	" where (glist.lbl like ? or glist.hugo like ?) $crid_where"); 
 $st->bind_param("ss",$gquery,$gquery);
 $st->execute();
 $st->bind_result($lbl,$hugo,$GID,$crid,$cname);
@@ -78,7 +93,7 @@ ksort($gid2name);
 $gidset = "(".implode(",",array_keys($gid2name)).")";  
 $st = $DB->prepare("select g2c.gid, clst.lbl, clst.id, g2c.wt, g2c.mi,clst.crid ".
 			" from g2c join clst on g2c.cid=clst.id ".
-			" where g2c.gid in $gidset ".
+			" where g2c.gid in $gidset and g2c.wt >= $MinWt and g2c.mi >= $MinMI ".
 			" order by g2c.gid asc, wt desc ");
 $st->execute();
 $st->bind_result($GID,$clbl,$cid,$wt,$mi,$crid);
@@ -113,5 +128,5 @@ print "</table>\n";
 
 ?>
 
-
+</body>
 
