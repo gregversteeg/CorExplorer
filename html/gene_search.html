@@ -9,6 +9,7 @@ $MinMI = getval("mi",0.05);
 if (!is_numeric($CRID)) {die("bad CRID\n");}
 ?>
 <head>
+<title>Gene Search</title>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 </head>
 <body style="margin:0px">
@@ -65,6 +66,7 @@ if ($Gene == "")
 }
 # First get the GID's using both project and hugo names
 # This query might get slow since it can't use an index...deal with it then
+
 $gid2name = array();
 $gid2hugo = array();
 $crid2name = array();
@@ -90,12 +92,17 @@ if (0 == count($gid2name))
 	exit(0);
 }
 # Now get the factors for each GID
-ksort($gid2name);
+# Unfortunately must repeat the previous query info to avoid
+# possibly hitting mysql limit for large IN block
+$crid_where = ($CRID==0 ? "" : " and clst.crid=$CRID ");
 $gidset = "(".implode(",",array_keys($gid2name)).")";  
 $st = $DB->prepare("select g2c.gid, clst.lbl, clst.id, g2c.wt, g2c.mi,clst.crid ".
 			" from g2c join clst on g2c.cid=clst.id ".
-			" where g2c.gid in $gidset and g2c.wt >= $MinWt and g2c.mi >= $MinMI ".
+			" join glist on glist.id=g2c.gid ".
+			" where (glist.lbl like ? or glist.hugo like ?) $crid_where ".
+			" and g2c.wt >= $MinWt and g2c.mi >= $MinMI ".
 			" order by g2c.gid asc, wt desc ");
+$st->bind_param("ss",$gquery,$gquery);
 $st->execute();
 $st->bind_result($GID,$clbl,$cid,$wt,$mi,$crid);
 print "<table rules=all border=true cellpadding=3>\n";
