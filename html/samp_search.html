@@ -1,0 +1,185 @@
+<?php
+require_once("util.php");
+
+$Samp = getval("samp","");
+$CRID = getval("crid",crid_default()); 	
+$Fact = getval("fact","");  # empty, or comma-list of factor numbers
+$Lbl = getval("lbl","");	# empty, or comma-list of factor labels (numbers 0-2 usually)
+
+if (!is_numeric($CRID)) {die("bad CRID\n");}
+# We don't support a cross-project sample search right now. Maybe we could. 
+if ($CRID == 0) {die("CRID=0\n");}  
+?>
+<head>
+<title>Sample Search</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+</head>
+<body style="margin:0px">
+<form>
+<table>
+	<tr>
+		<td>
+Sample: 
+		</td>
+		<td>
+<input name="samp" type="text" size="15" value="<?php echo $Samp ?>">
+		</td>
+		<td>
+Dataset:
+		</td>
+		<td>
+<?php print run_sel("crid",$CRID) ?>
+		</td>
+		<td style="padding-left:30px">
+<input type="submit" value="Search" 
+	onclick='parent.postMessage("SampSearch","*")';>
+		</td>
+		<td>
+<input type="submit" value="Clear" 
+		onclick="parent.postMessage('SampClear','*');window.location = window.location.href.split('?')[0];return false;" >
+		</td>
+		<td align=right style="width:50px">
+			<span id="popout_btn" title="Open in a new window" style="cursor:pointer">
+				&nbsp;&#9654;&nbsp;</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+Factors:
+		</td>
+		<td>
+<input name="fact" type="text" size="10" value="<?php echo $Fact ?>">
+		</td>
+		<td>
+Labels:
+		</td>
+		<td>
+<input name="lbl" type="text" size="5" value="<?php echo $Lbl ?>">
+		</td>
+		<td colspan=3></td>
+	</tr>
+</table>
+</form>
+<script>
+$('#popout_btn').click(function()
+{
+ 	var win = window.open(window.location.href, '_blank');
+  	win.focus();
+});
+</script>
+
+<?php
+if ($Samp == "")
+{
+	exit(0);
+}
+# First get the SID's 
+# This query might get slow since it can't use an index...deal with it then
+$sid2name = array();
+$crid2name = array();
+$crid_where = ($CRID==0 ? "" : " and clr.id=$CRID ");
+$squery = preg_replace('/\*/','%',$Samp);
+$st = $DB->prepare("select samp.lbl,samp.id,clr.id,clr.lbl ".
+	" from samp ".
+	" join clr on samp.dsid=clr.dsid ".
+	" where (samp.lbl like ?) $crid_where"); 
+$st->bind_param("s",$squery);
+$st->execute();
+$st->bind_result($lbl,$sid,$crid,$cname);
+while ($st->fetch())
+{
+	$sid2name[$sid] = $lbl;
+	$crid2name[$crid] = $cname; # filled redundantly - no matter
+}
+
+if (0 == count($sid2name))
+{
+	print "No samples found!";
+	exit(0);
+}
+
+# Now convert the factor set to database IDs and build the where clause
+$Fact = preg_replace('/\s+/','',$Fact);
+$fact_where = "";
+if ($Fact != "")
+{
+	$flist = explode(",",$Fact);
+	$cids = array();
+	# We need to convert the factor labels to IDs
+	$lbl2cid = array();
+	$st = $DB->prepare("select id,lbl from clst where crid=? and lvl=0");
+	$st->bind_param("i",$CRID);
+	$st->execute();
+	$st->bind_result($cid,$clbl);
+	while ($st->fetch())
+	{
+		$lbl2cid[$clbl] = $cid;
+	}
+	# Now sanity check the factor labels and build the list of IDs
+	foreach ($flist as $f)
+	{
+		if (!is_numeric($f))
+		{
+			print "Invalid factor $f (enter just the numbers)!";
+			exit(0);
+		}
+		if (!isset($lbl2cid[$f]))
+		{
+			print "Factor $f not found in dataset";
+			exit(0);
+		}
+		$cids[] = $lbl2cid[$f];
+	}
+	$fact_where = " and clst.id in (".implode(",",$cids).") ";
+}
+# Build the where clause for the factor labels the user wants to see
+$Lbl = preg_replace('/\s+/','',$Lbl);
+$lbl_where = "";
+if ($Lbl != "")
+{
+	$list = explode(",",$Lbl);
+	foreach ($list as $l)
+	{
+		if (!is_numeric($l))
+		{
+			print "Invalid label $l (should be an integer)!";
+			exit(0);
+		}
+	}
+	$lbl_where = " and lbls.lbl in ($Lbl) ";
+}
+# Do the main query, repeating the sample ID part since there's
+# not much gain from using a big IN clause
+print <<<END
+<table rules=all border=1 cellpadding=3>
+	<tr>
+		<td>Sample</td><td>Factor</td><td>Label</td><td>Censor</td><td>DTE</td><td>Age</td>
+	</tr>
+END;
+$query = "select samp.lbl, clst.lbl, lbls.lbl, ".
+	" sampdt.censor, sampdt.dte, sampdt.age ".
+	" from samp join lbls on lbls.sid=samp.id ".
+	" join clst on clst.id = lbls.cid ".
+	" join clr on samp.dsid=clr.dsid ".
+	" join sampdt on sampdt.sid=samp.id ".
+	" where (samp.lbl like ?) $crid_where" .
+	" $fact_where $lbl_where ".
+	" order by samp.id asc, clst.id asc, lbls.lbl asc";
+$st = $DB->prepare($query);
+$st->bind_param("s",$squery);
+$st->execute();
+$st->bind_result($sname,$cname,$fact_lbl,$cens,$dte,$age);
+while ($st->fetch())
+{
+	print <<<END
+	<tr>
+		<td>$sname</td><td>$cname</td><td>$fact_lbl</td><td>$cens</td><td>$dte</td><td>$age</td>
+	</tr>
+END;
+}
+print "</table>\n";
+
+?>
+
+</body>
+

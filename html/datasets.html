@@ -63,8 +63,15 @@ Enter gene name (case-insensitive).
 To match just part
  of the gene name use '*', e.g. <tt>PTP*</tt>.
 <p>
-<iframe id="geneFrame" src="gene_search.html"  style="border:none;width:100%;height:100px">
+<iframe id="geneFrame" src="gene_search.html"  style="border:none;width:100%;height:50px">
 </iframe>
+
+<p>
+<h4>Sample Search</h4>
+<p>
+<iframe id="sampFrame" src="samp_search.html"  style="border:none;width:100%;height:100px">
+</iframe>
+
 <script>
 window.addEventListener("message", receiveMessage, false);
 function receiveMessage(event)
@@ -76,7 +83,15 @@ function receiveMessage(event)
 	}
 	else if (msg == "GeneClear")
 	{
-		$("#geneFrame").height(100);
+		$("#geneFrame").height(50);
+	}
+	else if (msg == "SampSearch")
+	{
+		$("#sampFrame").height(400);
+	}
+	else if (msg == "SampClear")
+	{
+		$("#sampFrame").height(100);
 	}
 }
 </script>

@@ -250,7 +250,7 @@ END;
 }
 function load_content_html()
 {
-	$opt = $_GET["opt"];
+	$opt = getval("opt","");
 	global $page_opts, $page_lbls, $page_pgs;
 	for ($i = 1; $i < count($page_opts); $i++)
 	{
