@@ -38,7 +38,9 @@ $sql = "create table glist (
 	GLID int not null, 			# gene list ID
 	lbl varchar(30) unique,		# the name as used in the dataset
 	hugo varchar(30),			# HGNC name of the gene, if can be determined
-	descr text					# gene description, if available
+	descr text,					# gene description, if available
+	index(lbl),
+	index(hugo)
 );";
 if (!table_exists("glist")) { schema_add($sql);}
 if (!table_has_column("glist","GLID"))
@@ -244,11 +246,55 @@ if (!table_exists("lbls")) { schema_add($sql);}
 $sql = "create table survdt (
 	CID int not null,
 	strat int default 0,	# expecting risk srata 1,2,3
-	dte int not null,		# time axis - months
+	dte int not null,		# time axis - days 
 	surv float not null, 	# survival fraction
 	index(CID)
 );";
 if (!table_exists("survdt")) { schema_add($sql);}
+
+##########################################################################
+#
+# Paired survival tables
+#
+
+$sql = "create table clst_pair (
+	CID1 int not null,
+	CID2 int not null,
+	coxp float default 1,		
+	survp float default 1,
+	unique index(CID1,CID2)	
+);";
+if (!table_exists("clst_pair")) { schema_add($sql);}
+
+##########################################################################
+#
+# Paired survival curve data
+#
+
+$sql = "create table pair_survdt (
+	CID1 int not null,
+	CID2 int not null,
+	strat int default 0,	
+	dte int not null,	
+	surv float not null,
+	unique index(CID1,CID2)	
+);";
+if (!table_exists("pair_survdt")) { schema_add($sql);}
+
+##########################################################################
+#
+# Paired survival sample labels (risk stratum)
+#
+
+$sql = "create table pair_lbls (
+	CID1 int not null,
+	CID2 int not null,
+	SID int not null, 
+	risk_strat int default 0, 	# coxph risk stratum , 0 means not assigned
+	unique index (CID1,CID2,SID),
+	index (SID)
+);";
+if (!table_exists("pair_lbls")) { schema_add($sql);}
 
 #
 # GO and Kegg:
