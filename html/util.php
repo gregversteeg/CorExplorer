@@ -75,6 +75,14 @@ function checkbox_val($lbl,$default,$fromForm=1)
 	# we didn't come from the form, hence return default
 	return $default;
 }
+# parameter check to block injection
+function check_numeric($val)
+{
+	if (!is_numeric($val))
+	{
+		die("Invalid param $val");
+	}
+}
 #######################################################
 #
 # Tooltip text
