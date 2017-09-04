@@ -18,7 +18,7 @@ group1 = args[1]
 group2 = args[2]
 survfile = args[3]
 
-cox_pval_thresh = 0.25;  # significance of deviation of cox coeff from 0
+cox_pval_thresh = 0.1;  # significance of deviation of cox coeff from 0
 
 grpcol1 = paste("G",group1,sep="")
 grpcol2 = paste("G",group2,sep="")
@@ -34,10 +34,10 @@ sink()
 
 if (fit_coeff > cox_pval_thresh) 
 {
-	print("Factor coefficient insignificant under coxph");
-	quit()
+	#print("Factor coefficient insignificant under coxph")
+	quit(save = "no", status = 75, runLast = FALSE)
 }
-print(paste("Coxph factor significance p=",fit_coeff))
+#print(paste("Coxph factor significance p=",fit_coeff))
 
 relRisk <- predict(coxfit, survtbl, type="risk")
 survtbl$relrisk <- relRisk
@@ -71,8 +71,8 @@ psurvdiff = 1. - pchisq(sdf$chisq, length(sdf$n)-1)
 sink("pair_surv_tmp/survdiff.txt")
 cat(psurvdiff)
 sink()
-print(paste("stratum 1-3 differential pvalue=",psurvdiff))
+#print(paste("stratum 1-3 differential pvalue=",psurvdiff))
 
-print(paste("GROUPS",group1,",",group2,"   coxp=",fit_coeff,", survp=",psurvdiff,sep=""))
+print(paste("GROUPS ",group1,",",group2,"   coxp=",fit_coeff,", survp=",psurvdiff,sep=""))
 
 

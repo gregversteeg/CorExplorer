@@ -241,7 +241,7 @@ if (!table_exists("lbls")) { schema_add($sql);}
 ##########################################################################
 #
 # Survival curve data
-#
+# There is one curve for each risk stratum
 
 $sql = "create table survdt (
 	CID int not null,
@@ -277,7 +277,7 @@ $sql = "create table pair_survdt (
 	strat int default 0,	
 	dte int not null,	
 	surv float not null,
-	unique index(CID1,CID2)	
+	index(CID1,CID2,strat)	
 );";
 if (!table_exists("pair_survdt")) { schema_add($sql);}
 

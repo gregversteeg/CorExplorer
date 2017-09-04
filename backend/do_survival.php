@@ -56,8 +56,12 @@ foreach ($grp2ID as $grp => $cid)
 
 	if ($retval != 0)
 	{
-		# didn't work
-		print "group $grp ($cid) computation failed!\n";
+		if ($retval != 75)
+		{
+			# some actual error happened
+			die("group $grp ($cid) computation failed!\n");
+		}
+		# it just didn't reach coxph threshold
 		dbq("update clst set coxp=1, survp=1 where id=$cid");
 		continue;
 	}

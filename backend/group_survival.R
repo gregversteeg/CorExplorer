@@ -30,11 +30,11 @@ sink("surv_tmp/coxfit.txt")
 cat(fit_coeff)
 sink()
 
-#if (fit_coeff > cox_pval_thresh) 
-#{
+if (fit_coeff > cox_pval_thresh) 
+{
 	#print("Factor coefficient insignificant under coxph");
-	#quit()
-#}
+	quit(save = "no", status = 75, runLast = FALSE)
+}
 #print(paste("Coxph factor significance p=",fit_coeff))
 
 relRisk <- predict(coxfit, survtbl, type="risk")
