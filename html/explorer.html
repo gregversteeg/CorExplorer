@@ -1,8 +1,8 @@
 <?php
 require_once("util.php");
 
-$CRID = getval("crid",crid_default());
-$CID = getval("cid",0);
+$CRID = getint("crid",crid_default());
+$CID = getint("cid",0);
 
 ?>
 <head>
@@ -116,11 +116,12 @@ function print_js_cluster_array()
 	global $CRID;
 	
 	print "var lbl2cid = new Array();\n";
-	$res = dbq("select id,lbl from clst where crid=$CRID and lvl=0");
-	while ($r = $res->fetch_assoc())
+	$st = $DB->prepare("select id,lbl from clst where crid=? and lvl=0");
+	$st->bind_param("i",$CRID);
+	$st->bind_result("is",$cid,$lbl);
+	$st->execute();	
+	while ($st->fetch())
 	{
-		$cid = $r["id"];
-		$lbl = $r["lbl"];
 		print "lbl2cid['L1_$lbl']=$cid;\n";	
 	}
 }

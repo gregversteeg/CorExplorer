@@ -47,6 +47,34 @@ function getval($lbl,$default,$required=0)
 	}
 	return trim($default);
 }
+function getint($lbl,$default,$required=0)
+{
+	$val = getval($lbl,$default,$required);
+	if (!preg_match('/^\d+$/',$val))
+	{
+		die("invalid $lbl");	
+	}
+	return $val;
+}
+function getnum($lbl,$default,$required=0)
+{
+	$val = getval($lbl,$default,$required);
+	if (!is_numeric($val))
+	{
+		die("invalid $lbl");	
+	}
+	return $val;
+}
+# page parameter which is letters, numbers, or underscores
+function getw($lbl,$default,$required=0)
+{
+	$val = getval($lbl,$default,$required);
+	if (!preg_match('/^\w*$/',$val))
+	{
+		die("invalid $lbl");	
+	}
+	return $val;
+}
 function checked($val,$def)
 {
 	if ($val || $def)

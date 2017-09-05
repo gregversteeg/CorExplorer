@@ -17,24 +17,24 @@ function reconnect()
 	return 1;
 }
 
-function dbps($sql,$vals,$types)
-{
-	global $DB;
-
-	$ps = $DB->prepare($sql);
-	if (!$ps)
-	{
-		die ("Prepare failed: ".$DB->error);
-	}
-	$vars = array();
-	$vars[] =&$types;
-	for ($i = 1; $i <= count($vals); $i++)
-	{
-		$vars[] = &$vals[$i-1];
-	}
-	call_user_func_array(array($ps, 'bind_param'), $vars);
-	$ps->execute();
-}
+#function dbps($sql,$types,$vals)
+#{
+#	global $DB;
+#
+#	$ps = $DB->prepare($sql);
+#	if (!$ps)
+#	{
+#		die ("Prepare failed: ".$DB->error);
+#	}
+#	$vars = array();
+#	$vars[] =&$types;
+#	for ($i = 1; $i <= count($vals); $i++)
+#	{
+#		$vars[] = &$vals[$i-1];
+#	}
+#	call_user_func_array(array($ps, 'bind_param'), $vars);
+#	$ps->execute();
+#}
 function dbq($sql, $print=0)
 {
 	global $DB;

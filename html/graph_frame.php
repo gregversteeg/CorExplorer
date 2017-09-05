@@ -3,15 +3,15 @@ require_once("db.php");
 require_once("util.php");
 
 # convention: inital caps for the page parameters
-$FromForm = getval("fromform",0); # tell us if it's initial page load or form submit
-$NumGenes = getval("ng",1000);
-$MinWt = getval("mw",0.05);
-$MaxClstLvl = getval("maxlvl",2);
-$CRID = getval("crid",1);
-$CID_sel = getval("cid",0);
-$GID_sel = getval("gid",0);
-$Goterm = getval("goterm",0);
-$Keggterm = getval("keggterm",0);
+$FromForm = getint("fromform",0); # tell us if it's initial page load or form submit
+$NumGenes = getint("ng",1000);
+$MinWt = getnum("mw",0.05);
+$MaxClstLvl = getint("maxlvl",2);
+$CRID = getint("crid",1);
+$CID_sel = getint("cid",0);
+$GID_sel = getint("gid",0);
+$Goterm = getint("goterm",0);
+$Keggterm = getint("keggterm",0);
 $Bestinc = checkbox_val("bestinc",1,$FromForm);
 $Use_hugo = checkbox_val("use_hugo",1,$FromForm);
 
@@ -57,7 +57,7 @@ $kegg2clst = array();
 <table >
 	<tr>
 		<td><b>Graph:</b></td>
-		<td> Cluster: <?php print clst_sel("cid",$CID_sel,0,"--all--") ?> </td>
+		<td> Cluster: <?php print clst_sel("cid",$CID_sel,-1,"--all--") ?> </td>
 		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
 			<span id="param_btn" title="Edit parameters" style="cursor:pointer">&nbsp;&#x270e;&nbsp;</span>
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
@@ -371,6 +371,7 @@ function node_highlight(idnum,idstr,onoff)
 
 function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 {
+	global $DB;
 	global $CRID;
 	global $CID_sel;
 	global $GID_sel;
@@ -433,20 +434,27 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 	if ($Goterm != 0)
 	{
 		# get the clusters enriched for this go, and also the genes which have it
-		$res = dbq("select CID from clst2go join clst on clst.ID=clst2go.CID ".
-			" where term=$Goterm and pval <= $go_enrich_pval and CRID=$CRID");
-		while ($r = $res->fetch_assoc())
+		$st = $DB->prepare("select CID from clst2go join clst on clst.ID=clst2go.CID ".
+			" where term=? and pval <= ? and CRID=?");
+		$st->bind_param("idi",$Goterm,$go_enrich_pval,$CRID);
+		$st->bind_result($cid);
+		$st->execute();
+		while ($st->fetch())
 		{
-			$go_cids[] = $r["CID"];
+			$go_cids[] = $cid;
 		}
 		if (count($go_cids) > 0)
 		{
 			$go_where = " and CID in (".implode(",",$go_cids).")";
 		}
-		$res = dbq("select g2g.gid from g2g join g2c on g2c.gid=g2g.gid where g2g.term=$Goterm and g2c.crid=$CRID");
-		while ($r = $res->fetch_assoc())
+		$st = $DB->prepare("select g2g.gid from g2g join g2c on g2c.gid=g2g.gid ".
+			" where g2g.term=? and g2c.crid=?");
+		$st->bind_param("ii",$Goterm,$CRID);
+		$st->bind_result($gid);
+		$st->execute();
+		while ($st->fetch())
 		{
-			$go_genes[$r["gid"]] = 1;
+			$go_genes[$gid] = 1;
 		}
 		
 	}
@@ -455,11 +463,14 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 	$kegg_where = "";
 	if ($Keggterm != 0)
 	{
-		$res = dbq("select CID from clst2kegg join clst on clst.ID=clst2kegg.CID ".
-			" where term=$Keggterm and pval <= $kegg_enrich_pval and CRID=$CRID");
-		while ($r = $res->fetch_assoc())
+		$st = $DB->prepare("select CID from clst2kegg join clst on clst.ID=clst2kegg.CID ".
+			" where term=? and pval <= ? and CRID=?");
+		$st->bind_param("idi",$Keggterm,$kegg_enrich_pval,$CRID);
+		$st->bind_result($cid);
+		$st->execute();
+		while ($st->fetch())
 		{
-			$kegg_cids[] = $r["CID"];
+			$kegg_cids[] = $cid;
 		}
 		if (count($kegg_cids) > 0)
 		{
@@ -478,9 +489,12 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 	$sql = "select GID, CID, glist.lbl as lbl,glist.hugo as hugo, glist.descr as descr, mi,wt,clst.lbl as cnum ".
 		" from g2c join glist on glist.ID=g2c.GID ";
 	$sql .= " join clst on clst.ID = g2c.CID ";
-	$sql .= " where g2c.CRID=$CRID and wt >= $minWt $go_where $kegg_where $limit_cids_where $gene_cids_where ";
+	$sql .= " where g2c.CRID=? and wt >= ? $go_where $kegg_where $limit_cids_where $gene_cids_where ";
 	$sql .=	" order by wt desc limit $N"; 
-	$r = dbq($sql);
+	$st = $DB->prepare($sql);
+	$st->bind_param("id",$CRID,$minWt);
+	$st->bind_result($GID,$CID,$gene_name,$hugo_name,$gene_desc,$mi,$wt,$cnum);
+	$st->execute();
 	$elements = array();
 	$CIDlist = array(); # for building the next-level query
 	$gene_node_data = array();
@@ -491,17 +505,8 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 	$maxwt = -1;
 	$color = $level_colors["1"];
 	$gid_seen = array();    
-	while ($row = $r->fetch_assoc())
+	while ($st->fetch())
 	{
-		$GID = $row["GID"];
-		$CID = $row["CID"];
-		$wt = $row["wt"];
-		$mi = $row["mi"];
-		$gene_name = $row["lbl"];
-		$hugo_name = $row["hugo"];
-		$gene_desc = $row["descr"];
-		$cnum = $row["cnum"];
-
 		if ($Bestinc && isset($gid_seen[$GID]))
 		{
 			continue;
@@ -604,15 +609,13 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 
 		$cid1seen = array();
 
-		$r = dbq("select CID1, CID2,wt,mi from c2c where wt >= $minWt and CRID=$CRID $cur_CID_where ".
+		$st = $DB->prepare("select CID1, CID2,wt,mi from c2c where wt >= ? and CRID=? $cur_CID_where ".
 					" $limit_cids_where2 $gene_cids_where2 order by wt desc");
-		while ($row = $r->fetch_assoc())
+		$st->bind_param("di",$minWt,$CRID);
+		$st->bind_result($CID1,$CID2,$wt,$mi);
+		$st->execute();
+		while ($st->fetch())
 		{
-			$CID1 = $row["CID1"];
-			$CID2 = $row["CID2"];
-			$wt = $row["wt"];
-			$mi = $row["mi"];
-
 			if ($Bestinc && isset($cid1seen[$CID1]))
 			{
 				continue;
@@ -724,25 +727,22 @@ END;
 
 function go_enrich_sel($name, $sel,&$go2clst)
 {
-	global $CRID;
-	global $go_enrich_pval;
-	global $Goterm;
+	global $CRID, $DB, $go_enrich_pval, $Goterm;
 
 	$opts = array();
 	$selected = ($Goterm == 0 ? " selected " : "");
 	$opts[] = "<option value='0' $selected>none</option>";
 	$terms_seen = array();
-	$res = dbq("select gos.term as term, gos.descr as descr,clst.id as cid ".
+	$st = $DB->prepare("select gos.term as term, gos.descr as descr,clst.id as cid ".
 				" from clst2go join gos on gos.term=clst2go.term ".
 				" join clst on clst.ID=clst2go.CID ".
-				" where clst.CRID=$CRID and clst2go.pval <= $go_enrich_pval ".
-				" and gos.CRID=$CRID order by term asc, clst.ID asc ");
-	while ($r = $res->fetch_assoc())
+				" where clst.CRID=? and clst2go.pval <= ? ".
+				" and gos.CRID=? order by term asc, clst.ID asc ");
+	$st->bind_param("idi",$CRID,$go_enrich_pval,$CRID);
+	$st->bind_result($term,$descr,$cid);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$term = $r["term"];
-		$descr = $r["descr"];
-		$cid = $r["cid"];
-	
 		if (!isset($go2clst[$term]))
 		{
 			$go2clst[$term] = array();
@@ -766,23 +766,21 @@ function go_enrich_sel($name, $sel,&$go2clst)
 }
 function kegg_enrich_sel($name, $sel,&$kegg2clst)
 {
-	global $CRID;
-	global $kegg_enrich_pval;
-	global $Keggterm;
+	global $CRID, $DB, $kegg_enrich_pval, $Keggterm;
 
 	$opts = array();
 	$selected = ($Keggterm == 0 ? " selected " : "");
 	$opts[] = "<option value='0' $selected>none</option>";
 	$terms_seen = array();
-	$res = dbq("select kegg.term as term, kegg.descr as descr, clst.id as cid ".
+	$st = $DB->prepare("select kegg.term as term, kegg.descr as descr, clst.id as cid ".
 				"  from clst2kegg join kegg on kegg.term=clst2kegg.term ".
 				" join clst on clst.ID=clst2kegg.CID where kegg.CRID=$CRID and ".
 				"  clst.CRID=$CRID and clst2kegg.pval <= $kegg_enrich_pval order by term asc ");
-	while ($r = $res->fetch_assoc())
+	$st->bind_param("iid",$CRID,$CRID,$kegg_enrich_pval);
+	$st->bind_result($term,$descr,$cid);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$term = $r["term"];
-		$descr = $r["descr"];
-		$cid = $r["cid"];
 		if (strlen($descr) > 25)
 		{
 			$descr = substr($descr,0,22)."...";
@@ -805,27 +803,35 @@ function kegg_enrich_sel($name, $sel,&$kegg2clst)
 }
 function get_clst_level($cid)
 {
-	$res = dbq("select lvl from clst where ID=$cid");
-	$r = $res->fetch_assoc();
-	return $r["lvl"];
+	global $DB;
+	$st = $DB->prepare("select lvl from clst where ID=$cid");
+	$st->bind_param("i",$cid);
+	$st->bind_result($lvl);
+	$st->execute();
+	$st->fetch();
+	return $lvl;
 }
 #
 # Given a cluster, find all subclusters (uses the link weight param). 
 #
 function get_connected_clst(&$cids, $cid, $wt)
 {
+	global $DB;
 	$cids[] = $cid;
 	$maxlvl = get_clst_level($cid);
 	$cur_cids = array($cid);
 	for ($lvl = $maxlvl; $lvl > 0; $lvl--)
 	{
 		$cids_where = " and CID2 in (".implode(",",$cur_cids).") ";
-		$res = dbq("select CID1 from c2c where wt >= $wt $cids_where ");
+		$st = $DB->prepare("select CID1 from c2c where wt >= ? $cids_where ");
+		$st->bind_param("d",$wt);
+		$st->bind_result($cid1);
+		$st->execute();
 		$cur_cids = array();
-		while ($r = $res->fetch_assoc())
+		while ($st->fetch())
 		{
-			$cur_cids[] = $r["CID1"];
-			$cids[] = $r["CID1"];
+			$cur_cids[] = $cid1;
+			$cids[] = $cid1;
 		}
 	}
 }
