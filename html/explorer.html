@@ -113,17 +113,18 @@ $('#sel_crid').change(function()
 
 function print_js_cluster_array()
 {
-	global $CRID;
+	global $CRID,$DB;
 	
 	print "var lbl2cid = new Array();\n";
 	$st = $DB->prepare("select id,lbl from clst where crid=? and lvl=0");
 	$st->bind_param("i",$CRID);
-	$st->bind_result("is",$cid,$lbl);
+	$st->bind_result($cid,$lbl);
 	$st->execute();	
 	while ($st->fetch())
 	{
 		print "lbl2cid['L1_$lbl']=$cid;\n";	
 	}
+	$st->close();
 }
 
 ###########################################################################

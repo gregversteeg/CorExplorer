@@ -2,12 +2,11 @@
 require_once("db.php");
 require_once("util.php");
 
-$minWt = getval("mw",0);
-$CRID = getval("crid",0);
-$CID_sel = getval("cid",0);
-$numGenes = getval("ng",20);
+$minWt = getnum("mw",0);
+$CRID = getint("crid",0);
+$CID_sel = getint("cid",0);
+$numGenes = getint("ng",20);
 $maxZ = getval("maxz",2);
-$FT = getval("ft","");
 
 ?>
 
@@ -102,10 +101,13 @@ END;
 function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 				$crid, $cid,$minwt,$maxGenes,$maxZ)
 {
-	$res = dbq("select dsid,glid from clr where id=$crid");
-	$r = $res->fetch_assoc();
-	$dsid = $r["dsid"];
-	$glid = $r["glid"];
+	global $DB;
+	$st = $DB->prepare("select dsid,glid from clr where id=?");
+	$st->bind_param("i",$crid);
+	$st->bind_result($dsid,$glid);
+	$st->execute();
+	$st->fetch();
+	$st->close();
 
 	$genes = array();
 	$samps = array();
@@ -117,31 +119,34 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 	$maxsamps = 40000;
 
 	# first get the samples sorted by continuous label
-	$res = dbq("select sid,samp.lbl from lbls join samp on samp.id=lbls.sid ".
-				" where cid=$cid order by clbl asc, sid asc limit $maxsamps");
-	while ($r = $res->fetch_assoc())
+	$st = $DB->prepare("select sid,samp.lbl from lbls join samp on samp.id=lbls.sid ".
+				" where cid=? order by clbl asc, sid asc limit $maxsamps");
+	$st->bind_param("i",$cid);
+	$st->bind_result($sid,$sname);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$sid = $r["sid"];
-		$sname = $r["lbl"];
 		$samps[] = $sid;
 		$sampstrs[] = "\"$sname\"";
 	}
+	$st->close();
 	$numSamps = count($samps);
 	
 	# get the genes in the cluster
-	$res = dbq("select gid,lbl,wt from g2c join glist on glist.id=g2c.gid ".
-				" where g2c.cid=$cid and g2c.wt >= $minwt ".
+	$st = $DB->prepare("select gid,lbl,wt from g2c join glist on glist.id=g2c.gid ".
+				" where g2c.cid=? and g2c.wt >= ? ".
 				" order by g2c.mi desc limit $maxGenes ");
-	while ($r = $res->fetch_assoc())
+	$st->bind_param("id",$cid,$minwt);
+	$st->bind_result($gid,$gname,$wt);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$gid = $r["gid"];
-		$wt = $r["wt"];
-		$gname = $r["lbl"];
 		$genes[] = $gid;
 		$genestrs[] = "\"$gname\"";
 		$wt = .01*floor(100*$wt);
 		$wtstrs[] = "\"$wt\"";
 	}
+	$st->close();
 	$numGenes = count($genes);
 	
 	$vals = array();
@@ -149,15 +154,16 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 	{
 		$gid = $genes[$g];
 		$snum = 0;
-		$res = dbq("select expr.sid,expr.logz from expr  ".
+		$st = $DB->prepare("select expr.sid,expr.logz from expr  ".
 						" join lbls on lbls.sid=expr.sid ".
-						" where expr.dsid=$dsid and expr.gid=$gid and lbls.cid=$cid ".
+						" where expr.dsid=? and expr.gid=? and lbls.cid=? ".
 						" order by lbls.clbl asc, lbls.sid asc  limit $maxsamps"); 
 		$zs = array();
-		while ($r = $res->fetch_assoc())
+		$st->bind_param("iii",$dsid,$gid,$cid);
+		$st->bind_result($sid,$z);
+		$st->execute();
+		while ($st->fetch())
 		{
-			$sid = $r["sid"];
-			$z = $r["logz"];
 			if ($z > $maxZ)
 			{
 				$z = $maxZ;
@@ -175,6 +181,7 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 			}
 			$snum++;
 		}
+		$st->close();
 		$vals[] = "[".implode(",",$zs)."]";
 	}
 

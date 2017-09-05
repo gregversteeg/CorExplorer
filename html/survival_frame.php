@@ -2,8 +2,8 @@
 require_once("db.php");
 require_once("util.php");
 
-$CRID = getval("crid",1);
-$CID = getval("cid",0);
+$CRID = getint("crid",1);
+$CID = getint("cid",0);
 $CID_pair = getval("pair","");
 $FT = getval("ft","");
 $CID2 = 0;
@@ -25,17 +25,23 @@ if ($CID_pair != "")
 	$CID2 = $cids[1];
 	check_numeric($CID2);
 
-	$res = dbq("select survp from clst_pair where cid1=$CID and cid2=$CID2 ");
-	$r = $res->fetch_assoc();
-	$this_survp = $r["survp"];
+	$st = $DB->prepare("select survp from clst_pair where cid1=? and cid2=? ");
+	$st->bind_param("ii",$CID,$CID2);
+	$st->bind_result($this_survp);
+	$st->execute();
+	$st->fetch();
+	$st->close();
 
 	get_pair_surv_data($graph_vars,$graph_samps,$graph_data);
 }
 else if ($CID != 0)
 {
-	$res = dbq("select survp from clst where clst.id=$CID ");
-	$r = $res->fetch_assoc();
-	$this_survp 	= $r["survp"];
+	$st = $DB->prepare("select survp from clst where id=? ");
+	$st->bind_param("i",$CID);
+	$st->bind_result($this_survp);
+	$st->execute();
+	$st->fetch();
+	$st->close();
 
 	get_surv_data($graph_vars,$graph_samps,$graph_data);
 }
@@ -113,11 +119,14 @@ var cX = new CanvasXpress("canvasId", data, conf);
 
 function get_surv_data(&$varstr,&$sampstr,&$datastr)
 {
-	global $CID;
+	global $CID,$DB;
 
-	$res = dbq("select max(strat) as maxstrat from survdt where cid=$CID ");
-	$r = $res->fetch_assoc();
-	$numstrat = $r["maxstrat"];	
+	$st = $DB->prepare("select max(strat) as maxstrat from survdt where cid=? ");
+	$st->bind_param("i",$CID);
+	$st->bind_result($numstrat);
+	$st->execute();
+	$st->fetch();
+	$st->close();
 
 	$vars = array();   # variables = strata
 	$data = array();   # survival per stratum for each timepoint
@@ -128,16 +137,15 @@ function get_surv_data(&$varstr,&$sampstr,&$datastr)
 		$data[$s-1][0] = 1.0;
 	}
 
-	$res = dbq("select dte,strat,surv from survdt where cid=$CID   order by dte asc");
+	$st = $DB->prepare("select dte,strat,surv from survdt where cid=? order by dte asc");
+	$st->bind_param("i",$CID);
+	$st->bind_result($time,$strat,$surv);
+	$st->execute();
 	$prev_time = 0;
 	$times = array();
 	$times[0] = 1;
-	while ($r = $res->fetch_assoc())
+	while ($st->fetch())
 	{
-		$time 	= $r["dte"];
-		$strat 	= $r["strat"];
-		$surv 	= $r["surv"];
-		
 		#
 		# Here we ensure that each time point is represented across all
 		# of the strata, by initializing the strata from prior timepoints.
@@ -154,6 +162,7 @@ function get_surv_data(&$varstr,&$sampstr,&$datastr)
 		$data[$strat-1][$time] = $surv;
 		$prev_time = $time;
 	}
+	$st->close();
 	$max_time = $prev_time;
 	
 	# fill in missing times
@@ -194,12 +203,14 @@ function get_surv_data(&$varstr,&$sampstr,&$datastr)
 
 function get_pair_surv_data(&$varstr,&$sampstr,&$datastr)
 {
-	global $CID;
-	global $CID2;
+	global $CID, $CID2, $DB;
 
-	$res = dbq("select max(strat) as maxstrat from pair_survdt where cid1=$CID and cid2=$CID2 ");
-	$r = $res->fetch_assoc();
-	$numstrat = $r["maxstrat"];	
+	$st = $DB->prepare("select max(strat) as maxstrat from pair_survdt where cid1=? and cid2=? ");
+	$st->bind_param("ii",$CID,$CID2);
+	$st->bind_result($numstrat);
+	$st->execute();
+	$st->fetch();
+	$st->close();
 
 	$vars = array();   # variables = strata
 	$data = array();   # survival per stratum for each timepoint
@@ -210,16 +221,15 @@ function get_pair_surv_data(&$varstr,&$sampstr,&$datastr)
 		$data[$s-1][0] = 1.0;
 	}
 
-	$res = dbq("select dte,strat,surv from pair_survdt where cid1=$CID and cid2=$CID2  order by dte asc");
+	$st = $DB->prepare("select dte,strat,surv from pair_survdt where cid1=? and cid2=? order by dte asc");
+	$st->bind_param("ii",$CID,$CID2);
+	$st->bind_result($time,$strat,$surv);
+	$st->execute();
 	$prev_time = 0;
 	$times = array();
 	$times[0] = 1;
-	while ($r = $res->fetch_assoc())
+	while ($st->fetch())
 	{
-		$time 	= $r["dte"];
-		$strat 	= $r["strat"];
-		$surv 	= $r["surv"];
-		
 		#
 		# Here we ensure that each time point is represented across all
 		# of the strata, by initializing the strata from prior timepoints.
@@ -236,6 +246,7 @@ function get_pair_surv_data(&$varstr,&$sampstr,&$datastr)
 		$data[$strat-1][$time] = $surv;
 		$prev_time = $time;
 	}
+	$st->close();
 	$max_time = $prev_time;
 	
 	# fill in missing times
@@ -278,22 +289,23 @@ function get_pair_surv_data(&$varstr,&$sampstr,&$datastr)
 # selected here if a pair was specified (CID2 > 0)
 function clst_sel_surv($name,$CID,$CID2)
 {
-	global $CRID;
+	global $CRID, $DB;
 	$selected = ($CID == 0 || $CID2 != 0 ? " selected " : "");
 	$opts[] = "<option value='0' $selected>--choose--</option>";
 
-	$res = dbq("select ID, lbl, survp from clst ".
-		" where clst.CRID=$CRID and clst.lvl=0 and clst.survp < 1 ".
+	$st = $DB->prepare("select ID, lbl, survp from clst ".
+		" where clst.CRID=? and clst.lvl=0 and clst.survp < 1 ".
 		" order by clst.survp asc ");
-	while ($r = $res->fetch_assoc())
+	$st->bind_param("i",$CRID);
+	$st->bind_result($ID,$lbl,$pval);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$ID = $r["ID"];
-		$lbl = $r["lbl"];
-		$pval = $r["survp"];
 		$selected = ($ID == $CID && $CID2 == 0 ? " selected " : "");
 		#$pval = floor(1000*$pval)/1000;
 		$opts[] = "<option value=$ID $selected>$lbl (p=$pval)</option>";
 	}
+	$st->close();
 	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
 }
 
@@ -301,28 +313,27 @@ function clst_sel_surv($name,$CID,$CID2)
 
 function clst_sel_pair($name,$CID,$CID2)
 {
-	global $CRID;
+	global $CRID, $DB;
 	$selected = ($CID2 == 0 ? " selected " : "");
 	$opts[] = "<option value='' $selected>--choose--</option>";
 
-	$res = dbq("select pc.cid1,pc.cid2, clst1.lbl as lbl1,clst2.lbl as lbl2, pc.survp ".
+	$st = $DB->prepare("select pc.cid1,pc.cid2, clst1.lbl as lbl1,clst2.lbl as lbl2, pc.survp ".
 		" from clst_pair as pc ".
 		" join clst as clst1 on clst1.id=pc.cid1 ".	
 		" join clst as clst2 on clst2.id=pc.cid2 ".	
-		" where pc.survp < 1 and clst1.crid=$CRID and clst2.crid=$CRID ".
+		" where pc.survp < 1 and clst1.crid=? and clst2.crid=? ".
 		" order by pc.survp asc ");
-	while ($r = $res->fetch_assoc())
+	$st->bind_param("ii",$CRID,$CRID);
+	$st->bind_result($cid1,$cid2,$lbl1,$lbl2,$pval);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$cid1 = $r["cid1"];
-		$cid2 = $r["cid2"];
-		$lbl1 = $r["lbl1"];
-		$lbl2 = $r["lbl2"];
-		$pval = $r["survp"];
 		$selected = ($cid1==$CID && $cid2==$CID2 ? " selected " : "");
 		$opt_lbl = $lbl1."_".$lbl2;
 		$opt_val = $cid1."_".$cid2;
 		$opts[] = "<option value='$opt_val' $selected>$opt_lbl (p=$pval)</option>";
 	}
+	$st->close();
 	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
 }
 
