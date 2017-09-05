@@ -18,8 +18,6 @@ $graph_data = "";
 
 $this_survp = 0;
 
-print_r($_GET);
-
 if ($CID_pair != "")
 {
 	$cids = explode("_",$CID_pair);
@@ -311,7 +309,7 @@ function clst_sel_pair($name,$CID,$CID2)
 		" from clst_pair as pc ".
 		" join clst as clst1 on clst1.id=pc.cid1 ".	
 		" join clst as clst2 on clst2.id=pc.cid2 ".	
-		" where pc.survp < 1 ".
+		" where pc.survp < 1 and clst1.crid=$CRID and clst2.crid=$CRID ".
 		" order by pc.survp asc ");
 	while ($r = $res->fetch_assoc())
 	{
@@ -323,7 +321,7 @@ function clst_sel_pair($name,$CID,$CID2)
 		$selected = ($cid1==$CID && $cid2==$CID2 ? " selected " : "");
 		$opt_lbl = $lbl1."_".$lbl2;
 		$opt_val = $cid1."_".$cid2;
-		$opts[] = "<option value='$opt_lbl' $selected>$opt_lbl (p=$pval)</option>";
+		$opts[] = "<option value='$opt_val' $selected>$opt_lbl (p=$pval)</option>";
 	}
 	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
 }
