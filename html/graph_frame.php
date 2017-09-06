@@ -576,8 +576,13 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 	# First we need the number of levels and the cluster numbers
 	# NOTE LEVELS IN DB START AT 0 WHILE DISPLAY STARTS AT 1!!!
 
-	$r = dba("select max(lvl) as maxlvl from clst where CRID=$CRID");
-	$maxLvl = min($r["maxlvl"] + 1, $MaxClstLvl);	
+	$st = dbps("select max(lvl) as maxlvl from clst where CRID=?");
+	$st->bind_param("i",$CRID);
+	$st->bind_result($maxlvl);
+	$st->execute();
+	$st->fetch();
+	$st->close();
+	$maxLvl = min($maxlvl + 1, $MaxClstLvl);	
 
 	$cid2num = array();
 	$st = $DB->prepare("select ID, lbl from clst where CRID=?");

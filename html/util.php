@@ -149,14 +149,15 @@ function tip_text($tag)
 ###################################################
 function run_sel($name,$CRID,$def="")
 {
-	$res = dbq("select ID, lbl from clr order by ID asc");
-	while ($r = $res->fetch_assoc())
+	$st = dbps("select ID, lbl from clr order by ID asc");
+	$st->bind_result($ID,$lbl);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$ID = $r["ID"];
-		$lbl = $r["lbl"];
 		$selected = ($ID == $CRID ? " selected " : "");
 		$opts[] = "<option value=$ID $selected>$lbl</option>";
 	}
+	$st->close();
 	$html = "<select name='$name' id='sel_$name'>\n";
 	if ($def != "")
 	{
@@ -174,36 +175,44 @@ function clst_sel($name,$CID,$singlelvl=-1,$defstr="all")
 	$opts[] = "<option value='0' $selected>$defstr</option>";
 
 	$lvlwhere = "";
+	if (!is_numeric($singlelvl))
+	{
+		die ("Bad factor level parameter $singlelvl"); 
+	}
 	if ($singlelvl >= 0)
 	{
 		$lvlwhere = " and clst.lvl=$singlelvl ";
 	}
 
-	$res = dbq("select ID, lbl, lvl, count(*) as size from clst ".
+	$st = dbps("select ID, lbl, lvl, count(*) as size from clst ".
 		" join g2c on g2c.CID=clst.ID ".
-		" where clst.CRID=$CRID $lvlwhere ".
+		" where clst.CRID=? $lvlwhere ".
 		" group by clst.ID ");
-	while ($r = $res->fetch_assoc())
+	$st->bind_param("i",$CRID);
+	$st->bind_result($ID,$lbl,$lvl,$size);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$ID = $r["ID"];
-		$lbl = $r["lbl"];
-		$lvl = $r["lvl"] + 1;
-		$size = $r["size"] + 1;
+		$lvl++;
+		$size++;
 		$selected = ($ID == $CID ? " selected " : "");
 		$opts[] = "<option value=$ID $selected>Layer$lvl : $lbl ($size genes)</option>";
 	}
+	$st->close();
 	# due to the g2c join, the previous only got layer 1
-	$res = dbq("select ID, lbl, lvl  from clst ".
-		" where clst.CRID=$CRID and lvl > 0 $lvlwhere ".
+	$st = dbps("select ID, lbl, lvl  from clst ".
+		" where clst.CRID=? and lvl > 0 $lvlwhere ".
 		" group by clst.ID ");
-	while ($r = $res->fetch_assoc())
+	$st->bind_param("i",$CRID);
+	$st->bind_result($ID,$lbl,$lvl);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$ID = $r["ID"];
-		$lbl = $r["lbl"];
-		$lvl = $r["lvl"] + 1;
+		$lvl++;
 		$selected = ($ID == $CID ? " selected " : "");
 		$opts[] = "<option value=$ID $selected>Layer$lvl : $lbl </option>";
 	}
+	$st->close();
 	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
 }
 
@@ -303,8 +312,11 @@ function load_content_html()
 
 function crid_default()
 {
-	$res = dbq("select min(id) as crid from clr");
-	$r = $res->fetch_assoc();
-	return $r["crid"];
+	$st = dbps("select min(id) as crid from clr");
+	$st->bind_result($crid);
+	$st->execute();
+	$st->fetch();
+	$st->close();
+	return $crid;
 }
 ?>

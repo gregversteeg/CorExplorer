@@ -9,11 +9,11 @@
 #
 require_once("util.php");
 
-$CID = getval("cid",0);
-$CRID = getval("crid",0);
-$Min_ppi_score = getval("ppi_score",400);
-$Min_corex_score = getval("corex_score",0.05);
-$Max_genes = getval("ng",1000);
+$CID = getint("cid",0);
+$CRID = getint("crid",0);
+$Min_ppi_score = getint("ppi_score",400);
+$Min_corex_score = getnum("corex_score",0.05);
+$Max_genes = getint("ng",1000);
 $Multi_map = getval("mm",0);
 $Use_outside_links = getval("outside",0);
 $Node_lbl_type = getval("node_lbl_type","gene");
@@ -149,12 +149,7 @@ cy.on('mouseout', 'node', function(evt){$("#msg").html("")});
 
 function build_ppi(&$ppi_nodes,&$ppi_links,&$ppi_hugo,&$ens_desc,$CID)
 {
-	global $Min_corex_score;
-	global $Multi_map;
-	global $Max_genes;
-	global $Min_ppi_score;
-	global $CRID;
-	global $Use_outside_links;
+	global $Min_corex_score,$Multi_map,$Max_genes,$Min_ppi_score,$CRID,$Use_outside_links;
 
 	#
 	# First get the genes and proteins from the cluster, subject to score, multimap, and max_gene setting
@@ -163,41 +158,37 @@ function build_ppi(&$ppi_nodes,&$ppi_links,&$ppi_hugo,&$ens_desc,$CID)
 
 	$genes_seen = array();
 	$EIDlist = array();
-	$res = dbq("select g2c.GID as GID, g2e.term as EID, glist.lbl as gname,glist.hugo as hname, ".
+	$st = dbps("select g2c.GID as GID, g2e.term as EID, glist.lbl as gname,glist.hugo as hname, ".
 				" eprot.descr as edesc ".
 				" from g2c join g2e on g2c.GID=g2e.GID join glist on glist.ID=g2c.GID ".
 				" right join eprot on eprot.term=g2e.term ".
-				" where g2c.CID=$CID and g2c.wt >= $Min_corex_score and g2c.CRID=$CRID ".
+				" where g2c.CID=? and g2c.wt >= ? and g2c.CRID=? ".
 				" order by g2c.wt desc ");
+	$st->bind_param("idi",$CID,$Min_corex_score,$CRID);
+	$st->bind_result($GID,$EID,$gname,$hname,$edesc);
+	$st->execute();
+	while ($st->fetch())
 	{
-		while ($r = $res->fetch_assoc())
+		if (isset($genes_seen[$GID]))
 		{
-			$GID = $r["GID"];
-			$EID = $r["EID"];
-			$gname = $r["gname"];
-			$hname = $r["hname"];
-			$edesc = $r["edesc"];
-
-			if (isset($genes_seen[$GID]))
+			if (!$Multi_map)
 			{
-				if (!$Multi_map)
-				{
-					continue;
-				}
-			}
-			$genes_seen[$GID] = 1;
-
-			$ppi_nodes[$EID] = $gname;
-			$ppi_hugo[$EID] = $hname;
-			$EIDlist[$EID] = 1;
-			$ens_desc[$EID] = $edesc;
-
-			if (count($genes_seen) == $Max_genes)
-			{
-				break;
+				continue;
 			}
 		}
+		$genes_seen[$GID] = 1;
+
+		$ppi_nodes[$EID] = $gname;
+		$ppi_hugo[$EID] = $hname;
+		$EIDlist[$EID] = 1;
+		$ens_desc[$EID] = $edesc;
+
+		if (count($genes_seen) == $Max_genes)
+		{
+			break;
+		}
 	}
+	$st->close();
 	if (count($EIDlist) == 0)
 	{
 		return;
@@ -207,13 +198,12 @@ function build_ppi(&$ppi_nodes,&$ppi_links,&$ppi_hugo,&$ens_desc,$CID)
 	#
 	$extra_EID = array();
 	$EIDset = "(".implode(",",array_keys($EIDlist)).")";
-	$res = dbq("select ID1, ID2, score from ppi where ID1 in $EIDset and score >= $Min_ppi_score  ");
-	while ($r = $res->fetch_assoc())
+	$st = dbps("select ID1, ID2, score from ppi where ID1 in $EIDset and score >= ?");
+	$st->bind_param("d",$Min_ppi_score);
+	$st->bind_result($EID1,$EID2,$score);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$EID1 = $r["ID1"];
-		$EID2 = $r["ID2"];
-		$score = $r["score"];
-
 		if (!isset($EIDlist[$EID2]))
 		{
 			if (!$Use_outside_links)
@@ -233,6 +223,7 @@ function build_ppi(&$ppi_nodes,&$ppi_links,&$ppi_hugo,&$ens_desc,$CID)
 			}
 		}	
 	}
+	$st->close();
 	foreach ($extra_EID as $EID => $val)
 	{
 		$ppi_nodes[$EID] = ensp_name($EID); # no gene name so this will be the label

@@ -14,35 +14,34 @@ require_once("util.php");
 $ngenes = array();
 $nsamps = array();
 
-$res = dbq("select glists.id,count(*) as ngenes ".
+$st = dbps("select glists.id,count(*) as ngenes ".
 		" from glists join glist on glist.glid=glists.id ".
 		" group by glists.id");
-while ($r = $res->fetch_assoc())
+$st->bind_result($id,$num);
+$st->execute();
+while ($st->fetch())
 {
-	$id = $r["id"];
-	$num = $r["ngenes"];
 	$ngenes[$id] = $num;
 }
+$st->close();
 
-$res = dbq("select dset.id,count(*) as nsamp ".
+$st = dbps("select dset.id,count(*) as nsamp ".
 		" from samp join dset on dset.id=samp.dsid ".
 		" group by dset.id");
-while ($r = $res->fetch_assoc())
+$st->bind_result($id,$num);
+$st->execute();
+while ($st->fetch())
 {
-	$id = $r["id"];
-	$num = $r["nsamp"];
 	$nsamps[$id] = $num;
-}
+}	
+$st->close();
 
 
-$res = dbq("select id,glid,dsid,lbl,meth from clr");
-while ($r = $res->fetch_assoc())
+$st = dbps("select id,glid,dsid,lbl,meth from clr");
+$st->bind_result($crid,$glid,$dsid,$lbl,$meth);
+$st->execute();
+while ($st->fetch())
 {
-	$crid = $r["id"];
-	$glid = $r["glid"];	
-	$dsid = $r["dsid"];	
-	$lbl = $r["lbl"];	
-
 	$ngene = $ngenes[$glid];
 	$nsamp = $nsamps[$dsid];
 
@@ -54,6 +53,7 @@ while ($r = $res->fetch_assoc())
 	</tr>
 END;
 }
+$st->close();
 ?>
 </table>
 <p>

@@ -2,11 +2,11 @@
 require_once("db.php");
 require_once("util.php");
 
-$minWt = getval("mw",0);
-$CRID = getval("crid",0);
-$CID_sel = getval("cid",0);
-$numGenes = getval("ng",20);
-$maxZ = getval("maxz",2);
+$minWt = getnum("mw",0);
+$CRID = getint("crid",0);
+$CID_sel = getint("cid",0);
+$numGenes = getint("ng",20);
+$maxZ = getnum("maxz",2);
 $FT = getval("ft","");
 
 ?>
@@ -48,33 +48,35 @@ if ($CID_sel != 0)
 	print "<h4>Enriched GO terms:</h4>\n";
 	print "<table rules=all border=true cellpadding=3>\n";
 	print "<tr><td><b>GO</b></td><td><b>p-value</b></td><td><b>description</b></td></tr>\n";	
-	$res = dbq("select clst2go.term, clst2go.pval, gos.descr ".
+	$st = dbps("select clst2go.term, clst2go.pval, gos.descr ".
 			" from clst2go join gos on gos.term=clst2go.term ".
-			" where clst2go.cid=$CID_sel and gos.CRID=$CRID order by pval asc");
-	while ($r = $res->fetch_assoc())
+			" where clst2go.cid=? and gos.CRID=? order by pval asc");
+	$st->bind_param("ii",$CID_sel,$CRID);
+	$st->bind_result($term,$pval,$descr);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$term = $r["term"];
-		$descr = $r["descr"];
-		$pval = $r["pval"];
 		$goname = go_name($term);
 		print "<tr><td>$goname</td><td>$pval</td><td>$descr</td></tr>\n";	
 	}
+	$st->close();
 	print "</table>\n";
 
 	print "<h4>Enriched Kegg terms:</h4>\n";
 	print "<table rules=all border=true cellpadding=3>\n";
 	print "<tr><td><b>Kegg</b></td><td><b>p-value</b></td><td><b>description</b></td></tr>\n";	
-	$res = dbq("select clst2kegg.term, clst2kegg.pval, kegg.descr ".
+	$st = dbps("select clst2kegg.term, clst2kegg.pval, kegg.descr ".
 			" from clst2kegg join kegg on kegg.term=clst2kegg.term ".
-			" where clst2kegg.cid=$CID_sel and kegg.CRID=$CRID order by pval asc");
-	while ($r = $res->fetch_assoc())
+			" where clst2kegg.cid=? and kegg.CRID=? order by pval asc");
+	$st->bind_param("ii",$CID_sel,$CRID);
+	$st->bind_result($term,$pval,$descr);
+	$st->execute();
+	while ($st->fetch())
 	{
-		$term = $r["term"];
-		$descr = $r["descr"];
-		$pval = $r["pval"];
 		$keggname = kegg_name($term);
 		print "<tr><td>$keggname</td><td>$pval</td><td>$descr</td></tr>\n";	
 	}
+	$st->close();
 	print "</table>\n";
 }
 

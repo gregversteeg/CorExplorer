@@ -16,24 +16,12 @@ function reconnect()
 	}
 	return 1;
 }
-
-function dbps($sql,$vals,$types)
+# main purpose of this function is to remove the need to
+# have global $DB in other functions
+function dbps($sql)
 {
 	global $DB;
-
-	$ps = $DB->prepare($sql);
-	if (!$ps)
-	{
-		die ("Prepare failed: ".$DB->error);
-	}
-	$vars = array();
-	$vars[] =&$types;
-	for ($i = 1; $i <= count($vals); $i++)
-	{
-		$vars[] = &$vals[$i-1];
-	}
-	call_user_func_array(array($ps, 'bind_param'), $vars);
-	$ps->execute();
+	return $DB->prepare($sql);
 }
 function dbq($sql, $record=0)
 {

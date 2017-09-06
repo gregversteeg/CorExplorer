@@ -3,8 +3,8 @@ require_once("util.php");
 
 $Gene = getval("gene","");
 $CRID = getint("crid",0);
-$MinWt = getval("mw",0.05);
-$MinMI = getval("mi",0.05);
+$MinWt = getnum("mw",0.05);
+$MinMI = getnum("mi",0.05);
 
 if (!is_numeric($CRID)) {die("bad CRID\n");}
 ?>
@@ -85,6 +85,7 @@ while ($st->fetch())
 	$gid2hugo[$GID] = $hugo;
 	$crid2name[$crid] = $cname; # filled redundantly - no matter
 }
+$st->close();
 
 if (0 == count($gid2name))
 {

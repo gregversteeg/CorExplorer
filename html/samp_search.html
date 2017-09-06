@@ -2,7 +2,7 @@
 require_once("util.php");
 
 $Samp = getval("samp","");
-$CRID = getval("crid",crid_default()); 	
+$CRID = getint("crid",crid_default()); 	
 $Fact = getval("fact","");  # empty, or comma-list of factor numbers
 $Lbl = getval("lbl","");	# empty, or comma-list of factor labels (numbers 0-2 usually)
 
