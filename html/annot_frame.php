@@ -23,7 +23,7 @@ $FT = getval("ft","");
 <table cellpadding=5>
 	<tr>
 		<td><b>Annotation:</b></td>
-		<td> Cluster: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
+		<td> Factor: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
 		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
 		</td>

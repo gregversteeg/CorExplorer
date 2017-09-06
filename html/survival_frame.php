@@ -60,7 +60,7 @@ else if ($CID != 0)
 <table cellpadding=5>
 	<tr>
 		<td><b>Survival:</b></td>
-		<td>Cluster: <?php print clst_sel_surv("cid",$CID,$CID2) ?> </td>
+		<td>Factor: <?php print clst_sel_surv("cid",$CID,$CID2) ?> </td>
 		<td>Paired: <?php print clst_sel_pair("pair",$CID,$CID2) ?> </td>
 		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>

@@ -57,7 +57,7 @@ $kegg2clst = array();
 <table >
 	<tr>
 		<td><b>Graph:</b></td>
-		<td> Cluster: <?php print clst_sel("cid",$CID_sel,-1,"--all--") ?> </td>
+		<td> Factor: <?php print clst_sel("cid",$CID_sel,-1,"--all--") ?> </td>
 		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
 			<span id="param_btn" title="Edit parameters" style="cursor:pointer">&nbsp;&#x270e;&nbsp;</span>
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
