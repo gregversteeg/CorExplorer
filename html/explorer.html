@@ -140,7 +140,7 @@ function frame_sel($fnum, $defnum)
 		$opts[] = "<option $selected value='$val'>$lbl</option>";
 	}
 	$id = "frame_sel$fnum";
-	return "<select id='$id'>\n".implode("\n",$opts)."</select>\n";
+	return "<select id='$id' autocomplete='off'>\n".implode("\n",$opts)."</select>\n";
 
 }
 ?>
