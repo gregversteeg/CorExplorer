@@ -1,6 +1,7 @@
 <?php
 require_once("util.php");
 ?>
+<div style="padding:0px 10px 0px 10px">
 
 <h4>Datasets</h4>
 <table rules=all border=1 cellpadding=3>
@@ -63,7 +64,7 @@ Enter gene name (case-insensitive).
 To match just part
  of the gene name use '*', e.g. <tt>PTP*</tt>.
 <p>
-<iframe id="geneFrame" src="gene_search.html"  style="border:none;width:100%;height:50px">
+<iframe id="geneFrame" src="gene_search.html"  style="border:none;width:100%;height:100px">
 </iframe>
 
 <p>
@@ -83,7 +84,7 @@ function receiveMessage(event)
 	}
 	else if (msg == "GeneClear")
 	{
-		$("#geneFrame").height(50);
+		$("#geneFrame").height(100);
 	}
 	else if (msg == "SampSearch")
 	{
@@ -95,12 +96,11 @@ function receiveMessage(event)
 	}
 }
 </script>
-
+</div>
 <?php
 
 ?>
 
-</table>
 
 
 

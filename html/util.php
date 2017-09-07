@@ -274,7 +274,7 @@ END;
 		$lbl = $page_lbls[$i];
 		#$pg = $page_pgs[$i];
 		$link = "/index.html?opt=$option";
-		print "<td valign='middle'>\n";
+		print "\n<td valign='middle'>\n";
 		if ($option == $cur_opt)
 		{
 			print "<a class='head_selected'>$lbl</a>\n";
@@ -283,7 +283,7 @@ END;
 		{
 			print "<a href='$link' >$lbl</a>\n";
 		}
-		print "</td>\n";
+		print "\n</td>\n";
 	}
 
 	echo <<<END
@@ -305,7 +305,9 @@ function load_content_html()
 			return;
 		}	
 	}	
+	echo "\n<!-- 		PAGE CONTENT START         -->\n";
 	require_once($page_pgs[0]);
+	echo "\n<!-- 		PAGE CONTENT END         -->\n";
 }
 
 ##################################################################

@@ -28,14 +28,6 @@ Dataset:
 		<td>
 <?php print run_sel("crid",$CRID,"all datasets") ?>
 		</td>
-		<td>Weight:</td>
-		<td>
-			 <input name="mw" type="text" size="4" value="<?php print $MinWt ?>">
-		</td>
-		<td>MI:</td>
-		<td>
-			 <input name="mi" type="text" size="4" value="<?php print $MinMI ?>">
-		</td>
 		<td>
 <input type="submit" value="Search" 
 	onclick='parent.postMessage("GeneSearch","*")';>
@@ -44,10 +36,21 @@ Dataset:
 <input type="submit" value="Clear" 
 		onclick="parent.postMessage('GeneClear','*');window.location = window.location.href.split('?')[0];return false;" >
 		</td>
-		<td align=right style="width:150px">
+		<td align=right style="width:50px">
 			<span id="popout_btn" title="Open in a new window" style="cursor:pointer">
 				&nbsp;&#9654;&nbsp;</span>
 		</td>
+	</tr>
+	<tr>
+		<td>Weight:</td>
+		<td>
+			 <input name="mw" type="text" size="4" value="<?php print $MinWt ?>">
+		</td>
+		<td>MI:</td>
+		<td>
+			 <input name="mi" type="text" size="4" value="<?php print $MinMI ?>">
+		</td>
+		<td colspan=3></td>
 	</tr>
 </table>
 </form>

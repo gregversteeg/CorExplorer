@@ -16,6 +16,7 @@ a
 	font-size:37px;
 	font-weight:bold;
 	font-variant:small-caps;
+	#font-family:serif;
 }
 .content {
     position: relative;
@@ -27,7 +28,6 @@ a
 	position:relative;
 	float:left;
 	width:675px;
-	padding:20px;
 }
 .content-inner p
 {
@@ -58,7 +58,8 @@ a
     position: relative;
     width: 100%;
     height: 50px;
-	background-color:#f5f5f5
+	background-color:#f5f5f5;
+	text-align:center;
 }
 .header a
 {
@@ -76,6 +77,22 @@ a.head_selected
 {
 	color:black;
 }
+.headlink a
+{
+	text-decoration:none;
+	color:#777777;
+	font-size:17px;
+	margin:8px;
+}
+a.headlink_sel
+{
+	color:black;
+	text-decoration:underline;
+}
+.headlink a:hover
+{
+	color:black;
+}
 .header td
 {
 	padding:0px;
@@ -83,6 +100,8 @@ a.head_selected
 body 
 {
 	margin: 0px;
+	font-size:16px;
+	font-family:sans-serif;
 }
 .outer
 {
