@@ -18,9 +18,13 @@ function reconnect()
 }
 # main purpose of this function is to remove the need to
 # have global $DB in other functions
-function dbps($sql)
+function dbps($sql,$log=0)
 {
 	global $DB;
+	if ($log)
+	{
+		error_log($sql);
+	}
 	return $DB->prepare($sql);
 }
 function table_exists($tbl)

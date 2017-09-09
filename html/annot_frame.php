@@ -2,12 +2,8 @@
 require_once("db.php");
 require_once("util.php");
 
-$minWt = getnum("mw",0);
 $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
-$numGenes = getint("ng",20);
-$maxZ = getnum("maxz",2);
-$FT = getval("ft","");
 
 ?>
 

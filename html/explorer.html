@@ -82,7 +82,7 @@ function change_iframe(fnum,val)
     }
     return true;
 }
-var ftypes = ["","graph","heatmap","ppi","survival","annotation"];
+var ftypes = ["","graph","heatmap","ppi","survival","annotation","genelist"];
 $('#frame_sel1').change(function() 
 {
 	var newval = this.value;
@@ -131,7 +131,7 @@ function print_js_cluster_array()
 
 function frame_sel($fnum, $defnum)
 {
-	$lbls = array("--choose--","graph","heatmap","ppi","survival","annotation");
+	$lbls = array("--choose--","graph","heatmap","ppi","survival","annotation","genelist");
 	
 	for ($val = 0; $val < count($lbls); $val++)
 	{

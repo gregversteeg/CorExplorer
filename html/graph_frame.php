@@ -27,6 +27,7 @@ $graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown);
 
 $go2clst = array();
 $kegg2clst = array();
+error_log("FN=$FN");
 ?>
 
 <head>
@@ -290,7 +291,7 @@ if ($Goterm == 0)
 		for (var i = 0; i < go2clst[term].length; i++)
 		{
 			var cid = go2clst[term][i];
-			node_highlight(1,"C" + cid,1);
+			node_highlight2(1,"C" + cid,1);
 		}
 	});
 END;
@@ -360,6 +361,29 @@ function node_highlight(idnum,idstr,onoff)
 		//cynode.style('background-color','black');
 		cynode.removeClass('nodehlt');
 	}	
+}
+function node_highlight2(idnum,idstr,onoff)
+{
+	//TODO not sure why next line is needed or even the idnum argument
+	if (idnum == 0) {return; }
+	var cynode = cy.getElementById(idstr);
+	if (onoff == 1)
+	{
+		//cynode.style('background-color','yellow');
+		//cynode.addClass('nodehlt');
+	}	
+	else	
+	{
+		//cynode.style('background-color','black');
+		cynode.removeClass('nodehlt');
+	}	
+	/*comps = cynode.components();
+	for (i = 0; i < comps.length; i++)
+	{
+		comp = comps[i];
+		alert(comp.size());
+		comp.nodes().addClass('nodehlt');	
+	}*/
 }
 </script>
 </body>
@@ -564,9 +588,10 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 		$msg .= "<br>contained in $nclst clusters: ".implode("; ",$info);
 		#$lbl = ($Use_hugo == 0 ? $gname : $hugo);
 		#$lbl2 = ($Use_hugo == 1 ? $gname : $hugo);
-		$clr = (isset($go_genes[$GID]) ? "yellow" : "red");
+		#$clr = (isset($go_genes[$GID]) ? "yellow" : "red");
+		$classes = (isset($go_genes[$GID]) ? "nodehlt" : "");
 		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', 
-						hugo:'$hugo', msg:'$msg', color:'$clr'}}";
+						hugo:'$hugo', msg:'$msg', color:'red'}, classes:'$classes'}";
 		$nodes[$GIDtag] = 1;
 		$gids_shown[$GID] = 1;
 	}

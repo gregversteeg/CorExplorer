@@ -5,7 +5,7 @@ require_once("util.php");
 $minWt = getnum("mw",0);
 $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
-$numGenes = getint("ng",20);
+$numGenes = getint("ng",100);
 $maxZ = getval("maxz",2);
 
 ?>

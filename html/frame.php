@@ -31,6 +31,10 @@ else if ($FT == "annotation")
 {
 	require_once("annot_frame.php");
 }
+else if ($FT == "genelist")
+{
+	require_once("genelist_frame.php");
+}
 else
 {
 	print "<b>Frame type not specified!</b>";
