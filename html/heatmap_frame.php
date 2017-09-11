@@ -7,6 +7,7 @@ $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
 $numGenes = getint("ng",100);
 $maxZ = getval("maxz",2);
+$Use_hugo = checkbox_val("use_hugo",1,1);
 
 ?>
 
@@ -40,6 +41,9 @@ $maxZ = getval("maxz",2);
 		<td width=10>&nbsp;</td>
 		<td>Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>"> 
 		</td>
+		<td title="<?php print tip_text('hugo_names') ?>">HUGO names:
+			 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo,0) ?>>
+		</td>
 		<td width=10>&nbsp;</td>
 		<td><input type="submit" value="Apply"></td>
 	</tr>
@@ -72,6 +76,7 @@ if ($CID_sel != 0)
 	get_heat_data($heat_genes,$heat_samps,$heat_expr,$heat_wts,
 				$CRID,$CID_sel,$minWt,$numGenes,$maxZ);
 	echo <<<END
+
 <script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
 <canvas  id="canvasId" width="540" height="540"></canvas>
 
@@ -101,7 +106,7 @@ END;
 function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 				$crid, $cid,$minwt,$maxGenes,$maxZ)
 {
-	global $DB;
+	global $DB, $Use_hugo;
 	$st = $DB->prepare("select dsid,glid from clr where id=?");
 	$st->bind_param("i",$crid);
 	$st->bind_result($dsid,$glid);
@@ -133,16 +138,16 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 	$numSamps = count($samps);
 	
 	# get the genes in the cluster
-	$st = $DB->prepare("select gid,lbl,wt from g2c join glist on glist.id=g2c.gid ".
+	$st = $DB->prepare("select gid,lbl,hugo,wt from g2c join glist on glist.id=g2c.gid ".
 				" where g2c.cid=? and g2c.wt >= ? ".
 				" order by g2c.mi desc limit $maxGenes ");
 	$st->bind_param("id",$cid,$minwt);
-	$st->bind_result($gid,$gname,$wt);
+	$st->bind_result($gid,$gname,$hugo,$wt);
 	$st->execute();
 	while ($st->fetch())
 	{
 		$genes[] = $gid;
-		$genestrs[] = "\"$gname\"";
+		$genestrs[] = ($Use_hugo ? "\"$hugo\"" : "\"$gname\"");
 		$wt = .01*floor(100*$wt);
 		$wtstrs[] = "\"$wt\"";
 	}

@@ -21,13 +21,6 @@ $kegg_enrich_pval = 0.005;
 $numSizeBins = 5;		# edge size bins
 $level_colors = array("1" => "black", "2" => "#0000cc", "3" => "#9900cc");
 
-$numNodes=0;
-$gids_shown = array();
-$graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown);
-
-$go2clst = array();
-$kegg2clst = array();
-error_log("FN=$FN");
 ?>
 
 <head>
@@ -103,6 +96,19 @@ error_log("FN=$FN");
 	</tr>
 </table>
 </form>
+<div id="loading" style="font-size:17px">
+      Graph is loading...
+    </div>
+<table width="100%" height="90%">
+	<tr>
+		<td height="90%">
+			<div id="cy"></div>
+		</td>
+	</tr>
+	<tr>
+		<td align=left  height="10%">&nbsp; <span id="msg"></span> </td>
+	</tr>
+</table>
 <script>
 $('#sel_cid').change(function() 
 {
@@ -119,6 +125,14 @@ $('#popout_btn').click(function()
 });
 </script>
 <?php
+
+$numNodes=0;
+$gids_shown = array();
+$graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown);
+
+$go2clst = array();
+$kegg2clst = array();
+
 #$numNodes=0;
 #$graph_html = build_graph($numNodes,$NumGenes,$MinWt);
 if ($numNodes == 0)
@@ -127,16 +141,6 @@ if ($numNodes == 0)
 	exit(0);
 }
 ?>
-<table width="100%" height="90%">
-	<tr>
-		<td height="90%">
-			<div id="cy"></div>
-		</td>
-	</tr>
-	<tr>
-		<td align=left  height="10%">&nbsp; <span id="msg"></span> </td>
-	</tr>
-</table>
 <script>
 <?php
 	print $graph_html;
@@ -748,7 +752,11 @@ style:[
 	}		
 	
   ],
-layout:{ name: 'cose'}
+layout:{ name: 'cose',
+		stop:function(){
+			$('#loading').hide();
+		}
+	}
 });
 END;
 	return $html;
