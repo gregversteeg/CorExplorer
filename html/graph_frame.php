@@ -21,6 +21,9 @@ $kegg_enrich_pval = 0.005;
 $numSizeBins = 5;		# edge size bins
 $level_colors = array("1" => "black", "2" => "#0000cc", "3" => "#9900cc");
 
+$go2clst = array();
+$kegg2clst = array();
+
 ?>
 
 <head>
@@ -90,6 +93,9 @@ $level_colors = array("1" => "black", "2" => "#0000cc", "3" => "#9900cc");
 					</td>
 					<td >Kegg enriched (0.005):<?php print kegg_enrich_sel("keggterm",$Keggterm,$kegg2clst) ?>
 					<td colspan=2 align=left><input type="submit" value="Apply"></td>
+					<td colspan=2 align=left><input type="submit" 
+						onclick="window.location.href='<?php echo $Frame_reset_url ?>';return false"
+						value="Reset"></td>
 				</tr>
 			</table>
 		</td>
@@ -129,9 +135,6 @@ $('#popout_btn').click(function()
 $numNodes=0;
 $gids_shown = array();
 $graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown);
-
-$go2clst = array();
-$kegg2clst = array();
 
 #$numNodes=0;
 #$graph_html = build_graph($numNodes,$NumGenes,$MinWt);
@@ -270,7 +273,7 @@ END;
 }
 # Likewise no need to highlight the clusters with GOs if that's all
 # we are showing!
-if ($Goterm == 0)
+if (1) //$Goterm == 0)
 {
 	echo <<<END
 
@@ -295,7 +298,22 @@ if ($Goterm == 0)
 		for (var i = 0; i < go2clst[term].length; i++)
 		{
 			var cid = go2clst[term][i];
-			node_highlight2(1,"C" + cid,1);
+			node_highlight(1,"C" + cid,1);
+/*
+			for (i = 0; i < all.length; i++) 
+			{
+				var cynode = all[i];
+				if (cynode.data('cid'))
+				{
+					var cid2 = cynode.data('cid');
+	console.log(cid2);
+					if (cid2 == cid)
+					{
+						cynode.addClass('nodehide');
+					} 
+				}
+			} 
+*/
 		}
 	});
 END;
@@ -352,7 +370,6 @@ END;
 });
 function node_highlight(idnum,idstr,onoff)
 {
-	//TODO not sure why next line is needed or even the idnum argument
 	if (idnum == 0) {return; }
 	var cynode = cy.getElementById(idstr);
 	if (onoff == 1)
@@ -368,7 +385,6 @@ function node_highlight(idnum,idstr,onoff)
 }
 function node_highlight2(idnum,idstr,onoff)
 {
-	//TODO not sure why next line is needed or even the idnum argument
 	if (idnum == 0) {return; }
 	var cynode = cy.getElementById(idstr);
 	if (onoff == 1)
@@ -551,7 +567,8 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 		{
 			# We're putting a "hugo" name in here as one way (maybe not the best)
 			# to make the gene name switching not mess up the cluster names
-			$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', hugo:'$CIDlbl', msg:'cluster:$CIDlbl', 
+			$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', 
+								hugo:'$CIDlbl', msg:'cluster:$CIDlbl', 
 					link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'}}";
 					#link:'/ppi/run1/".($CID-1).".stringNetwork.png'}}";
 			$nodes[$CIDtag] = 1;
@@ -564,7 +581,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 		$gid2names[$GID] = $gene_name;
 		$gid2hugo[$GID] = $hugo_name;
 		$gid2desc[$GID] = $gene_desc;
-		$gene_node_data[$GID][] = array("cnum" => $cnum, "wt" => $wt, "mi" => $mi);
+		$gene_node_data[$GID][] = array("cnum" => $cnum, "cid" => $CID, "wt" => $wt, "mi" => $mi);
 
 		$links[] = array("src" => "$GIDtag", "targ" => "$CIDtag", "wt" => $wt, "mi" => $mi);
 	}
@@ -578,6 +595,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 		foreach ($darray as $data)
 		{
 			$cnum 	= $data["cnum"];	
+			$cid 	= $data["cid"];	 
 			$wt 	= $data["wt"];	
 			$mi 	= $data["mi"];	
 			$info[] = "$cnum (Wt=$wt, MI=$mi)";
@@ -594,7 +612,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 		#$lbl2 = ($Use_hugo == 1 ? $gname : $hugo);
 		#$clr = (isset($go_genes[$GID]) ? "yellow" : "red");
 		$classes = (isset($go_genes[$GID]) ? "nodehlt" : "");
-		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', 
+		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', 
 						hugo:'$hugo', msg:'$msg', color:'red'}, classes:'$classes'}";
 		$nodes[$GIDtag] = 1;
 		$gids_shown[$GID] = 1;
@@ -748,6 +766,12 @@ style:[
 		style: {
 			'text-background-color' : 'yellow',
 			'text-background-opacity' : '0.5'
+		}
+	},
+	{
+		selector: '.nodehide',
+		style: {
+			'display':'none'
 		}
 	}		
 	

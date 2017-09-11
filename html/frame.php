@@ -11,6 +11,9 @@ $FN = getval("fn",0);   # frame number -- only currently matters for graph page
 $CRID = getval("crid",0);
 $_GET["crid"] = $CRID;
 
+$Frame_reset_url = "/frame.php?ft=$FT&fn=$FN&crid=$CRID&cid=0"; # How to load this frame with
+																# parameters reset to defaults
+
 if ($FT == "graph")
 {
 	require_once("graph_frame.php");
