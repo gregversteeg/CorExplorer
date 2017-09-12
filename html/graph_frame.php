@@ -134,7 +134,8 @@ $('#popout_btn').click(function()
 
 $numNodes=0;
 $gids_shown = array();
-$graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown);
+$clstContent = array();
+$graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown,$clstContent);
 
 #$numNodes=0;
 #$graph_html = build_graph($numNodes,$NumGenes,$MinWt);
@@ -150,6 +151,7 @@ if ($numNodes == 0)
 
 	dump_go2clst($go2clst);
 	dump_kegg2clst($kegg2clst);
+	dump_clst_content($clstContent);
 #
 # If the graph is in the first frame, then we capture clicks on level one clusters
 # and propagate them to the parent window.
@@ -273,48 +275,65 @@ END;
 }
 # Likewise no need to highlight the clusters with GOs if that's all
 # we are showing!
-if (1) //$Goterm == 0)
+if ($Goterm == 0)
 {
 	echo <<<END
 
 	sel_goterm.change(function(data)
 	{
 		var term = $(this).val();
+
+		// first get the kegg enriched cids, if any, so we
+		// can do intersection
+		var keggterm = sel_keggterm.val();
+		kegg_cids_to_keep = new Array();
+		if (keggterm > 0)
+		{
+			for (i = 0; i < kegg2clst[keggterm].length; i++)
+			{
+				cid = kegg2clst[keggterm][i];
+				kegg_cids_to_keep[cid] = 1;
+			}
+		}
+
 		var all = cy.elements("node");
 		// First we have to clear the old cluster highlights, then add these
 		for (i = 0; i < all.length; i++) 
 		{
-			var cynode = all[i];
-			var lbl = cynode.data('lbl');
+			cynode = all[i];
+			lbl = cynode.data('lbl');
 			if (lbl.startsWith("L1_"))
 			{
 				cynode.removeClass('nodehlt');
 			}
 		}
+		if (term == 0)
+		{
+			for (j = 0; j < all.length; j++) 
+			{
+				cynode = all[j];
+				cynode.removeClass('nodehide');
+			}
+			hide_nodes_by_cluster(kegg_cids_to_keep);	
+			return;
+		} 
 		if (!go2clst[term]) 
 		{
+			alert("err:bad GO term " + term);
 			return;
 		}
+		cids_to_keep = new Array();
 		for (var i = 0; i < go2clst[term].length; i++)
 		{
 			var cid = go2clst[term][i];
 			node_highlight(1,"C" + cid,1);
-/*
-			for (i = 0; i < all.length; i++) 
+			if (keggterm == 0 || kegg_cids_to_keep[cid])
 			{
-				var cynode = all[i];
-				if (cynode.data('cid'))
-				{
-					var cid2 = cynode.data('cid');
-	console.log(cid2);
-					if (cid2 == cid)
-					{
-						cynode.addClass('nodehide');
-					} 
-				}
-			} 
-*/
+				cids_to_keep[cid] = 1;
+			}
 		}
+		hide_nodes_by_cluster(cids_to_keep);
+
 	});
 END;
 }
@@ -326,6 +345,18 @@ if ($Keggterm == 0)
 	sel_keggterm.change(function(data)
 	{
 		var term = $(this).val();
+
+		var goterm = sel_goterm.val();
+		go_cids_to_keep = new Array();
+		if (goterm > 0)
+		{
+			for (i = 0; i < go2clst[goterm].length; i++)
+			{
+				cid = go2clst[goterm][i];
+				go_cids_to_keep[cid] = 1;
+			}
+		}
+
 		var all = cy.elements("node");
 		// First we have to clear the old cluster highlights, then add these
 		for (i = 0; i < all.length; i++) 
@@ -337,15 +368,32 @@ if ($Keggterm == 0)
 				cynode.removeClass('nodehlt');
 			}
 		}
+		if (term == 0)
+		{
+			for (j = 0; j < all.length; j++) 
+			{
+				cynode = all[j];
+				cynode.removeClass('nodehide');
+			}
+			hide_nodes_by_cluster(go_cids_to_keep);
+			return;
+		} 
 		if (!kegg2clst[term]) 
 		{
+			alert("err:bad Kegg term " + term);
 			return;
 		}
+		cids_to_keep = new Array();
 		for (var i = 0; i < kegg2clst[term].length; i++)
 		{
 			var cid = kegg2clst[term][i];
 			node_highlight(1,"C" + cid,1);
+			if (goterm == 0 || go_cids_to_keep[cid])
+			{
+				cids_to_keep[cid] = 1;
+			}
 		}
+		hide_nodes_by_cluster(cids_to_keep);
 	});
 END;
 }
@@ -405,6 +453,63 @@ function node_highlight2(idnum,idstr,onoff)
 		comp.nodes().addClass('nodehlt');	
 	}*/
 }
+function hide_nodes_by_cluster(cids_to_keep)
+{
+	// Hide the nodes that aren't in one of the given clusters. 
+	// We don't have to worry about the edges as cytoscape.js automatically
+	// hides edges when one end is hidden...not sure how it does that. 
+	var all = cy.elements("node");
+	for (j = 0; j < all.length; j++) 
+	{
+		cynode = all[j];
+		if (cynode.data('cid'))
+		{
+			lvl = cynode.data('lvl');	
+			cid = cynode.data('cid');
+			if (lvl <= 1)
+			{
+				if (!cids_to_keep[cid])
+				{
+					cynode.addClass('nodehide');
+				} 
+				else
+				{
+					cynode.removeClass('nodehide');
+				}
+			}
+			else
+			{
+				// higher level node; see if it contains any non-hidden node
+				if (clst_cont[cid])
+				{
+					keep = 0;
+					for (k = 0; k < clst_cont[cid].length; k++)
+					{
+						cid2 = clst_cont[cid][k];
+						if (cids_to_keep[cid2])
+						{
+							keep = 1;
+							break;
+						}	
+					}
+					if (keep == 0)
+					{
+						cynode.addClass('nodehide');
+					} 
+					else
+					{
+						cynode.removeClass('nodehide');
+					}
+				
+				}
+				else
+				{
+					alert("err:cid=" + cid + " has no content");
+				}
+			}
+		}
+	} 
+}
 </script>
 </body>
 
@@ -413,7 +518,7 @@ function node_highlight2(idnum,idstr,onoff)
 
 ##############################################################
 
-function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
+function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 {
 	global $DB, $CRID, $CID_sel, $GID_sel, $Goterm;
 	global $Keggterm, $go_enrich_pval, $kegg_enrich_pval, $numSizeBins;
@@ -565,9 +670,8 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 
 		if (!isset($nodes[$CIDtag]))
 		{
-			# We're putting a "hugo" name in here as one way (maybe not the best)
-			# to make the gene name switching not mess up the cluster names
-			$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', 
+			# We have enough info to create the cluster node element right now. 
+			$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', lvl: '1',
 								hugo:'$CIDlbl', msg:'cluster:$CIDlbl', 
 					link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'}}";
 					#link:'/ppi/run1/".($CID-1).".stringNetwork.png'}}";
@@ -612,7 +716,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 		#$lbl2 = ($Use_hugo == 1 ? $gname : $hugo);
 		#$clr = (isset($go_genes[$GID]) ? "yellow" : "red");
 		$classes = (isset($go_genes[$GID]) ? "nodehlt" : "");
-		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', 
+		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', lvl:'0',
 						hugo:'$hugo', msg:'$msg', color:'red'}, classes:'$classes'}";
 		$nodes[$GIDtag] = 1;
 		$gids_shown[$GID] = 1;
@@ -622,6 +726,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 	# Get the higher level data
 	# First we need the number of levels and the cluster numbers
 	# NOTE LEVELS IN DB START AT 0 WHILE DISPLAY STARTS AT 1!!!
+	# 
 
 	$st = dbps("select max(lvl) as maxlvl from clst where CRID=?");
 	$st->bind_param("i",$CRID);
@@ -693,12 +798,27 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown)
 			{
 				# We're putting a "hugo" name in here as one way (maybe not the best)
 				# to make the gene name switching not mess up the cluster names
-				$elements[] = "{data: {id: '$CID2tag', size:'$size', lbl:'$CID2lbl', hugo:'$CID2lbl',
+				$elements[] = "{data: {id: '$CID2tag', size:'$size', lbl:'$CID2lbl', hugo:'$CID2lbl', cid:'$CID2',lvl:'$lvl',
 					link:'', msg:'cluster:$CID2lbl', color:'$color'}}";
 				$nodes[$CID2tag] = 1;
 				$CIDlist[] = $CID2; 
 			}
 			$links[] = array("src" => "$CID1tag", "targ" => "$CID2tag", "wt" => "$wt", "mi" => "$mi");
+
+			# Here we are tracking the lower clusters contained in higher ones.
+			# Ultimately this is written to javascript and used for the GO/Kegg show/hide function.
+			if (!isset($clstContent[$CID2]))
+			{
+				$clstContent[$CID2] = array();
+			}
+			$clstContent[$CID2][$CID1] = 1;
+			if (isset($clstContent[$CID1]))
+			{
+				foreach ($clstContent[$CID1] as $cid => $val)
+				{
+					$clstContent[$CID2][$cid] = 1;
+				}
+			}
 		}
 		$st->close();
 		$lvl++;
@@ -963,7 +1083,6 @@ function get_gene_cids(&$cids,&$gene_wts,$GID,$CRID,$minwt,$Bestinc=0)
 }
 function dump_go2clst(&$g2c)
 {
-	# note, must already be inside a script block!
 	print "var go2clst = new Array();\n";
 	foreach ($g2c as $term => $carr)
 	{
@@ -974,7 +1093,6 @@ function dump_go2clst(&$g2c)
 }
 function dump_kegg2clst(&$k2c)
 {
-	# note, must already be inside a script block!
 	print "var kegg2clst = new Array();\n";
 	foreach ($k2c as $term => $carr)
 	{
@@ -982,4 +1100,13 @@ function dump_kegg2clst(&$k2c)
 		print "kegg2clst[$term] = new Array('$astr');\n";
 	}
 
+}
+function dump_clst_content($cc)
+{
+	print "var clst_cont = new Array();\n";
+	foreach ($cc as $cid => $carr)
+	{
+		$astr = implode("','",array_keys($carr));
+		print "clst_cont[$cid] = new Array('$astr');\n";
+	}
 }
