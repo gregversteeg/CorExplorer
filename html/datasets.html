@@ -9,13 +9,16 @@ require_once("util.php");
 		<td>Run</td>
 		<td>#Samples</td>
 		<td>#Genes</td>
+		<td>Survival</td>
+		<td></td>
 	</tr>
 <?php
 
 $ngenes = array();
 $nsamps = array();
+$nsurv = array();
 
-$st = dbps("select glists.id,count(*) as ngenes ".
+$st = dbps("select glists.id,count(*) ".
 		" from glists join glist on glist.glid=glists.id ".
 		" group by glists.id");
 $st->bind_result($id,$num);
@@ -26,7 +29,7 @@ while ($st->fetch())
 }
 $st->close();
 
-$st = dbps("select dset.id,count(*) as nsamp ".
+$st = dbps("select dset.id,count(*) ".
 		" from samp join dset on dset.id=samp.dsid ".
 		" group by dset.id");
 $st->bind_result($id,$num);
@@ -34,6 +37,17 @@ $st->execute();
 while ($st->fetch())
 {
 	$nsamps[$id] = $num;
+}	
+$st->close();
+
+$st = dbps("select samp.dsid,count(*) ".
+		" from sampdt join samp on samp.id=sampdt.sid where dtd >= 0 ".
+		" group by samp.dsid");
+$st->bind_result($dsid,$num);
+$st->execute();
+while ($st->fetch())
+{
+	$nsurv[$dsid] = $num;
 }	
 $st->close();
 
@@ -45,12 +59,17 @@ while ($st->fetch())
 {
 	$ngene = $ngenes[$glid];
 	$nsamp = $nsamps[$dsid];
+	$nsrv = $nsurv[$dsid];
+
+	$pctsrv = floor((100*$nsrv)/$nsamp);
 
 	echo <<<END
 	<tr>
 		<td><a href="/explorer.html?crid=$crid">$lbl</a></td>
 		<td>$nsamp</td>
 		<td>$ngene</td>
+		<td>$pctsrv%</td>
+		<td><a href="/params.html?crid=$crid" style="font-size:11px">parameters</a></td>
 	</tr>
 END;
 }

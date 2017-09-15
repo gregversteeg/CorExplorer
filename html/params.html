@@ -1,0 +1,24 @@
+<?php
+require_once("util.php");
+
+$CRID = getint("crid",0);
+
+$st = dbps("select lbl,param from clr where id=?");
+$st->bind_param("i",$CRID);
+$st->bind_result($projname,$json);
+$st->execute();
+$st->fetch();
+$st->close();
+
+echo "<h4>CorEx run parameters for:$projname</h4>\n";
+
+echo "<table border=true rules=all cellpadding=3>\n";
+
+$jobj = json_decode($json)->{'0'};
+foreach ($jobj as $key => $val)
+{
+	print "<tr><td>$key</td><td>$val</tr>\n";
+}
+
+echo "</table>\n";
+?>
