@@ -61,7 +61,7 @@ $kegg2clst = array();
 		</td>
 	</tr>
 </table>
-<table id="params" style="display:none">
+<table id="params" >
 	<tr>
 		<td>
 			<table cellspacing=10>

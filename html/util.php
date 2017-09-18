@@ -244,71 +244,12 @@ function body_start()
 END;
 }
 
-$page_opts = array("","over","dset","how","dl","pub");
-$page_lbls = array("","Overview","Datasets","How-To","Download","Publications");
-$page_pgs = array("welcome.html","overview.html","datasets.html","howto.html",
-				"download.html","publications.html");
+#$page_opts = array("","over","dset","search","how","dl","pub");
+#$page_lbls = array("","Overview","Datasets","Search","How-To","Download","Publications");
+#$page_pgs = array("welcome.html","overview.html","datasets.html","search.html", "howto.html",
+#				"download.html","publications.html");
 
 
-function header_bar()
-{
-	global $page_opts, $page_lbls, $page_pgs;
-	$cur_opt = getval("opt","");
-
-	echo <<<END
-<div class="header">
-	<table>
-		<tr>
-			<td valign="middle" style="padding:0px 30px 0px 5px;cursor:pointer" 
-				onclick="location.href='/'">
-<span class="logotext" >Cor<span style='color:#cc6666'>Ex</span></span>
-			</td>
-END;
-
-	# Note that the first "option" is the welcome text 
-	# which does not have menu entry
-	$numopts = count($page_opts);
-	for($i = 1; $i < $numopts; $i++)
-	{
-		$option = $page_opts[$i];
-		$lbl = $page_lbls[$i];
-		#$pg = $page_pgs[$i];
-		$link = "/index.html?opt=$option";
-		print "\n<td valign='middle'>\n";
-		if ($option == $cur_opt)
-		{
-			print "<a class='head_selected'>$lbl</a>\n";
-		}
-		else
-		{
-			print "<a href='$link' >$lbl</a>\n";
-		}
-		print "\n</td>\n";
-	}
-
-	echo <<<END
-		</tr>
-	</table>
-</div>
-END;
-
-}
-function load_content_html()
-{
-	$opt = getval("opt","");
-	global $page_opts, $page_lbls, $page_pgs;
-	for ($i = 1; $i < count($page_opts); $i++)
-	{
-		if ($page_opts[$i] == $opt)
-		{
-			require_once($page_pgs[$i]);
-			return;
-		}	
-	}	
-	echo "\n<!-- 		PAGE CONTENT START         -->\n";
-	require_once($page_pgs[0]);
-	echo "\n<!-- 		PAGE CONTENT END         -->\n";
-}
 
 ##################################################################
 
@@ -320,5 +261,21 @@ function crid_default()
 	$st->fetch();
 	$st->close();
 	return $crid;
+}
+
+###################################################################
+# not using prepared statement since we want to get array of all fields
+function load_proj_data(&$data,$crid)
+{
+	global $DB;
+	if (!is_numeric($crid))
+	{
+		die("sorry");
+	}
+	$res = $DB->query("select * from clr where id=$crid");
+	if (!($data = $res->fetch_assoc()))
+	{
+		die ("Can't find project $crid\n");
+	}
 }
 ?>

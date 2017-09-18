@@ -8,13 +8,14 @@ head_section("CorEx Portal");
 <body>
 
 <?php
+$page_opts = array("","over","dset","search","how","dl","pub");
+$page_lbls = array("","Overview","Datasets","Search","How-To","Download","Publications");
+$page_pgs = array("welcome.html","overview.html","datasets.html","search.html","howto.html",
+				"download.html","publications.html");
 function headerbar()
 {
-$page_opts = array("","over","dset","how","dl","pub");
-$page_lbls = array("","Overview","Datasets","How-To","Download","Publications");
-$page_pgs = array("welcome.html","overview.html","datasets.html","howto.html",
-				"download.html","publications.html");
-$cur_opt = getval("opt","");
+	global $page_opts, $page_lbls, $page_pgs;
+	$cur_opt = getval("opt","");
 
 echo <<<END
 <table cellpadding=0 cellspacing=0 width="100%" 
@@ -109,3 +110,23 @@ $(document).ready(function()
 
 </script>
 
+<?php
+
+function load_content_html()
+{
+	$opt = getval("opt","");
+	global $page_opts, $page_lbls, $page_pgs;
+	for ($i = 1; $i < count($page_opts); $i++)
+	{
+		if ($page_opts[$i] == $opt)
+		{
+			require_once($page_pgs[$i]);
+			return;
+		}	
+	}	
+	echo "\n<!-- 		PAGE CONTENT START         -->\n";
+	require_once($page_pgs[0]);
+	echo "\n<!-- 		PAGE CONTENT END         -->\n";
+}
+
+?>

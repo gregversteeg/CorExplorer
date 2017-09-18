@@ -30,7 +30,7 @@ $Use_hugo = checkbox_val("use_hugo",1,1);
 		</td>
 	</tr>
 </table>
-<table id="params" style="display:none">
+<table id="params" >
 	<tr>
 		<td>Min weight:
 			 <input name="mw" type="text" size="4" value="<?php print $minWt ?>">

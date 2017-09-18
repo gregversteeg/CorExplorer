@@ -1,22 +1,29 @@
 <?php
 require_once("util.php");
+
+$CRID = getint("crid",0);
 ?>
-<div style="padding:0px 10px 0px 10px">
+<div style="padding:10px 10px 0px 10px">
 
 <h4>Datasets</h4>
+
+<form>
+<input type="hidden" name="opt" value="dset">
+<input type="hidden" name="crid" id="inp_crid" value="<?php echo $CRID ?>">
 <table rules=all border=1 cellpadding=3>
 	<tr>
 		<td>Run</td>
 		<td>#Samples</td>
 		<td>#Genes</td>
 		<td>Survival</td>
-		<td></td>
+		<td>Date Loaded</td>
 	</tr>
 <?php
 
 $ngenes = array();
 $nsamps = array();
 $nsurv = array();
+
 
 $st = dbps("select glists.id,count(*) ".
 		" from glists join glist on glist.glid=glists.id ".
@@ -52,8 +59,8 @@ while ($st->fetch())
 $st->close();
 
 
-$st = dbps("select id,glid,dsid,lbl,meth from clr");
-$st->bind_result($crid,$glid,$dsid,$lbl,$meth);
+$st = dbps("select id,glid,dsid,lbl,meth,date_format(load_dt,'%b %d %Y') from clr");
+$st->bind_result($crid,$glid,$dsid,$lbl,$meth,$date);
 $st->execute();
 while ($st->fetch())
 {
@@ -65,58 +72,41 @@ while ($st->fetch())
 
 	echo <<<END
 	<tr>
-		<td><a href="/explorer.html?crid=$crid">$lbl</a></td>
+		<td><a href="javascript:form_submit($crid);">$lbl</a></td>
 		<td>$nsamp</td>
 		<td>$ngene</td>
 		<td>$pctsrv%</td>
-		<td><a href="/params.html?crid=$crid" style="font-size:11px">parameters</a></td>
+		<td>$date</td>
 	</tr>
 END;
 }
 $st->close();
 ?>
 </table>
-<p>
-<h4>Gene Search</h4>
-Enter gene name (case-insensitive). 
-<br>
-To match just part
- of the gene name use '*', e.g. <tt>PTP*</tt>.
-<p>
-<iframe id="geneFrame" src="gene_search.html"  style="border:none;width:100%;height:100px">
-</iframe>
-
-<p>
-<h4>Sample Search</h4>
-<p>
-<iframe id="sampFrame" src="samp_search.html"  style="border:none;width:100%;height:100px">
-</iframe>
-
+</form>
+</div>
 <script>
-window.addEventListener("message", receiveMessage, false);
-function receiveMessage(event)
+function form_submit(crid)
 {
-	var msg = event.data;
-	if (msg == "GeneSearch")
-	{
-		$("#geneFrame").height(400);
-	}
-	else if (msg == "GeneClear")
-	{
-		$("#geneFrame").height(100);
-	}
-	else if (msg == "SampSearch")
-	{
-		$("#sampFrame").height(400);
-	}
-	else if (msg == "SampClear")
-	{
-		$("#sampFrame").height(100);
-	}
+	$("#inp_crid").val(crid);
+ 	$("#inp_crid").closest('form').submit();	
 }
 </script>
-</div>
 <?php
+
+if ($CRID != 0)
+{
+	load_proj_data($data,$CRID);
+	$lbl = $data["lbl"];
+	$descr = $data["descr"];
+	
+	echo <<<END
+<h4> Dataset: $lbl </h4>
+<p>$descr<p>
+<a href="/explorer.html?crid=$CRID">Explore this dataset</a>
+END;
+
+}
 
 ?>
 

@@ -54,7 +54,7 @@ if ($CID != 0)
 	</tr>
 </table>
 
-<table id="params" style="display:none">
+<table id="params" >
 	<tr>
 		<td>Minimum CorEx link weight <input name="corex_score" type="text" size="4" 
 					value="<?php print $Min_corex_score ?>">
