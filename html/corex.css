@@ -68,7 +68,7 @@ a
 	font-size:17px;
 	margin:8px;
 }
-a.head_selected
+.head_selected
 {
 	color:black;
 	text-decoration:underline;

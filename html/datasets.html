@@ -5,11 +5,15 @@ $CRID = getint("crid",0);
 ?>
 <div style="padding:10px 10px 0px 10px">
 
+<?php
+if ($CRID == 0)
+{
+	echo <<<END
 <h4>Datasets</h4>
 
 <form>
 <input type="hidden" name="opt" value="dset">
-<input type="hidden" name="crid" id="inp_crid" value="<?php echo $CRID ?>">
+<input type="hidden" name="crid" id="inp_crid" value="$CRID">
 <table rules=all border=1 cellpadding=3>
 	<tr>
 		<td>Run</td>
@@ -18,7 +22,8 @@ $CRID = getint("crid",0);
 		<td>Survival</td>
 		<td>Date Loaded</td>
 	</tr>
-<?php
+END;
+
 
 $ngenes = array();
 $nsamps = array();
@@ -81,7 +86,8 @@ while ($st->fetch())
 END;
 }
 $st->close();
-?>
+
+echo <<<END
 </table>
 </form>
 </div>
@@ -92,19 +98,54 @@ function form_submit(crid)
  	$("#inp_crid").closest('form').submit();	
 }
 </script>
-<?php
+END;
+
+} ## end CRID != 0
 
 if ($CRID != 0)
 {
 	load_proj_data($data,$CRID);
 	$lbl = $data["lbl"];
-	$descr = $data["descr"];
+	$descr = trim($data["descr"]);
+	$ref = trim($data["ref"]);
+	$param = trim($data["param"]);
 	
 	echo <<<END
+<table cellspacing=0 cellpadding=0>
+	<tr>
+		<td>
 <h4> Dataset: $lbl </h4>
-<p>$descr<p>
+		</td>
+		<td style="padding-left:100px">
 <a href="/explorer.html?crid=$CRID">Explore this dataset</a>
+		</td>
+	</tr>
+</table>
+
+<p>$descr<p>
+
 END;
+
+	if ($ref != "")
+	{
+		echo <<<END
+<b>Reference:</b><br>$ref
+END;
+	}
+	if ($param != "")
+	{
+		echo <<<END
+<b>CorEx Parameters:</b><p>
+<table rules=all border=true cellpadding=3>
+END;
+		$json = json_decode($param)->{'0'};
+		foreach ($json as $name => $val)
+		{
+			print "<tr><td>$name</td><td>$val</td></tr>\n";
+		}
+print "</table>\n";
+	}
+
 
 }
 

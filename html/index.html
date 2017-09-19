@@ -31,7 +31,12 @@ echo <<<END
 END;
 
 	# Note that the first "option" is the welcome text 
-	# which does not have menu entry
+	# which does not have menu entry.
+	# Also, a little bit confusing, the datasets page (and maybe others) has two modes,
+	# either listing the projects, or showing details for one project. 
+	# Therefore we keep the current tab clickable so that if a user is looking at
+	# details of a dataset, they can click the datasets tab and get back to the list.
+	# Of course they can also use the back button. 
 	$numopts = count($page_opts);
 	for($i = 1; $i < $numopts; $i++)
 	{
@@ -42,7 +47,7 @@ END;
 		print "\n<td valign='middle' class='headlink' style='padding-left:15px'>\n";
 		if ($option == $cur_opt)
 		{
-			print "<a class='head_selected'>$lbl</a>\n";
+			print "<a href='$link' style='color:black;text-decoration:underline'>$lbl</a>\n";
 		}
 		else
 		{
