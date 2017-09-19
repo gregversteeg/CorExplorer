@@ -1,0 +1,61 @@
+<?php
+require_once("util.php");
+
+$CRID = getint("crid",0);
+$fromform = getint("fromform",0);
+if ($fromform == 1)
+{
+	do_update();
+}
+
+if ($CRID == 0)
+{
+	die("No project");
+}
+
+$info = array();
+load_proj_data($info,$CRID);
+	
+$lbl = $info["lbl"];
+$descr = $info["descr"];
+$param = $info["param"];
+$ref = $info["ref"];
+
+echo <<<END
+<b>Edit Project ID:$CRID</b>
+<p>
+<form>
+<input type="hidden" name="crid" value="$CRID">
+<input type="hidden" name="fromform" value="1">
+<b>Name: </b> <input name="lbl" type="text" size="30" value="$lbl">
+<p>
+<b>Description:<b><br>
+<textarea name="descr" rows="3" cols="80">$descr</textarea>
+<p>
+<b>References:<b><br>
+<textarea name="ref" rows="3" cols="80">$ref</textarea>
+<p>
+<b>Corex Parameters (JSON):<b><br>
+<textarea name="param" rows="3" cols="80">$param</textarea>
+<p>
+<input type="submit" value="update">
+</form>
+
+END;
+
+
+function do_update()
+{
+	global $CRID;
+
+	$lbl 	= $_GET["lbl"];
+	$descr 	= $_GET["descr"];
+	$ref 	= $_GET["ref"];
+	$param 	= $_GET["param"];
+
+	$st = dbps("update clr set lbl=?, descr=?, param=?, ref=? where id=?");
+	$st->bind_param("ssssi",$lbl,$descr,$param,$ref,$CRID);
+	$st->execute();
+}
+?>
+
