@@ -132,9 +132,11 @@ END;
 <b>Reference:</b><br>$ref
 END;
 	}
+	survival_graph($CRID);
 	if ($param != "")
 	{
 		echo <<<END
+<div style="margin-top:40px">
 <b>CorEx Parameters:</b><p>
 <table rules=all border=true cellpadding=3>
 END;
@@ -143,11 +145,86 @@ END;
 		{
 			print "<tr><td>$name</td><td>$val</td></tr>\n";
 		}
-print "</table>\n";
+print "</table>\n</div>\n";
 	}
 
 
 }
+function survival_graph($CRID)
+{
+	# Line graph: one variable, samples = times of events
+	$graph_vars = "";
+	$graph_samps = "";
+	$graph_data = "";
+
+	$this_survp = 0;
+
+	$data = array(1.0);   # survival for each timepoint
+
+	$st = dbps("select dte,surv from survdt_ov where crid=? order by dte asc");
+	$st->bind_param("i",$CRID);
+	$st->bind_result($time,$surv);
+	$st->execute();
+	$prev_time = 0;
+	while ($st->fetch())
+	{
+		$data[$time] = $surv;
+		$prev_time = $time;
+	}
+	$st->close();
+	$max_time = $prev_time;
+
+	if (count($data) == 1)
+	{
+		return;
+	}
+	
+	# fill in missing times
+	for ($t = 0; $t <= $max_time; $t++)
+	{
+		if (!isset($data[$t]))
+		{
+			$data[$t] = $data[$t-1];
+		}
+	}
+	
+	$samps = array();	
+	for ($t = 0; $t <= $max_time; $t++)
+	{
+		if (isset($data[$t]))
+		{
+			$months = $t/30.0;
+			$samps[] = "\"$months\"";
+		}
+	}
+	$sampstr = "[".implode(",\n",$samps)."]";
+
+	ksort($data, SORT_NUMERIC);
+	$datastr = "[[".implode(",\n",$data)."]]";
+	$varstr = "[\"Survival\"]";
+	
+	echo <<<END
+
+	<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
+		<canvas  id="canvasId" width="650" height="450" style="border:1px solid black; padding:10px"></canvas>
+	<script>
+	var data = {"y": {"vars": $varstr,
+					  "smps": $sampstr,
+					  "data": $datastr
+					 }
+				};
+	var conf = {"graphType": "Line",
+				"lineDecoration" : false,
+				"smpLabelInterval" : 300,
+				"smpTitle" : "Months",
+				"graphOrientation" : "vertical"
+				};                 
+	var cX = new CanvasXpress("canvasId", data, conf);
+	</script>
+END;
+
+}
+
 
 ?>
 
