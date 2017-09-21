@@ -53,7 +53,7 @@ while ($st->fetch())
 $st->close();
 
 $st = dbps("select samp.dsid,count(*) ".
-		" from sampdt join samp on samp.id=sampdt.sid where dtd >= 0 ".
+		" from sampdt join samp on samp.id=sampdt.sid where dtd <= 0 ".
 		" group by samp.dsid");
 $st->bind_result($dsid,$num);
 $st->execute();
