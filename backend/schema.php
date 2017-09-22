@@ -128,13 +128,15 @@ $sql = "create table sampdt (
 	dte int,					# dtd or dtlc, as applicable
 	stat tinyint not null,		# 1=alive, 0=dead
 	censor tinyint not null,	# 1=died, with tumor, during study period
-	age tinyint,
+	age smallint default 0,
+	sex char default 'U',
 	stage tinyint,
 	cytored tinyint,
 	stagestr varchar(15),
 	cytoredstr varchar(30),
 	statstr varchar(15),
-	tstatstr varchar(30)	
+	tstatstr varchar(30),
+	fulldata text 		# a json string, if available
 );";
 if (!table_exists("sampdt")) { schema_add($sql);}
 
@@ -165,7 +167,10 @@ $sql = "create table clr (
 	DSID int not null, 				# sample set used for this run
 	meth varchar(30),
 	lbl varchar(30) unique,
-	descr text
+	param text,						# json of corex params
+	descr text,
+	ref text,
+	load_dt timestamp  DEFAULT CURRENT_TIMESTAMP
 );";
 if (!table_exists("clr")) { schema_add($sql);}
 
@@ -251,6 +256,21 @@ $sql = "create table survdt (
 	index(CID)
 );";
 if (!table_exists("survdt")) { schema_add($sql);}
+
+##########################################################################
+#
+# Overall survival curve data
+#
+
+$sql = "create table survdt_ov (
+	CRID int not null,
+	dte int not null,		# time axis - days 
+	surv float not null, 	# survival fraction
+	index(CRID)
+);";
+if (!table_exists("survdt_ov")) { schema_add($sql);}
+
+##########################################################################
 
 ##########################################################################
 #
