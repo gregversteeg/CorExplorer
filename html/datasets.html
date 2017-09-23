@@ -19,7 +19,6 @@ if ($CRID == 0)
 		<td>Run</td>
 		<td>#Samples</td>
 		<td>#Genes</td>
-		<td>Survival</td>
 		<td>Date Loaded</td>
 	</tr>
 END;
@@ -80,7 +79,6 @@ while ($st->fetch())
 		<td><a href="javascript:form_submit($crid);">$lbl</a></td>
 		<td>$nsamp</td>
 		<td>$ngene</td>
-		<td>$pctsrv%</td>
 		<td>$date</td>
 	</tr>
 END;
