@@ -1,0 +1,42 @@
+This directory contains scripts used to set up shared tables
+in the database. 
+These tables store things like gene name mapping, GO assignment,
+and PPI links, which are used when loading subsequent projects. 
+
+ppi_load.php : Loads PPI link graph, downloaded from StringDB. 
+				The links are between ENSP proteins. 
+
+load_prot_names.php: Loads ENSP names and descriptions,
+                as obtained from StringDB (note we need the ones from StringDB
+                since they are compatible with the PPI graph, also from StringDB)
+load_hugo_tables.php : Loads HGNC names, descriptions, some aliases,
+                and then ENSG mappings from Gencode.
+load_stringdb_tables.php : Load ENSP and GO mappings from StringDB
+
+----------------------------------------------------------------------------
+
+FILES TO DOWNLOAD:
+
+### From StringDB ###
+
+all_go_knowlege_full.tsv : then extract the human piece using  egrep '^9606'
+
+9606.protein.links.v10.5.txt :  PPI links
+
+9606.protein.aliases.v10.5.txt : ENSP  names and descriptions
+
+### From Genenames.org ###
+
+hgnc_complete_set.txt : all Hugo names along with some aliases
+	(ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/tsv/hgnc_complete_set.txt )
+
+### From Gencode ###
+
+The following files were used so far:
+gencode.v22.annotation.gff3, gencode.v26.annotation.gff3 : ENSG names mapped to common names, mostly Hugo
+
+As ENSG names change and are incorporated into new datasets, later releases of gencode will
+be needed.
+
+
+
