@@ -151,8 +151,7 @@ $sql = "create table expr (
 	DSID int not null,		# this is redundant, not sure anything is using it
 	raw float not null,	  	# un-normalized
 	logz float not null, 	# log2 score, normalized by z
-	unique index (DSID,SID,GID),
-	index (DSID,GID)	
+	unique index 'idx' (DSID,GID,SID)
 );";
 if (!table_exists("expr")) { schema_add($sql);}
 

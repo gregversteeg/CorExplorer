@@ -4,17 +4,16 @@ require_once("db.php");
 
 # Load expression data 
 
-#$ignore_unknown_genes = 0;
-#$transpose = 1;   # if the matrix has genes across the top, we need to transpose
-#$dsid = 1;
-#$glid = 1;
-#$raw_file = "/local/wnelson/disk/jul_2015_ExpressionData/matrix.tcga_ov.geneset1.RPKM.txt";
+$projname = $argv[1];
+$raw_file = $argv[2];
+
+$proj_info = array();
+load_proj_data2($proj_info,$projname);
+$dsid = $proj_info["DSID"];
+$glid = $proj_info["GLID"];
 
 $ignore_unknown_genes = 1;  # in case the expr matrix has genes not used in corex clustering
 $transpose = 0; 
-$dsid = 3;
-$glid = 3;
-$raw_file = "/local/wnelson/disk/bLUAD/LUAD_FPKM-UQ.csv";
 
 $gname2ID = array();
 $res = dbq("select id,lbl from glist where glid=$glid");
@@ -44,66 +43,95 @@ print "Reading matrix: $raw_file\n";
 read_matrix($matrix,$nRows, $nCols,$raw_file);
 
 print "Deleting existing matrix\n";
-dbq("delete from expr where DSID=$dsid");
-
-print "Loading matrix\n";
+clear_expr_by_DS($dsid);
 
 if ($transpose)
 {
+	print "Transposing matrix; could be slow\n";
 	$matrix = transpose_matrix($matrix);
 	$nRows = count($matrix);
 	$nCols = count($matrix[0]);
 }
 
-# should have samples across the top, genes going down
-if ($nCols != $numSamp+1)
+# should have genes across the top, samples going down
+if ($nRows != $numSamp+1)
 {
-	print ("$numSamp samples but $nCols columns in matrix!\n");
+	print ("$numSamp samples but $nRows rows in matrix!\n");
 }
-if ($nRows != $numGene+1)
+if ($nCols != $numGene+1)
 {
-	print ("$numGene genes but $nRows rows in matrix!\n");
+	print ("$numGene genes but $nCols columns in matrix!\n");
 }
 
-$col2SID = array();
+$col2GID = array();
 for ($c = 1; $c < $nCols; $c++)
 {
-	$samp = $matrix[0][$c];
-	if (!isset($samp2ID[$samp]))
-	{
-		die ("Unknown sample '$samp'\n");
-	}
-	$col2SID[$c] =  $samp2ID[$samp];
-}
-
-for ($r = 1; $r < $nRows; $r++)
-{
-	$gene = $matrix[$r][0];
+	$gene = $matrix[0][$c];
 	if (!isset($gname2ID[$gene]))
 	{
 		if (!$ignore_unknown_genes)
 		{
 			die ("unkown gene $gene\n");
 		}
-		continue;
 	}
-	print "$r\t\t$gene                              \n";	
+	$col2GID[$c] =  $gname2ID[$gene];
+}
 
-	$GID = $gname2ID[$gene];
+print "Loading matrix to DB\n";
+
+for ($r = 1; $r < $nRows; $r++)
+{
+	$samp = $matrix[$r][0];
+	if (!isset($samp2ID[$samp]))
+	{
+		die ("unkown sample $samp\n");
+	}
+	print "Loading row $r/$nRows                              \n";	
+	flush();
+
+	$SID = $samp2ID[$samp];
 	$varray = array();
 	for ($c = 1; $c < $nCols; $c++)
 	{
-		$SID = $col2SID[$c];
+		$GID = $col2GID[$c];
 		$val = $matrix[$r][$c];
 		if (!is_numeric($val))
 		{
-			die ("Bad value:'$val' for $gene,column=$c\n");
+			die ("Bad value:'$val' for $samp,column=$c\n");
 		}
 		array_push($varray,"($SID,$GID,$dsid,$val)");
 	}
 	dbq("insert into expr (SID,GID,DSID,raw) values".implode(",",$varray));
 }
 
+print "Fill logz values\n";
+
+$remaining = $numGene;
+foreach ($gname2ID as $name => $gid)
+{
+	$numvals = 0;
+	$sum = 0;
+	$sqsum = 0;
+	$res = dbq("select raw from expr where gid=$gid and dsid=$dsid");
+	while ($r = $res->fetch_assoc())
+	{
+		$val = 1 + $r["raw"];
+		$val = log($val);
+		$numvals++;
+		$sum += $val;	
+		$sqsum += $val*$val;	
+	}
+	$avg = ((float)$sum)/((float)$numvals);
+	$sqavg = ((float)$sqsum)/((float)$numvals);
+	$var = $sqavg - $avg*$avg;
+	$std = sqrt($var);
+
+	print "$gid\t\t$remaining\t\t$avg\t\t$std                     \r";
+
+	#print("update expr set logz=((log(1+raw) - $avg)/$std) where gid=$gid and dsid=$dsid"\n);
+	dbq("update expr set logz=((log(1+raw) - $avg)/$std) where gid=$gid and dsid=$dsid");
+	$remaining--;
+}	
 
 ?>
 

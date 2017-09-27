@@ -1,16 +1,26 @@
 <?php
+#
+# Careful changing the main program section as many of the
+# variables are used within the subroutines as well. 
+#
+
 require_once("util.php");
 $time_start = time();
 
 #
-# These lines need to be edited per dataset
+# These lines need to be edited per dataset.
+# The metadata file needs to be in GDC json format (if
+# it isn't, then leave this string empty, and you will have to
+# load the metadata by custom script).
 #
 $dataset_dir = "/local/wnelson/disk/datasets/skcm";
 $dataset = "SKCM2";
 $expression_file = "$dataset_dir/skcm.expr.csv";
 $use_existing_gene_map = 0;  # Set to 1 if the gene.map file has been hand-edited and
 							# should not be overwritten
+$metadata_json_file = "/local/wnelson/disk/datasets/skcm/metadata.cart.2017-09-03T00_33_12.139023.json";
 
+############################################################################
 #
 # Everything after here should not need editing for a GDC dataset
 # UNLESS you are re-running the script after a partial load.
@@ -20,6 +30,17 @@ $use_existing_gene_map = 0;  # Set to 1 if the gene.map file has been hand-edite
 $corex_datadir = "$dataset_dir/output/text_files";
 $labelfile = "$corex_datadir/labels.txt";
 $clabelfile = "$corex_datadir/cont_labels.txt";
+$param_file = "$corex_datadir/parameters.json";
+
+check_file($labelfile);
+check_file($clabelfile);
+check_file($param_file);
+
+$annodir = "$dataset_dir/stringdb";
+if (!is_dir($annodir))
+{
+	mkdir($annodir);
+}
 
 $run_method = "corex";
 $expr_type = "fpkm";
@@ -38,8 +59,14 @@ $DSID = 0;
 $GLID = 0;
 $CRID = 0;
 
+check_file($expression_file);
+if ($metadata_json_file != "")
+{
+	check_file($metadata_json_file);
+}
+
 #
-# First get the number of levels, and also check that each has both corex files
+# First get the number of levels, and also check that we have both corex files for each
 #
 for ($numLevels = 0; ; $numLevels++)
 {
@@ -142,6 +169,13 @@ if ($CRID == 0)
 	print "new CRID: $CRID\n";
 }
 
+# Load the parameters json file
+$json = file_get_contents($param_file);
+$st = dbps("update clr set param=? where id=$CRID");
+$st->bind_param("s",$json);
+$st->execute();
+$st->close();
+
 #
 # Make the gene and sample entries. 
 # Any duplicates will get just one entry.
@@ -187,208 +221,25 @@ while ($r = $res->fetch_assoc())
 {
 	$samp2ID[$r["lbl"]] = $r["ID"];
 }
+
+ksort($samp2ID,SORT_NUMERIC);
+ksort($gene2ID,SORT_NUMERIC);
+
 $numSamp = count($samp2ID);
 $numGene = count($gene2ID);
 print "$numGene gene IDs loaded from DB\n";
 print "$numSamp sample IDs loaded from DB\n";
+
+#
+# Load the factor graph
+#
 
 print "clear out factor entries for CRID=$CRID\n";
 dbq("delete from g2c where CRID=$CRID");
 dbq("delete from c2c where CRID=$CRID");
 dbq("delete from clst where CRID=$CRID");
 
-print "##############################################\n";
-print "Loading level 0 weights and MI\n";
-
-$lvl = 0;
-$wtfile = $wtfile_pfx.$lvl.$wtfile_sfx;
-$mifile = $mifile_pfx.$lvl.$wtfile_sfx;
-if (!is_file($wtfile)) 
-{
-	die ("No layer0 weight file ($wtfile)!\n");
-}
-if (!is_file($mifile)) 
-{
-	die ("No layer0 MI file ($mifile)!\n");
-}
-
-$wts = array();
-$mis = array();
-read_matrix($wts,$nRows,$nCols,$wtfile);
-$numFacts = $nRows-1;
-if ($nCols != $numGene + 1)
-{
-	die ("wt file has $nCols columns!\n");
-}
-print "$numFacts new factors\n";
-read_matrix($mis,$nRows,$nCols,$mifile);
-if ($nCols != $numGene + 1)
-{
-	die ("mi file has $nCols!\n");
-}
-if ($nRows != $numFacts + 1)
-{
-	die ("mi file has $nRows rows!\n");
-}
-
-$col2GID = array();
-for ($c = 1; $c < $nCols; $c++)
-{
-	$gene = $wts[0][$c];
-	if ($gene != $mis[0][$c])
-	{
-		die ("mismatch of gene column $c!\n");
-	}
-	if (isset($gene2ID[$gene]))
-	{
-		$col2GID[$c] = $gene2ID[$gene];
-	}
-	else
-	{
-		die("Unknown gene '$gene'\n");
-	}
-}
-
-#
-# Now load level 0 to the database!
-#
-
-$cids = array();
-for($f = 0; $f < $numFacts; $f++)
-{
-	dbq("insert into clst (lbl,lvl,CRID) values($f,$lvl,$CRID)");
-	$CID = dblastid("clst","ID");
-	$cids[$lvl][$f] = $CID;	
-}
-
-$num_nonzero = 0;
-for($f = 0; $f < $numFacts; $f++)
-{
-	$row = $f+1;
-	#print "DB insert for factor:$f                            \r";
-	$CID = $cids[$lvl][$f];
-	$inserts = array();
-	for ($c = 1; $c < $nCols; $c++)
-	{
-		$GID = $col2GID[$c];
-		if (isset($wts[$row][$c]) && 
-			isset($mis[$row][$c] ) )
-		{
-			$wt = $wts[$row][$c];
-			if ($wt > 0)
-			{
-				$mi = $mis[$row][$c];
-				$inserts[] = "($CRID,$CID,$GID,$wt,$mi)";
-			}
-		}
-		else
-		{
-			die ("missing weight or MI for ($f,$GID)\n");
-		}
-	}
-	$new_inserts = count($inserts);
-	$num_nonzero += $new_inserts;
-	if ($new_inserts > 0)
-	{
-		$insert = implode(",",$inserts);
-		dbq("insert into g2c (CRID,CID,GID,wt,mi) values$insert", 0);
-	}
-	else
-	{
-		print "Warning: all weights zero for factor $f!!\n";
-	}
-}
-$num_possible = $numFacts*$numGene;
-$nonzero_pct = floor(100*((float)$num_nonzero)/((float)$num_possible));
-print "level 0: loaded $num_nonzero nonzero ($nonzero_pct%)                                       \n";
-
-#
-# higher levels!
-#
-
-$lvl++;
-$wtfile = $wtfile_pfx.$lvl.$wtfile_sfx;
-$mifile = $mifile_pfx.$lvl.$wtfile_sfx;
-$numPrevFacts = $numFacts;
-while (is_file($wtfile) && is_file($mifile))
-{
-	print "##############################################\n";
-	print "Loading level $lvl weights ($numPrevFacts prior factors)\n";
-
-	$wts = array();
-	$mis = array();
-	read_matrix($wts,$nRows,$nCols,$wtfile);
-	$numFacts = $nRows-1;
-	if ($nCols != $numPrevFacts + 1)
-	{
-		die ("wt file has $nCols columns!\n");
-	}
-	print "$numFacts new factors\n";
-	read_matrix($mis,$nRows,$nCols,$mifile);
-	if ($nCols != $numPrevFacts + 1)
-	{
-		die ("mi file has $nCols cols!\n");
-	}
-	if ($nRows != $numFacts + 1)
-	{
-		die ("mi file as $nRows rows!\n");
-	}
-
-	for ($f = 0; $f < $numFacts; $f++)
-	{
-		dbq("insert into clst (lbl,lvl,CRID) values($f,$lvl,$CRID)");
-		$CID = dblastid("clst","ID");
-		$cids[$lvl][$f] = $CID;	
-	}
-
-	$num_nonzero = 0;
-	for ($f = 0; $f < $numFacts; $f++)
-	{
-		$row = $f+1;
-		#print "DB insert for factor:$f                            \r";
-		$CID_new = $cids[$lvl][$f];
-		$inserts = array();
-		for ($f0 = 0; $f0 < $numPrevFacts; $f0++)
-		{
-			$col = $f0+1;
-			$CID_old = $cids[$lvl-1][$f0];
-			if (isset($wts[$row][$col]) && 
-				isset($mis[$row][$col] ) )
-			{
-				$wt = $wts[$row][$col];
-				if ($wt > 0)
-				{
-					$mi = $mis[$row][$col];
-					$inserts[] = "($CRID,$CID_old,$CID_new,$wt,$mi)";
-				}
-			}
-			else
-			{
-				die ("missing weight or MI for ($f,$CID_old)\n");
-			}
-		}
-		$num_inserts = count($inserts);
-		$num_nonzero += $num_inserts;
-		if ($num_inserts > 0)
-		{
-			$insert = implode(",",$inserts);
-			dbq("insert into c2c (CRID,CID1,CID2,wt,mi) values$insert");
-		}
-		else
-		{
-			print "Warning: factor $f has all zero weights!\n";
-		}
-	}
-	$num_possible = $numFacts * $numPrevFacts;
-	$nonzero_pct = floor(100*((float)$num_nonzero)/((float)$num_possible));
-	print "level $lvl: loaded $num_nonzero nonzero ($nonzero_pct%)                                       \n";
-
-	$lvl++;
-	$wtfile = $wtfile_pfx.$lvl.$wtfile_sfx;
-	$mifile = $mifile_pfx.$lvl.$wtfile_sfx;
-	$numPrevFacts = $numFacts;
-	
-}
+load_corex_factors();
 
 # 
 # Get the group IDs just created (only need lowest level)
@@ -405,79 +256,12 @@ while ($r = $res->fetch_assoc())
 $numGrp = count($grp2ID);
 
 #
-# Load the discrete and continuous labels
+# Load the discrete and continuous label assignments
 #
-print "Load discrete and continuous labels\n";
+
 dbq("delete lbls.* from lbls,clst where lbls.CID=clst.ID and clst.CRID=$CRID");
+load_corex_labels();
 
-$labels = array();
-$clabels = array();
-
-$nRows = 0;
-$nCols = 0;
-
-read_matrix($labels, $nRows, $nCols, $labelfile,0);
-if ($nRows != $numSamp)
-{
-	die ("label file has $nRows rows (expecting $numSamp)!");
-}
-if ($nCols != $numGrp+1)
-{
-	die ("label file has $nCols cols (expecting ".($numGrp+1).")!");
-}
-
-read_matrix($clabels, $nRows, $nCols, $clabelfile,0);
-if ($nRows != $numSamp)
-{
-	die ("cont_label file has $nRows rows (expecting $numSamp)!");
-}
-if ($nCols != $numGrp+1)
-{
-	die ("cont_label file has $nCols cols (expecting ".($numGrp+1).")!");
-}
-
-for ($r = 0; $r < $numSamp; $r++)
-{
-	$samp1 = $labels[$r][0];
-	if (!isset($samp2ID[$samp1]))
-	{
-		die ("unknown sample $samp1 in label file\n");
-	}
-	$samp2 = $clabels[$r][0];
-	if (!isset($samp2ID[$samp2]))
-	{
-		die ("unknown sample $samp2 in clabel file\n");
-	}
-	if ($samp1 != $samp2)
-	{
-		die ("mismatch samples, labels has $samp1, clabel has $samp2\n");
-	}
-}
-for ($g = 0; $g < $numGrp; $g++)
-{
-	if (!isset($grp2ID[$g]))
-	{
-		die ("No ID for group $g\n");
-	}
-}
-
-$N = $numSamp;
-for ($r = 0; $r < $numSamp; $r++)
-{
-	$samp = $labels[$r][0];
-	$SID = $samp2ID[$samp];
-	$vals = array();
-	for ($g = 0; $g < $numGrp; $g++)
-	{
-		$CID = $grp2ID[$g];
-		$lbl = $labels[$r][$g + 1];
-		$clbl = $clabels[$r][$g + 1];
-		$vals[] = "($SID,$CID,$lbl,$clbl)";
-	}	
-	#print "$N\t\t$samp                             \r";
-	dbq("insert into lbls (SID,CID,lbl,clbl) values".implode(",",$vals));
-	$N--;
-}
 
 #
 # Now work on gene name mapping to Hugos, ENSP, GOs etc.
@@ -487,9 +271,434 @@ for ($r = 0; $r < $numSamp; $r++)
 # the beginning of this script.
 #
 
-print "Build gene name mapping tables\n";
 if ($use_existing_gene_map == 0)
 {
+	print "Build gene name mapping table\n";
+	build_gene_mapping_table();
+}
+
+# Now load the mapping info from the table
+load_gene_mapping_table();
+
+#
+# If this is a GDC dataset, we can load the metadata and do survival
+#
+if ($metadata_json_file != "")
+{
+	print "Loading metadata\n";
+	load_gdc_metadata();
+	system("php do_survival.php $dataset $dataset_dir");
+}
+#
+# Annotation via StringDB
+#
+system("php do_stringdb_annot.php $dataset $annodir");
+
+# 
+# Now, expression. This is slow.
+#
+print("############ Begin load expression matrix ###############\n");
+system("php load_expr.php $dataset $expression_file");
+
+##############################################################################################
+
+function load_gdc_metadata()
+{
+	global $metadata_json_file, $DSID, $CRID, $GLID, $samp2ID;
+
+	check_file($metadata_json_file);
+	$sampstr = file_get_contents($metadata_json_file);
+	$sampdt = json_decode($sampstr); 
+
+	dbq("delete sampdt.* from sampdt,samp where samp.id=sampdt.sid ".
+				"  and samp.dsid=$DSID ");
+
+	$numSamp = count($samp2ID);
+
+	$data = array();
+	$numBC = 0;
+	foreach ($sampdt as $dt)
+	{
+		$numBC++;
+		$bc = preg_replace('/\.FPKM.*$/','',$dt->file_name);
+		if (!isset($samp2ID[$bc]))
+		{
+			die("unknown $bc\n");
+		}
+		$sid = $samp2ID[$bc];
+
+		$surv_info = $dt->cases[0]->diagnoses[0];
+		$status = strtolower($surv_info->vital_status);
+		$dtd = trim($surv_info->days_to_death);
+		$dtlc = trim($surv_info->days_to_last_follow_up);
+		$age = trim($surv_info->age_at_diagnosis);
+
+		$statflag = ($status == "alive" ? 1 : 0);
+		$censor = ($statflag==1 ? 0 : 1);
+
+		if ($dtd == "")
+		{
+			$dtd = -1;
+		}
+		if ($dtlc == "")
+		{
+			$dtlc = -1;
+		}
+		if ($age == "")
+		{
+			$age = 0;
+		}
+
+		$dte = ($status ? $dtlc : $dtd);
+		if (0) #$dte <50)  # not sure what this was for
+		{
+			$dte = -1;	
+		}
+
+		$gender = strtolower(trim($dt->cases[0]->demographic->gender));
+		if ($gender == "female")
+		{
+			$gender = "F";
+		}
+		else if ($gender == "male")
+		{
+			$gender = "M";
+		}
+		else
+		{
+			$gender = "U";
+		}
+
+		$samp_json = json_encode($dt);
+
+		$data[$sid] = array("stat" => $statflag, "dtd" => $dtd, "dtlc" => $dtlc, "json" => $samp_json,
+								"dte" => $dte, "censor" => $censor, "age" => $age, "sex" => $gender);
+	}
+	if ($numSamp != $numBC)
+	{
+		print "sample mismatch: $numSamp != $numBC\n";	
+	}
+
+	$missing = 0;
+	foreach ($samp2ID as $bc => $sid)
+	{
+		if (!isset($data[$sid]))
+		{
+			print "missing data for sample $bc (sid=$sid)\n";
+			$missing++;
+		}
+	}
+	if ($missing > 0)
+	{
+		exit(0);
+	}
+
+	foreach ($samp2ID as $bc => $sid)
+	{
+		$dt = $data[$sid];
+		$stat 	= $dt["stat"];
+		$dtd 	= $dt["dtd"];
+		$dtlc 	= $dt["dtlc"];
+		$censor = $dt["censor"];
+		$dte 	= $dt["dte"];
+		$age 	= $dt["age"];
+		$sex 	= $dt["sex"];
+		$json 	= $dt["json"];
+
+		$st = dbps("insert into sampdt (sid,dtd,dtlc,dte,stat,censor,age,sex,fulldata) values(?,?,?,?,?,?,?,?,?)");
+		$st->bind_param("iiiiiiiss",$sid,$dtd,$dtlc,$dte,$stat,$censor,$age,$sex,$json);
+		$st->execute();
+		$st->close();
+	}
+}
+
+##################################################################################
+
+function load_corex_factors()
+{
+	global $CRID,$wtfile_pfx,$wtfile_sfx,$mifile_pfx,$mifile_sfx,$numGene,$gene2ID;
+
+	print "##############################################\n";
+	print "Loading level 0 weights and MI\n";
+
+	$lvl = 0;
+	$wtfile = $wtfile_pfx.$lvl.$wtfile_sfx;
+	$mifile = $mifile_pfx.$lvl.$wtfile_sfx;
+	if (!is_file($wtfile)) 
+	{
+		die ("No layer0 weight file ($wtfile)!\n");
+	}
+	if (!is_file($mifile)) 
+	{
+		die ("No layer0 MI file ($mifile)!\n");
+	}
+
+	$wts = array();
+	$mis = array();
+	read_matrix($wts,$nRows,$nCols,$wtfile);
+	$numFacts = $nRows-1;
+	if ($nCols != $numGene + 1)
+	{
+		die ("wt file has $nCols columns!\n");
+	}
+	print "$numFacts new factors\n";
+	read_matrix($mis,$nRows,$nCols,$mifile);
+	if ($nCols != $numGene + 1)
+	{
+		die ("mi file has $nCols!\n");
+	}
+	if ($nRows != $numFacts + 1)
+	{
+		die ("mi file has $nRows rows!\n");
+	}
+
+	$col2GID = array();
+	for ($c = 1; $c < $nCols; $c++)
+	{
+		$gene = $wts[0][$c];
+		if ($gene != $mis[0][$c])
+		{
+			die ("mismatch of gene column $c!\n");
+		}
+		if (isset($gene2ID[$gene]))
+		{
+			$col2GID[$c] = $gene2ID[$gene];
+		}
+		else
+		{
+			die("Unknown gene '$gene'\n");
+		}
+	}
+
+	#
+	# Now load level 0 to the database!
+	#
+
+	$cids = array();
+	for($f = 0; $f < $numFacts; $f++)
+	{
+		dbq("insert into clst (lbl,lvl,CRID) values($f,$lvl,$CRID)");
+		$CID = dblastid("clst","ID");
+		$cids[$lvl][$f] = $CID;	
+	}
+
+	$num_nonzero = 0;
+	for($f = 0; $f < $numFacts; $f++)
+	{
+		$row = $f+1;
+		#print "DB insert for factor:$f                            \r";
+		$CID = $cids[$lvl][$f];
+		$inserts = array();
+		for ($c = 1; $c < $nCols; $c++)
+		{
+			$GID = $col2GID[$c];
+			if (isset($wts[$row][$c]) && 
+				isset($mis[$row][$c] ) )
+			{
+				$wt = $wts[$row][$c];
+				if ($wt > 0)
+				{
+					$mi = $mis[$row][$c];
+					$inserts[] = "($CRID,$CID,$GID,$wt,$mi)";
+				}
+			}
+			else
+			{
+				die ("missing weight or MI for ($f,$GID)\n");
+			}
+		}
+		$new_inserts = count($inserts);
+		$num_nonzero += $new_inserts;
+		if ($new_inserts > 0)
+		{
+			$insert = implode(",",$inserts);
+			dbq("insert into g2c (CRID,CID,GID,wt,mi) values$insert", 0);
+		}
+		else
+		{
+			print "Warning: all weights zero for factor $f!!\n";
+		}
+	}
+	$num_possible = $numFacts*$numGene;
+	$nonzero_pct = floor(100*((float)$num_nonzero)/((float)$num_possible));
+	print "level 0: loaded $num_nonzero nonzero ($nonzero_pct%)                                       \n";
+
+	#
+	# higher levels!
+	#
+
+	$lvl++;
+	$wtfile = $wtfile_pfx.$lvl.$wtfile_sfx;
+	$mifile = $mifile_pfx.$lvl.$wtfile_sfx;
+	$numPrevFacts = $numFacts;
+	while (is_file($wtfile) && is_file($mifile))
+	{
+		print "##############################################\n";
+		print "Loading level $lvl weights ($numPrevFacts prior factors)\n";
+
+		$wts = array();
+		$mis = array();
+		read_matrix($wts,$nRows,$nCols,$wtfile);
+		$numFacts = $nRows-1;
+		if ($nCols != $numPrevFacts + 1)
+		{
+			die ("wt file has $nCols columns!\n");
+		}
+		print "$numFacts new factors\n";
+		read_matrix($mis,$nRows,$nCols,$mifile);
+		if ($nCols != $numPrevFacts + 1)
+		{
+			die ("mi file has $nCols cols!\n");
+		}
+		if ($nRows != $numFacts + 1)
+		{
+			die ("mi file as $nRows rows!\n");
+		}
+
+		for ($f = 0; $f < $numFacts; $f++)
+		{
+			dbq("insert into clst (lbl,lvl,CRID) values($f,$lvl,$CRID)");
+			$CID = dblastid("clst","ID");
+			$cids[$lvl][$f] = $CID;	
+		}
+
+		$num_nonzero = 0;
+		for ($f = 0; $f < $numFacts; $f++)
+		{
+			$row = $f+1;
+			#print "DB insert for factor:$f                            \r";
+			$CID_new = $cids[$lvl][$f];
+			$inserts = array();
+			for ($f0 = 0; $f0 < $numPrevFacts; $f0++)
+			{
+				$col = $f0+1;
+				$CID_old = $cids[$lvl-1][$f0];
+				if (isset($wts[$row][$col]) && 
+					isset($mis[$row][$col] ) )
+				{
+					$wt = $wts[$row][$col];
+					if ($wt > 0)
+					{
+						$mi = $mis[$row][$col];
+						$inserts[] = "($CRID,$CID_old,$CID_new,$wt,$mi)";
+					}
+				}
+				else
+				{
+					die ("missing weight or MI for ($f,$CID_old)\n");
+				}
+			}
+			$num_inserts = count($inserts);
+			$num_nonzero += $num_inserts;
+			if ($num_inserts > 0)
+			{
+				$insert = implode(",",$inserts);
+				dbq("insert into c2c (CRID,CID1,CID2,wt,mi) values$insert");
+			}
+			else
+			{
+				print "Warning: factor $f has all zero weights!\n";
+			}
+		}
+		$num_possible = $numFacts * $numPrevFacts;
+		$nonzero_pct = floor(100*((float)$num_nonzero)/((float)$num_possible));
+		print "level $lvl: loaded $num_nonzero nonzero ($nonzero_pct%)                                       \n";
+
+		$lvl++;
+		$wtfile = $wtfile_pfx.$lvl.$wtfile_sfx;
+		$mifile = $mifile_pfx.$lvl.$wtfile_sfx;
+		$numPrevFacts = $numFacts;
+		
+	}
+
+}
+#############################################################################
+
+function load_corex_labels()
+{
+	global $labelfile, $clabelfile, $numSamp, $numGrp, $samp2ID, $grp2ID;
+
+	#
+	# Load the discrete and continuous labels
+	#
+	print "Load discrete and continuous labels\n";
+
+	$labels = array();
+	$clabels = array();
+
+	$nRows = 0;
+	$nCols = 0;
+
+	read_matrix($labels, $nRows, $nCols, $labelfile,0);
+	if ($nRows != $numSamp)
+	{
+		die ("label file has $nRows rows (expecting $numSamp)!");
+	}
+	if ($nCols != $numGrp+1)
+	{
+		die ("label file has $nCols cols (expecting ".($numGrp+1).")!");
+	}
+
+	read_matrix($clabels, $nRows, $nCols, $clabelfile,0);
+	if ($nRows != $numSamp)
+	{
+		die ("cont_label file has $nRows rows (expecting $numSamp)!");
+	}
+	if ($nCols != $numGrp+1)
+	{
+		die ("cont_label file has $nCols cols (expecting ".($numGrp+1).")!");
+	}
+
+	for ($r = 0; $r < $numSamp; $r++)
+	{
+		$samp1 = $labels[$r][0];
+		if (!isset($samp2ID[$samp1]))
+		{
+			die ("unknown sample $samp1 in label file\n");
+		}
+		$samp2 = $clabels[$r][0];
+		if (!isset($samp2ID[$samp2]))
+		{
+			die ("unknown sample $samp2 in clabel file\n");
+		}
+		if ($samp1 != $samp2)
+		{
+			die ("mismatch samples, labels has $samp1, clabel has $samp2\n");
+		}
+	}
+	for ($g = 0; $g < $numGrp; $g++)
+	{
+		if (!isset($grp2ID[$g]))
+		{
+			die ("No ID for group $g\n");
+		}
+	}
+
+	$N = $numSamp;
+	for ($r = 0; $r < $numSamp; $r++)
+	{
+		$samp = $labels[$r][0];
+		$SID = $samp2ID[$samp];
+		$vals = array();
+		for ($g = 0; $g < $numGrp; $g++)
+		{
+			$CID = $grp2ID[$g];
+			$lbl = $labels[$r][$g + 1];
+			$clbl = $clabels[$r][$g + 1];
+			$vals[] = "($SID,$CID,$lbl,$clbl)";
+		}	
+		#print "$N\t\t$samp                             \r";
+		dbq("insert into lbls (SID,CID,lbl,clbl) values".implode(",",$vals));
+		$N--;
+	}
+
+
+}
+###################################################################
+function build_gene_mapping_table()
+{
+	global $gene2ID, $gene_map_outfile;
+
 	# First get the stored mappings
 
 	$hugoID = array();
@@ -592,72 +801,75 @@ if ($use_existing_gene_map == 0)
 		fwrite($fh, "$gene_orig\t$hugo\t$desc\t$ensps\n");
 	}
 	fclose($fh);
+
 }
+##################################################################
 
-# Now load the mapping info from the table
-
-$fh = fopen($gene_map_outfile,"r");
-fgets($fh);   # header line
-$g2hugo = array();
-$g2desc = array();
-$g2ensps = array();
-while (($line = fgets($fh)) != false)
+function load_gene_mapping_table()
 {
-	$fields = explode("\t",$line);
-	$gene = $fields[0];
-	$hugo = $fields[1];
-	$desc = $fields[2];
-	$ensps = $fields[3];
-	
-	if (!isset($gene2ID[$gene]))
+	global $CRID,$gene2ID, $gene_map_outfile;
+
+	$fh = fopen($gene_map_outfile,"r");
+	fgets($fh);   # header line
+	$g2hugo = array();
+	$g2desc = array();
+	$g2ensps = array();
+	while (($line = fgets($fh)) != false)
 	{
-		die("unknown gene $gene\n");
+		$fields = explode("\t",$line);
+		$gene = $fields[0];
+		$hugo = $fields[1];
+		$desc = $fields[2];
+		$ensps = $fields[3];
+		
+		if (!isset($gene2ID[$gene]))
+		{
+			die("unknown gene $gene\n");
+		}
+		$gid = $gene2ID[$gene];
+
+		$g2hugo[$gid] = $hugo;
+		$g2desc[$gid] = $desc;
+		$g2ensps[$gid] = $ensps;
 	}
-	$gid = $gene2ID[$gene];
+	fclose($fh);
 
-	$g2hugo[$gid] = $hugo;
-	$g2desc[$gid] = $desc;
-	$g2ensps[$gid] = $ensps;
-}
-fclose($fh);
-
-#print("clear out the prior GO and ENSP mappings\n");
-foreach ($gene2ID as $lbl => $gid)
-{
-	dbq("delete from g2e where gid=$gid");
-	dbq("delete from g2g where gid=$gid");
-}
-
-$gid = 0;
-$desc = "";
-$hugo = "";
-$st = $DB->prepare("update glist set descr=?,hugo=? where ID=? ");
-$st->bind_param("ssi",$desc,$hugo,$gid);	
-foreach ($g2hugo as $gid => $hugo)
-{
-	$ensps = $g2ensps[$gid];
-	$desc = $g2desc[$gid];
-
-	#print "$gid\t$hugo\t$ensps        \r";
-
-	$st->execute();
-
-	if (trim($ensps) == "")
+	foreach ($gene2ID as $lbl => $gid)
 	{
-		continue;
+		dbq("delete from g2e where gid=$gid");
+		dbq("delete from g2g where gid=$gid");
 	}
-	$earr = explode(",",$ensps);
-	foreach ($earr as $eterm)
+
+	$gid = 0;
+	$desc = "";
+	$hugo = "";
+	$st = dbps("update glist set descr=?,hugo=? where ID=? ");
+	$st->bind_param("ssi",$desc,$hugo,$gid);	
+	foreach ($g2hugo as $gid => $hugo)
 	{
-		dbq("insert ignore into g2e (GID,term) values ($gid,$eterm)");
-		dbq("insert ignore into g2g (GID,term) ".
-				"(select $gid,gterm from esp2go where eterm=$eterm)");
-		dbq("insert ignore into gos (CRID,term,descr) ".
-			"(select $CRID,gterm,descr from esp2go ".
-			"join global_gos on global_gos.term=esp2go.gterm where esp2go.eterm=$eterm)");
-	}	
+		$ensps = $g2ensps[$gid];
+		$desc = $g2desc[$gid];
+
+		#print "$gid\t$hugo\t$ensps        \r";
+
+		$st->execute();
+
+		if (trim($ensps) == "")
+		{
+			continue;
+		}
+		$earr = explode(",",$ensps);
+		foreach ($earr as $eterm)
+		{
+			dbq("insert ignore into g2e (GID,term) values ($gid,$eterm)");
+			dbq("insert ignore into g2g (GID,term) ".
+					"(select $gid,gterm from esp2go where eterm=$eterm)");
+			dbq("insert ignore into gos (CRID,term,descr) ".
+				"(select $CRID,gterm,descr from esp2go ".
+				"join global_gos on global_gos.term=esp2go.gterm where esp2go.eterm=$eterm)");
+		}	
+	}
+
 }
-
-
 ?>
 

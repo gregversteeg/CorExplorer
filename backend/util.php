@@ -1,4 +1,5 @@
 <?php
+require_once("db.php");
 
 
 # NOTE THIS FUNCTION DOESN'T PROPERLY HANDLE CSV FILES WITH COMMAS IN THE DATA!!!!
@@ -6,7 +7,7 @@
 ########################################################################
 #
 # Read a CSV or TSV matrix into a double-array, stripping quotes also
-# Entries expected to contain letters, nums, -, or to be numeric
+# Entries expected to contain letters, nums, -,. or to be numeric
 #
 function read_matrix(&$matrix,&$numRows, &$numCols,$matrix_file, $header=1)
 {
@@ -34,7 +35,7 @@ function read_matrix(&$matrix,&$numRows, &$numCols,$matrix_file, $header=1)
 		{
 			$row[$i] = preg_replace('/^[\"\']/',"",$row[$i]);
 			$row[$i] = preg_replace('/[\"\']$/',"",$row[$i]);
-			if (!is_numeric($row[$i]) && preg_match('/[^\w-]/',$row[$i]))
+			if (!is_numeric($row[$i]) && preg_match('/[^\w-\.]/',$row[$i]))
 			{
 				die ("bad matrix entry row:$rowNum, col:$i, value:".$row[$i]."\n");
 			}
@@ -71,12 +72,13 @@ function read_matrix(&$matrix,&$numRows, &$numCols,$matrix_file, $header=1)
 		$matrix[] = $row;
 		$rowNum++;
 	}
-	print "read $rowNum rows, $nCols cols\n";
+	#print "read $rowNum rows, $nCols cols\n";
 	$numRows = $rowNum;
 	$numCols = $nCols;
 }
 #
-# Do this the dumb but comprehensible way
+# Not the most efficient but it is easier to understand. 
+# It is slow; PHP isn't very good at matrix ops. 
 #
 function transpose_matrix(&$m1)
 {
@@ -85,16 +87,128 @@ function transpose_matrix(&$m1)
 	$m2 = array();
 	for ($r2 = 0; $r2 < $nCols1; $r2++)
 	{
+		print "Initializing row $r2......\r";
 		$m2[] = array();
+		array_fill(0,$nRows1,0);
 	}
+	print "Initializing done          \n";
 	for ($r1 = 0; $r1 < $nRows1; $r1++)
 	{
+		print "Working on row $r1......\r";
 		for ($c1 = 0; $c1 < $nCols1; $c1++)
 		{
 			$m2[$c1][$r1] = $m1[$r1][$c1];
 		}	
+		$m1[$r1] = null;
 	}
+	print "Transpose done.                   \n";
 	return $m2;
+}
+####################################################
+
+function find_proj($name)
+{
+	$res = dbq("select id from clr where lbl='$name'");
+	if ($r = $res->fetch_assoc())
+	{
+		return $r["id"];
+	}
+	die ("could not find project $name\n");
+}
+
+################################################
+
+function load_proj_data(&$data,$crid)
+{
+	global $DB;
+	if (!is_numeric($crid))
+	{
+		die("sorry");
+	}
+	$res = $DB->query("select * from clr where id=$crid");
+	if (!($data = $res->fetch_assoc()))
+	{
+		die ("Can't find project $crid\n");
+	}
+}
+
+################################################
+
+function load_proj_data2(&$data,$name)
+{
+	global $DB;
+	$crid = find_proj($name);
+	$res = $DB->query("select * from clr where id=$crid");
+	if (!($data = $res->fetch_assoc()))
+	{
+		die ("Can't find project $crid\n");
+	}
+}
+
+##################################################
+
+function check_file($file)
+{
+	if (!is_file($file))
+	{
+		die("Can't find file $file\n");
+	}
+}
+#################################################
+
+function yesno($prompt)
+{
+	$line = trim(readline($prompt."(y/n)?\n"));
+	if ($line != "y")
+	{
+		exit(0);
+	}	
+}
+
+##########################################################
+#
+# Incremental clear of expr table, which is not faster
+# but is less problematic for mysql than a single delete using DSID. 
+#
+
+function clear_expr_by_DS($DSID)
+{
+	print "Clear expression table for DSID=$DSID...slow\n";
+	$samps = array();
+	$res = dbq("select ID from samp where DSID=$DSID");
+	while ($r = $res->fetch_assoc())
+	{
+		$samps[] = $r["ID"];
+	}
+	$nSamps = count($samps);
+	foreach ($samps as $SID)
+	{
+		print "$nSamps      \r";
+		dbq("delete from expr where DSID=$DSID and SID=$SID");
+		$nSamps--;
+	}
+}
+function clear_expr($CRID)
+{
+	$info = array();
+	load_proj_data($info,$CRID);
+	$DSID = $info["DSID"];
+	$GLID = $info["GLID"];
+		
+	print "Clear expression table for CRID=$CRID...slow\n";
+	$gids = array();
+	$res = dbq("select ID from glist where GLID=$GLID");
+	while ($r = $res->fetch_assoc())
+	{
+		$gids[] = $r["ID"];
+	}
+	$nGenes = count($gids);
+	foreach ($gids as $GID)
+	{
+		print "$nGenes      \r";
+		dbq("delete from expr where DSID=$DSID and GID=$GID");
+		$nGenes--;
+	}
 }
 ?>
 
