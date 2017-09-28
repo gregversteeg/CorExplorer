@@ -13,6 +13,9 @@ load_hugo_tables.php : Loads HGNC names, descriptions, some aliases,
                 and then ENSG mappings from Gencode.
 load_stringdb_tables.php : Load ENSP and GO mappings from StringDB
 
+
+transpose_matrix.php : transpose expression table if needed
+
 ----------------------------------------------------------------------------
 
 FILES TO DOWNLOAD:
