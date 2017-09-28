@@ -120,12 +120,11 @@ function find_proj($name)
 
 function load_proj_data(&$data,$crid)
 {
-	global $DB;
 	if (!is_numeric($crid))
 	{
 		die("sorry");
 	}
-	$res = $DB->query("select * from clr where id=$crid");
+	$res = dbq("select * from clr where id=$crid");
 	if (!($data = $res->fetch_assoc()))
 	{
 		die ("Can't find project $crid\n");
@@ -173,7 +172,7 @@ function yesno($prompt)
 
 function clear_expr_by_DS($DSID)
 {
-	print "Clear expression table for DSID=$DSID...slow\n";
+	print "Clear expression table for DSID=$DSID\n";
 	$samps = array();
 	$res = dbq("select ID from samp where DSID=$DSID");
 	while ($r = $res->fetch_assoc())
@@ -195,7 +194,7 @@ function clear_expr($CRID)
 	$DSID = $info["DSID"];
 	$GLID = $info["GLID"];
 		
-	print "Clear expression table for CRID=$CRID...slow\n";
+	print "Clear expression table for CRID=$CRID\n";
 	$gids = array();
 	$res = dbq("select ID from glist where GLID=$GLID");
 	while ($r = $res->fetch_assoc())
@@ -209,6 +208,11 @@ function clear_expr($CRID)
 		dbq("delete from expr where DSID=$DSID and GID=$GID");
 		$nGenes--;
 	}
+}
+function run_cmd($cmd, &$retval)
+{
+	print "$cmd\n";
+	system($cmd,$retval);
 }
 ?>
 

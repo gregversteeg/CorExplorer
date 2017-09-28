@@ -2,7 +2,7 @@
 require_once("util.php");
 
 $projname = $argv[1];
-$datadir = $argv[2];
+$rdatafile = $argv[2];
 
 $pair_thresh = .01;   	# Factors with survival correlation meeting this threshold
 						# will be candidats for the pair computation
@@ -10,7 +10,7 @@ $pair_topN = 10; 		# Use at most this many factors for the pair comp, starting w
 						# the most significant.
 
 # directory and file names hard-coded in the R script
-$outdir = "surv_tmp";  
+$outdir = "tmp/surv_tmp";  
 $coxp_file = "coxfit.txt"; 		# cox fit pvalue
 $survp_file = "survdiff.txt";	# survival differential pvalue
 $strat_file = "strata.txt";		# risk stratum assignments
@@ -22,8 +22,6 @@ if (!is_dir($outdir))
 	mkdir($outdir);
 }
 
-
-$rdatafile = "$datadir/Rdata.tsv";
 
 $crid = find_proj($projname);
 $proj_info = array();
@@ -50,6 +48,8 @@ while ($r = $res->fetch_assoc())
 }
 $numGrp = count($grp2ID);
 
+write_survival_table();
+
 print("############### Begin single-factor survival ################\n");
 
 dbq("update clst set coxp=1, survp=1 where crid=$crid");
@@ -58,12 +58,12 @@ dbq("delete survdt.* from survdt,clst where survdt.cid=clst.id and clst.crid=$cr
 
 foreach ($grp2ID as $grp => $cid)
 {
-	system("rm -f $outdir/*");
+	run_cmd("rm -f $outdir/*",$retval);
 
-	$cmd = "./group_survival.R $grp $rdatafile";
+	$cmd = "./Rscripts/group_survival.R $grp $rdatafile";
 	$retval = "";
 	print "$cmd\n";
-	system($cmd,$retval);
+	run_cmd($cmd,$retval);
 
 	if ($retval != 0)
 	{
@@ -178,16 +178,16 @@ foreach ($grp2ID as $grp1 => $cid1)
 			continue;
 		}
 		print "====================================================================\n";
-		system("rm -f $outdir/*");
+		run_cmd("rm -f $outdir/*",$retval);
 	
 		dbq("insert into clst_pair (CID1,CID2) values($cid1,$cid2)");
 		dbq("insert into pair_lbls (CID1,CID2,SID,risk_strat) ".
 				" (select $cid1,$cid2,id,0 from samp where dsid=$dsid order by id asc)");
 
-		$cmd = "./paired_survival.R $grp1 $grp2 $rdatafile";
+		$cmd = "./Rscripts/paired_survival.R $grp1 $grp2 $rdatafile";
 		$retval = "";
 		print "$cmd\n";
-		system($cmd,$retval);
+		run_cmd($cmd,$retval);
 
 		if ($retval != 0)
 		{
@@ -283,10 +283,10 @@ foreach ($grp2ID as $grp1 => $cid1)
 
 dbq("delete from survdt_ov where crid=$crid");
 
-$cmd = "./overall_survival.R $rdatafile";
+$cmd = "./Rscripts/overall_survival.R $rdatafile";
 $retval = "";
 print "$cmd\n";
-system($cmd,$retval);
+run_cmd($cmd,$retval);
 
 if ($retval != 0)
 {
@@ -414,6 +414,77 @@ function build_survival_data_table()
 		$outstr .= "\n";
 	}
 	file_put_contents($rdatafile,$outstr);
+}
+##################################################
+
+function write_survival_table()
+{
+	global $rdatafile, $CRID, $DSID, $numGrp;
+	print "Writing survival data to $rdatafile\n";
+	$conts = array();
+	$sid2sname = array();
+	$res = dbq("select samp.lbl as sname, samp.id as sid, clst.lbl as cnum, clst.id as cid, ".
+				" lbls.clbl as clbl from lbls join clst on clst.id=lbls.cid ".
+				" join samp on samp.id=lbls.sid where clst.crid=$CRID ");
+	while ($r = $res->fetch_assoc())
+	{
+		$sname 	= $r["sname"];
+		$sid 	= $r["sid"];
+		$cnum 	= $r["cnum"];
+		$cid 	= $r["cid"];
+		$clbl 	= $r["clbl"];
+
+		if (!isset($conts[$sid]))
+		{
+			$conts[$sid] = array();
+			$sid2sname[$sid] = $sname;
+		}
+		$conts[$sid][$cnum] = $clbl;
+	}
+	foreach ($conts as $sid => $vals)
+	{
+		for ($g = 0; $g < $numGrp; $g++)
+		{
+			if (!isset($vals[$g]))
+			{
+				die ("Failed to load group $g for sample $sid\n");
+			}
+		}
+	}
+	# get the samps with valid survival info (signalled by dte > 0)
+	$sampdt = array();
+	$res = dbq("select sid, dte, censor from sampdt join samp on samp.id=sampdt.sid ".
+			" where samp.dsid=$DSID and dte > 0");
+	while ($r = $res->fetch_assoc())
+	{
+		$sid 	= $r["sid"];
+		$dte 	= $r["dte"];
+		$censor 	= $r["censor"];
+
+		$sampdt[$sid] = array("dte" => $dte, "censor" => $censor);
+	}
+
+	$outstr = "SID\tDTE\tCensor";
+	for ($g = 0; $g < $numGrp; $g++)
+	{
+		$outstr .= "\tG$g";
+	}
+	$outstr .= "\n";
+
+	foreach ($sampdt as $sid => $dtvals)
+	{
+		if (!isset($conts[$sid]))
+		{
+			die ("no cont lbls for sid=$sid!\n");
+		}
+		$sname = $sid2sname[$sid];
+		
+		$outstr .= "$sname\t$sid\t".$dtvals["dte"]."\t".$dtvals["censor"]."\t";
+		$outstr .= implode("\t",$conts[$sid]);
+		$outstr .= "\n";
+	}
+	file_put_contents($rdatafile,$outstr);
+
 }
 ?>
 

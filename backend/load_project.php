@@ -13,12 +13,13 @@ $time_start = time();
 # it isn't, then leave this string empty, and you will have to
 # load the metadata by custom script).
 #
-$dataset_dir = "/local/wnelson/disk/datasets/skcm";
-$dataset = "SKCM2";
-$expression_file = "$dataset_dir/skcm.expr.csv";
+$dataset_dir = "/local/wnelson/disk/datasets/colon";
+$dataset = "COAD"; 
+
+$expression_file = "$dataset_dir/expr.csv";
 $use_existing_gene_map = 0;  # Set to 1 if the gene.map file has been hand-edited and
 							# should not be overwritten
-$metadata_json_file = "/local/wnelson/disk/datasets/skcm/metadata.cart.2017-09-03T00_33_12.139023.json";
+$metadata_json_file = "/local/wnelson/disk/datasets/colon/metadata.json";
 
 ############################################################################
 #
@@ -31,6 +32,12 @@ $corex_datadir = "$dataset_dir/output/text_files";
 $labelfile = "$corex_datadir/labels.txt";
 $clabelfile = "$corex_datadir/cont_labels.txt";
 $param_file = "$corex_datadir/parameters.json";
+$rdatafile = "$dataset_dir/Rdata.tsv";
+
+if (!preg_match("/^\w+$/",$dataset))
+{
+	die("Invalid dataset name\n");
+}
 
 check_file($labelfile);
 check_file($clabelfile);
@@ -286,19 +293,19 @@ load_gene_mapping_table();
 if ($metadata_json_file != "")
 {
 	print "Loading metadata\n";
-	load_gdc_metadata();
-	system("php do_survival.php $dataset $dataset_dir");
+	run_cmd("php load_gdc_metadata.php $dataset $metadata_json_file");
+	run_cmd("php do_survival.php $dataset $rdatafile",$retval);
 }
 #
 # Annotation via StringDB
 #
-system("php do_stringdb_annot.php $dataset $annodir");
+run_cmd("php do_stringdb_annot.php $dataset $annodir",$retval);
 
 # 
 # Now, expression. This is slow.
 #
 print("############ Begin load expression matrix ###############\n");
-system("php load_expr.php $dataset $expression_file");
+run_cmd("php load_expr.php $dataset $expression_file",$retval);
 
 ##############################################################################################
 
@@ -327,6 +334,9 @@ function load_gdc_metadata()
 		}
 		$sid = $samp2ID[$bc];
 
+		# get the TCGA name which we will load as an alias
+		$ae = array_shift($dt->associated_entities);
+		$esi = $ae->entity_submitter_id;
 		$surv_info = $dt->cases[0]->diagnoses[0];
 		$status = strtolower($surv_info->vital_status);
 		$dtd = trim($surv_info->days_to_death);
@@ -349,10 +359,11 @@ function load_gdc_metadata()
 			$age = 0;
 		}
 
-		$dte = ($status ? $dtlc : $dtd);
-		if (0) #$dte <50)  # not sure what this was for
+		$dte = ($statflag ? $dtlc : $dtd);
+		if ($dte < 0 && $dtd > 0)
 		{
-			$dte = -1;	
+			print_r($dt);
+			die("oops");
 		}
 
 		$gender = strtolower(trim($dt->cases[0]->demographic->gender));
@@ -372,7 +383,7 @@ function load_gdc_metadata()
 		$samp_json = json_encode($dt);
 
 		$data[$sid] = array("stat" => $statflag, "dtd" => $dtd, "dtlc" => $dtlc, "json" => $samp_json,
-								"dte" => $dte, "censor" => $censor, "age" => $age, "sex" => $gender);
+								"dte" => $dte, "censor" => $censor, "age" => $age, "sex" => $gender, "alias" => $esi);
 	}
 	if ($numSamp != $numBC)
 	{
@@ -393,6 +404,10 @@ function load_gdc_metadata()
 		exit(0);
 	}
 
+	$st = dbps("insert into sampdt (sid,dtd,dtlc,dte,stat,censor,age,sex,fulldata) values(?,?,?,?,?,?,?,?,?)");
+	$st->bind_param("iiiiiiiss",$sid,$dtd,$dtlc,$dte,$stat,$censor,$age,$sex,$json);
+	$st2 = dbps("insert into sampalias (SID,lbl,idx) values(?,?,1)");
+	$st2->bind_param("is",$sid,$alias);
 	foreach ($samp2ID as $bc => $sid)
 	{
 		$dt = $data[$sid];
@@ -404,12 +419,13 @@ function load_gdc_metadata()
 		$age 	= $dt["age"];
 		$sex 	= $dt["sex"];
 		$json 	= $dt["json"];
+		$alias 	= $dt["alias"];
 
-		$st = dbps("insert into sampdt (sid,dtd,dtlc,dte,stat,censor,age,sex,fulldata) values(?,?,?,?,?,?,?,?,?)");
-		$st->bind_param("iiiiiiiss",$sid,$dtd,$dtlc,$dte,$stat,$censor,$age,$sex,$json);
 		$st->execute();
-		$st->close();
+		$st2->execute();
 	}
+	$st->close();
+	$st2->close();
 }
 
 ##################################################################################
@@ -871,5 +887,7 @@ function load_gene_mapping_table()
 	}
 
 }
+#########################################################################################
+
 ?>
 

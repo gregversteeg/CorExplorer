@@ -73,6 +73,7 @@ for ($c = 1; $c < $nCols; $c++)
 		{
 			die ("unkown gene $gene\n");
 		}
+		continue;
 	}
 	$col2GID[$c] =  $gname2ID[$gene];
 }
@@ -86,20 +87,23 @@ for ($r = 1; $r < $nRows; $r++)
 	{
 		die ("unkown sample $samp\n");
 	}
-	print "Loading row $r/$nRows                              \n";	
+	print "Loading row $r/$nRows                              \r";	
 	flush();
 
 	$SID = $samp2ID[$samp];
 	$varray = array();
 	for ($c = 1; $c < $nCols; $c++)
 	{
-		$GID = $col2GID[$c];
-		$val = $matrix[$r][$c];
-		if (!is_numeric($val))
+		if (isset($col2GID[$c]))
 		{
-			die ("Bad value:'$val' for $samp,column=$c\n");
+			$GID = $col2GID[$c];
+			$val = $matrix[$r][$c];
+			if (!is_numeric($val))
+			{
+				die ("Bad value:'$val' for $samp,column=$c\n");
+			}
+			array_push($varray,"($SID,$GID,$dsid,$val)");
 		}
-		array_push($varray,"($SID,$GID,$dsid,$val)");
 	}
 	dbq("insert into expr (SID,GID,DSID,raw) values".implode(",",$varray));
 }
@@ -126,7 +130,11 @@ foreach ($gname2ID as $name => $gid)
 	$var = $sqavg - $avg*$avg;
 	$std = sqrt($var);
 
-	print "$gid\t\t$remaining\t\t$avg\t\t$std                     \r";
+	if ($remaining % 100 == 0)
+	{
+		print "$gid\t\t$remaining\t\t$avg\t\t$std                     \r";
+		flush();
+	}
 
 	#print("update expr set logz=((log(1+raw) - $avg)/$std) where gid=$gid and dsid=$dsid"\n);
 	dbq("update expr set logz=((log(1+raw) - $avg)/$std) where gid=$gid and dsid=$dsid");
