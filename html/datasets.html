@@ -3,6 +3,10 @@ require_once("util.php");
 
 $CRID = getint("crid",0);
 ?>
+<head>
+<link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
+<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
+</head>
 <div style="padding:10px 10px 0px 10px">
 
 <?php
@@ -203,8 +207,7 @@ function survival_graph($CRID)
 	
 	echo <<<END
 
-	<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
-		<canvas  id="canvasId" width="650" height="450" style="border:1px solid black; padding:10px"></canvas>
+		<canvas  id="canvasId" width="650" height="450" style="border:1px solid black;"></canvas>
 	<script>
 	var data = {"y": {"vars": $varstr,
 					  "smps": $sampstr,
