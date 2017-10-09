@@ -17,6 +17,10 @@ $strat_file = "strata.txt";		# risk stratum assignments
 $surv_file = "survival.txt"; 			# y-axis of survival plot
 $survtime_file = "survtimes.txt"; 		# y-axis of survival plot
 
+if (!is_dir("./tmp"))
+{
+	mkdir("./tmp");
+}
 if (!is_dir($outdir))
 {
 	mkdir($outdir);
@@ -419,13 +423,13 @@ function build_survival_data_table()
 
 function write_survival_table()
 {
-	global $rdatafile, $CRID, $DSID, $numGrp;
+	global $rdatafile, $crid, $dsid, $numGrp;
 	print "Writing survival data to $rdatafile\n";
 	$conts = array();
 	$sid2sname = array();
 	$res = dbq("select samp.lbl as sname, samp.id as sid, clst.lbl as cnum, clst.id as cid, ".
 				" lbls.clbl as clbl from lbls join clst on clst.id=lbls.cid ".
-				" join samp on samp.id=lbls.sid where clst.crid=$CRID ");
+				" join samp on samp.id=lbls.sid where clst.crid=$crid ",1);
 	while ($r = $res->fetch_assoc())
 	{
 		$sname 	= $r["sname"];
@@ -454,7 +458,7 @@ function write_survival_table()
 	# get the samps with valid survival info (signalled by dte > 0)
 	$sampdt = array();
 	$res = dbq("select sid, dte, censor from sampdt join samp on samp.id=sampdt.sid ".
-			" where samp.dsid=$DSID and dte > 0");
+			" where samp.dsid=$dsid and dte > 0");
 	while ($r = $res->fetch_assoc())
 	{
 		$sid 	= $r["sid"];

@@ -13,13 +13,13 @@ $time_start = time();
 # it isn't, then leave this string empty, and you will have to
 # load the metadata by custom script).
 #
-$dataset_dir = "/local/wnelson/disk/datasets/colon";
-$dataset = "COAD"; 
+$dataset_dir = "/local/wnelson/disk/datasets/lung_old";
+$dataset = "LUAD_orig"; 
 
 $expression_file = "$dataset_dir/expr.csv";
 $use_existing_gene_map = 0;  # Set to 1 if the gene.map file has been hand-edited and
 							# should not be overwritten
-$metadata_json_file = "/local/wnelson/disk/datasets/colon/metadata.json";
+$metadata_json_file = "$dataset_dir/metadata.json";
 
 ############################################################################
 #
@@ -293,7 +293,7 @@ load_gene_mapping_table();
 if ($metadata_json_file != "")
 {
 	print "Loading metadata\n";
-	run_cmd("php load_gdc_metadata.php $dataset $metadata_json_file");
+	run_cmd("php load_gdc_metadata.php $dataset $metadata_json_file",$retval);
 	run_cmd("php do_survival.php $dataset $rdatafile",$retval);
 }
 #
