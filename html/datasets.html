@@ -6,6 +6,12 @@ $CRID = getint("crid",0);
 <head>
 <link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
 <script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
+<script>
+function toggle_params()
+{
+	$("#params").toggle();	
+}
+</script>
 </head>
 <div style="padding:10px 10px 0px 10px">
 
@@ -138,8 +144,9 @@ END;
 	if ($param != "")
 	{
 		echo <<<END
-<div style="margin-top:40px">
-<b>CorEx Parameters:</b><p>
+<div style="margin-top:40px;">
+<a href="javascript:toggle_params();">Show CorEx run parameters</a><p>
+<div id="params" style="display:none">
 <table rules=all border=true cellpadding=3>
 END;
 		$json = json_decode($param)->{'0'};
@@ -147,7 +154,12 @@ END;
 		{
 			print "<tr><td>$name</td><td>$val</td></tr>\n";
 		}
-print "</table>\n</div>\n";
+	echo <<<END
+</table>
+</div>
+</div>
+END;
+
 	}
 
 
