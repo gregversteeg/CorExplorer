@@ -4,6 +4,10 @@ require_once("util.php");
 $projname = $argv[1];
 $rdatafile = $argv[2];
 
+# 
+# Pair threshold may need to be adjusted depending on the single factor
+# scores
+#
 $pair_thresh = .01;   	# Factors with survival correlation meeting this threshold
 						# will be candidats for the pair computation
 $pair_topN = 10; 		# Use at most this many factors for the pair comp, starting with 
@@ -102,7 +106,6 @@ foreach ($grp2ID as $grp => $cid)
 	dbq("update clst set coxp=$coxp, survp=$survp where id=$cid");
 
 	# Load the risk strat assignments
-
 	$fh = fopen("$outdir/$strat_file","r");
 	$line = fgets($fh);	
 	while (($line = fgets($fh)) != false)
@@ -117,6 +120,10 @@ foreach ($grp2ID as $grp => $cid)
 				die("unknown samp:$samp in strat file\n");
 			}
 			$sid = $samp2ID[$samp];
+			if (!is_numeric($strat))
+			{
+				die("bad stratum $strat for $sid:$samp\n");
+			}
 			dbq("update lbls set risk_strat=$strat where cid=$cid and sid=$sid");
 		}
 	}

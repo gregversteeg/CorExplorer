@@ -40,6 +40,7 @@ if (fit_coeff > cox_pval_thresh)
 #print(paste("Coxph factor significance p=",fit_coeff))
 
 relRisk <- predict(coxfit, survtbl, type="risk")
+relRisk = relRisk + (seq_along(relRisk) * .0000001);
 survtbl$relrisk <- relRisk
 
 sink("tmp/surv_tmp/test.txt")
@@ -47,6 +48,7 @@ print(survtbl[,c("DTE","Censor",grpcol1,grpcol2,"relrisk"),drop=FALSE], row.name
 sink()
 
 quants = quantile(relRisk, c(0.,.3,.7,1.))
+quants = (quants + (seq_along(quants) * .000001)) - .000001;
 rfactor <- cut(relRisk, quants, labels=c(1,2,3),include.lowest = TRUE)
 
 survtbl$rstrata <- as.factor(rfactor)
