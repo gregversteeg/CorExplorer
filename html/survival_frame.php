@@ -7,6 +7,8 @@ $CID = getint("cid",0);
 $CID_pair = getval("pair","");
 $FT = getval("ft","");
 $CID2 = 0;
+$FromForm = getint("fromform",0); # tell us if it's initial page load or form submit
+$Pvalsort = checkbox_val("pvalsort",1,$FromForm);
 
 check_numeric($CRID);
 check_numeric($CID);
@@ -57,11 +59,18 @@ else if ($CID != 0)
 <form method="get">
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
+<input type="hidden" name="fromform" value="1">
 <table cellpadding=5>
 	<tr>
 		<td><b>Survival:</b></td>
-		<td>Factor: <?php print clst_sel_surv("cid",$CID,$CID2) ?> </td>
-		<td>Paired: <?php print clst_sel_pair("pair",$CID,$CID2) ?> </td>
+		<td>Single Factor: <?php print clst_sel_surv("cid",$CID,$CID2) ?> </td>
+		<td>
+		Sort by p-val:	<input name="pvalsort" id="chk_pvalsort" type="checkbox" <?php checked($Pvalsort,1) ?>>
+		</td>
+	</tr>
+	<tr>
+		<td>&nbsp;</td>
+		<td>Paired Factors: <?php print clst_sel_pair("pair",$CID,$CID2) ?> </td>
 		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
 		</td>
@@ -77,6 +86,10 @@ $('#sel_cid').change(function()
 $('#sel_pair').change(function() 
 {
 	$('#sel_cid').val("0");
+	$(this).closest('form').submit();	
+});
+$('#chk_pvalsort').change(function() 
+{
 	$(this).closest('form').submit();	
 });
 $('#param_btn').click(function()
@@ -178,6 +191,10 @@ function get_surv_data(&$varstr,&$sampstr,&$datastr)
 		}
 	}
 	
+	# The "samples" in the language of CanvasXpress, are the time points.
+	# The "variables" are the strata. 
+	# The "data" are concatentated arrays, one for each stratum, that give the
+	# survival values at each time point. 
 	$samps = array();	
 	for ($t = 0; $t <= $max_time; $t++)
 	{
@@ -289,13 +306,15 @@ function get_pair_surv_data(&$varstr,&$sampstr,&$datastr)
 # selected here if a pair was specified (CID2 > 0)
 function clst_sel_surv($name,$CID,$CID2)
 {
-	global $CRID, $DB;
+	global $CRID, $DB, $Pvalsort;
 	$selected = ($CID == 0 || $CID2 != 0 ? " selected " : "");
 	$opts[] = "<option value='0' $selected>--choose--</option>";
 
+	$sortby = ($Pvalsort ? " order by clst.survp asc " : " order by clst.ID asc ");
+
 	$st = $DB->prepare("select ID, lbl, survp from clst ".
 		" where clst.CRID=? and clst.lvl=0 and clst.survp < 1 ".
-		" order by clst.survp asc ");
+		" $sortby ");
 	$st->bind_param("i",$CRID);
 	$st->bind_result($ID,$lbl,$pval);
 	$st->execute();

@@ -17,7 +17,7 @@ args = commandArgs(trailingOnly=TRUE)
 group = args[1]
 survfile = args[2]
 
-cox_pval_thresh = 0.25;  # significance of deviation of cox coeff from 0
+cox_pval_thresh = 100 #0.25;  # significance of deviation of cox coeff from 0
 
 grpcol = paste("G",group,sep="")
 
