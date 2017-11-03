@@ -85,6 +85,7 @@ $metadata_json_file = $metadata_json_files[0];
 #
 $corex_datadir = "$dataset_dir/output/text_files";
 $labelfile = "$corex_datadir/labels.txt";
+$grpfile = "$corex_datadir/groups.txt";
 $clabelfile = "$corex_datadir/cont_labels.txt";
 $param_file = "$corex_datadir/parameters.json";
 $rdatafile = "$dataset_dir/Rdata.tsv";
@@ -94,6 +95,7 @@ if (!preg_match("/^\w+$/",$dataset))
 	die("Invalid dataset name\n");
 }
 
+check_file($grpfile);
 check_file($labelfile);
 check_file($clabelfile);
 check_file($param_file);
@@ -328,11 +330,12 @@ while ($r = $res->fetch_assoc())
 $numGrp = count($grp2ID);
 
 #
-# Load the discrete and continuous label assignments
+# Load the discrete and continuous label assignments, and the TC values
 #
 
 dbq("delete lbls.* from lbls,clst where lbls.CID=clst.ID and clst.CRID=$CRID");
 load_corex_labels();
+load_tc_values();
 
 
 #
@@ -696,6 +699,28 @@ function load_corex_factors()
 		
 	}
 
+}
+#############################################################################
+
+function load_tc_values()
+{
+	global $grp2ID, $grpfile;
+
+	print "Load TC values\n";
+
+	$fh = fopen($grpfile,"r");
+	while ( ($line = fgets($fh)) )
+	{
+		$matches = array();
+		if (preg_match("/^Group[^\d]+(\d+)[^\d]+([\d\.]+)/",$line,$matches))
+		{
+			$cnum = $matches[1];
+			$tc = $matches[2];
+			$cid = $grp2ID[$cnum];
+			#print "$cid\t$gnum\t$tc\n";
+			dbq("update clst set tc='$tc' where id=$cid");
+		}
+	}
 }
 #############################################################################
 
