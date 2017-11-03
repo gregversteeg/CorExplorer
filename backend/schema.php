@@ -38,8 +38,11 @@ $sql = "create table glist (
 	GLID int not null, 			# gene list ID
 	lbl varchar(30) unique,		# the name as used in the dataset
 	hugo varchar(30),			# HGNC name of the gene, if can be determined
+	gtype varchar(30), 			# gene type, if we know
 	descr text,					# gene description, if available
+	eterm int default 0,		# ENSG number, if any. Redundant but convenient. 
 	index(lbl),
+	index(eterm),
 	index(hugo)
 );";
 if (!table_exists("glist")) { schema_add($sql);}
@@ -169,6 +172,8 @@ $sql = "create table clr (
 	param text,						# json of corex params
 	descr text,
 	ref text,
+	projstat text,					# used during loading
+	dataurl text,					# origin url for the data - used during web load
 	load_dt timestamp  DEFAULT CURRENT_TIMESTAMP
 );";
 if (!table_exists("clr")) { schema_add($sql);}
@@ -435,6 +440,22 @@ $sql = "create table map2hugo (
 	src varchar(5)
 );";
 if (!table_exists("map2hugo")) { schema_add($sql);}
+
+##########################################################################
+#
+# Ensembl gene annotation and hugo name mapping, obtained
+# from biomart
+#
+
+$sql = "create table e2a (
+	eterm int not null unique,   # the numeric part of the ensg name
+	hugo varchar(30) 		   	# the gene name, not always literally a hugo name (not unique!)
+	src varchar(30),   			# source of the gene name, HGNC for hugo
+	gtype varchar(30),			# gene type
+	descr text
+);";
+if (!table_exists("e2a")) { schema_add($sql);}
+
 
 ##########################################################################
 #

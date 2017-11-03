@@ -1,5 +1,7 @@
 <?php
 require_once("util.php");
+$script_dir = "/lfs1/corex";
+$Rscript_dir = "/lfs1/corex/Rscripts";
 
 $projname = $argv[1];
 $rdatafile = $argv[2];
@@ -8,7 +10,7 @@ $rdatafile = $argv[2];
 # Pair threshold may need to be adjusted depending on the single factor
 # scores
 #
-$pair_thresh = .01;   	# Factors with survival correlation meeting this threshold
+$pair_thresh = .1;   	# Factors with survival correlation meeting this threshold
 						# will be candidats for the pair computation
 $pair_topN = 10; 		# Use at most this many factors for the pair comp, starting with 
 						# the most significant.
@@ -68,7 +70,7 @@ foreach ($grp2ID as $grp => $cid)
 {
 	run_cmd("rm -f $outdir/*",$retval);
 
-	$cmd = "./Rscripts/group_survival.R $grp $rdatafile";
+	$cmd = "$Rscript_dir/group_survival.R $grp $rdatafile";
 	$retval = "";
 	print "$cmd\n";
 	run_cmd($cmd,$retval);
@@ -195,7 +197,7 @@ foreach ($grp2ID as $grp1 => $cid1)
 		dbq("insert into pair_lbls (CID1,CID2,SID,risk_strat) ".
 				" (select $cid1,$cid2,id,0 from samp where dsid=$dsid order by id asc)");
 
-		$cmd = "./Rscripts/paired_survival.R $grp1 $grp2 $rdatafile";
+		$cmd = "$Rscript_dir/paired_survival.R $grp1 $grp2 $rdatafile";
 		$retval = "";
 		print "$cmd\n";
 		run_cmd($cmd,$retval);
@@ -294,7 +296,7 @@ foreach ($grp2ID as $grp1 => $cid1)
 
 dbq("delete from survdt_ov where crid=$crid");
 
-$cmd = "./Rscripts/overall_survival.R $rdatafile";
+$cmd = "$Rscript_dir/overall_survival.R $rdatafile";
 $retval = "";
 print "$cmd\n";
 run_cmd($cmd,$retval);

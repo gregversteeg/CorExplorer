@@ -1,5 +1,6 @@
 <?php
 require_once("util.php");
+$Rscript_dir = "/lfs1/corex/Rscripts";
 
 $enrich_thresh = 0.05;
 $minMI = .002;
@@ -14,7 +15,7 @@ run_cmd("rm $annodir/*",$retval);
 make_group_files();
 
 print("Begin enrichment calls to StringDB\n");
-run_cmd("./Rscripts/stringdb_annos.R $annodir",$retval);
+run_cmd("$Rscript_dir/stringdb_annos.R $annodir",$retval);
 
 load_enrich();
 

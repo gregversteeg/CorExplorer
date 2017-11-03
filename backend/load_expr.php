@@ -125,6 +125,11 @@ foreach ($gname2ID as $name => $gid)
 		$sum += $val;	
 		$sqsum += $val*$val;	
 	}
+	if ($numvals == 0)
+	{
+		print "No expr for gid=$gid, dsid=$dsid!!\n";
+		continue;
+	}
 	$avg = ((float)$sum)/((float)$numvals);
 	$sqavg = ((float)$sqsum)/((float)$numvals);
 	$var = $sqavg - $avg*$avg;

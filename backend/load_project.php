@@ -3,23 +3,78 @@
 # Careful changing the main program section as many of the
 # variables are used within the subroutines as well. 
 #
+$data_root = "/lfs1/datasets";
+$script_dir = "/lfs1/corex";
+$php = "/usr/bin/php";
 
 require_once("util.php");
 $time_start = time();
 
+$mode = (isset($argv[1]) ? $argv[1] : "");
 #
-# These lines need to be edited per dataset.
-# The metadata file needs to be in GDC json format (if
-# it isn't, then leave this string empty, and you will have to
-# load the metadata by custom script).
+# Modes:
+# <empty> : new install using the $dataset_dir and $dataset settings
+# CHK : just check files and exit
+# CONT : continue load of project that already exists
+# WEB : download/unzip data, and then load (note project has already been created)
 #
-$dataset_dir = "/local/wnelson/disk/datasets/lung_old";
-$dataset = "LUAD_orig"; 
 
-$expression_file = "$dataset_dir/expr.csv";
+$DSID = 0;
+$GLID = 0;
+$CRID = 0;
+
+if ($mode == "WEB")
+{
+	# Launched from web. 
+	# The project shell was created by the web page. 
+	$CRID = $argv[2];
+	print "CRID=$CRID\n";
+	$pdata = array();
+	load_proj_data($pdata,$CRID);
+	print_r($pdata);
+	$GLID = $pdata["GLID"];
+	$DSID = $pdata["DSID"];
+	$dataset = $pdata["lbl"];
+	$dataset_dir = "$data_root/$dataset";
+	if (!is_dir($dataset_dir))
+	{
+		die("No directory $dataset_dir\n");
+	}
+	$dataurl = $pdata["dataurl"];
+	update_status($CRID,"DOWNLOAD");
+	$retval = 0;
+	chdir($dataset_dir);
+	$zipfile = "$dataset.zip";
+	run_cmd("/usr/bin/wget -O $zipfile '$dataurl'");
+	update_status($CRID,"UNZIP");
+	run_cmd("/usr/bin/unzip $zipfile ");
+	foreach (glob("*") as $dir)
+	{
+		if (is_dir($dir))
+		{
+			$dataset_dir .= "/$dir";
+			#chdir($dataset_dir);
+			#$curdir = `pwd`;
+			#print "$curdir\n";
+		}
+	}
+}
+else
+{
+	$dataset = "FOO"; 
+	$dataset_dir = "$data_root/$dataset";
+}
+
+$expression_file = "$dataset_dir/reduced_data.csv";
+$descr_file = "$dataset_dir/run_details.txt";
 $use_existing_gene_map = 0;  # Set to 1 if the gene.map file has been hand-edited and
 							# should not be overwritten
-$metadata_json_file = "$dataset_dir/metadata.json";
+$metadata_json_files = glob("$dataset_dir/metadata*.json");
+if (count($metadata_json_files) != 1)
+{
+	die("Can't identify metadata json file!\n");
+}
+$metadata_json_file = $metadata_json_files[0];
 
 ############################################################################
 #
@@ -42,6 +97,15 @@ if (!preg_match("/^\w+$/",$dataset))
 check_file($labelfile);
 check_file($clabelfile);
 check_file($param_file);
+check_file($descr_file);
+check_file($expression_file);
+check_file($metadata_json_file);
+
+if ($mode == "CHK")
+{
+	print "FILES OK\n";
+	exit(0);
+}
 
 $annodir = "$dataset_dir/stringdb";
 if (!is_dir($annodir))
@@ -61,17 +125,18 @@ $gene_map_outfile = "$dataset_dir/gene.map";  # Name mapping file for genes
 												# Written to disk so it can be edited and
 												# loaded separately if need be
 
-# Set these to continue an interrupted load
-$DSID = 0;
-$GLID = 0;
-$CRID = 0;
-
-check_file($expression_file);
-if ($metadata_json_file != "")
+if ($mode == "")  # It's supposed to be a fresh install
 {
-	check_file($metadata_json_file);
+	$st = dbps("select id from clr where lbl=?");
+	$st->bind_param("s",$dataset);
+	$st->execute();
+	if ($st->fetch())
+	{
+		die("Project $dataset exists\n");
+	}
 }
 
+update_status($CRID,"GRAPH");
 #
 # First get the number of levels, and also check that we have both corex files for each
 #
@@ -176,10 +241,10 @@ if ($CRID == 0)
 	print "new CRID: $CRID\n";
 }
 
-# Load the parameters json file
 $json = file_get_contents($param_file);
-$st = dbps("update clr set param=? where id=$CRID");
-$st->bind_param("s",$json);
+$run_descr = file_get_contents($descr_file);
+$st = dbps("update clr set param=?,descr=? where id=$CRID");
+$st->bind_param("ss",$json,$run_descr);
 $st->execute();
 $st->close();
 
@@ -292,20 +357,24 @@ load_gene_mapping_table();
 #
 if ($metadata_json_file != "")
 {
+	update_status($CRID,"SURVIVAL");
 	print "Loading metadata\n";
-	run_cmd("php load_gdc_metadata.php $dataset $metadata_json_file",$retval);
-	run_cmd("php do_survival.php $dataset $rdatafile",$retval);
+	run_cmd("$php $script_dir/load_gdc_metadata.php $dataset $metadata_json_file",$retval);
+	run_cmd("$php $script_dir/do_survival.php $dataset $rdatafile",$retval);
 }
 #
 # Annotation via StringDB
 #
-run_cmd("php do_stringdb_annot.php $dataset $annodir",$retval);
+update_status($CRID,"ANNOT");
+run_cmd("$php $script_dir/do_stringdb_annot.php $dataset $annodir",$retval);
 
 # 
 # Now, expression. This is slow.
 #
 print("############ Begin load expression matrix ###############\n");
-run_cmd("php load_expr.php $dataset $expression_file",$retval);
+update_status($CRID,"EXPR");
+run_cmd("$php $script_dir/load_expr.php $dataset $expression_file",$retval);
+update_status($CRID,"READY");
 
 ##############################################################################################
 

@@ -214,5 +214,9 @@ function run_cmd($cmd, &$retval)
 	print "$cmd\n";
 	system($cmd,$retval);
 }
+function update_status($crid,$str)
+{
+	dbq("update clr set projstat='$str' where id=$crid");
+}
 ?>
 
