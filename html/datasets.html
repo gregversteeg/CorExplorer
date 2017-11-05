@@ -98,6 +98,7 @@ $st->close();
 echo <<<END
 </table>
 </form>
+<a href="/tc.php">Compare Total Correlations</a>
 </div>
 <script>
 function form_submit(crid)
@@ -117,6 +118,8 @@ if ($CRID != 0)
 	$descr = trim($data["descr"]);
 	$ref = trim($data["ref"]);
 	$param = trim($data["param"]);
+
+	$descr = preg_replace("/\n/","<p>",$descr);
 	
 	echo <<<END
 <table cellspacing=0 cellpadding=0>
