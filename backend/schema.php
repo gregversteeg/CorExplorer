@@ -174,7 +174,7 @@ $sql = "create table clr (
 	ref text,
 	projstat text,					# used during loading
 	dataurl text,					# origin url for the data - used during web load
-	load_dt timestamp  DEFAULT CURRENT_TIMESTAMP
+	load_dt datetime not null
 );";
 if (!table_exists("clr")) { schema_add($sql);}
 
@@ -191,6 +191,7 @@ $sql = "create table clst (
 	lvl smallint not null,   	# level, if hierarchical; level 0 always groups genes
 	coxp float default 1,		# significance of coxph survival fit for this group
 	survp float default 1,		# survival curve differential pvalue between risk strata 1-3
+	tc float default 0, 		# TC value
 	unique index(CRID,lvl,lbl)
 );";
 if (!table_exists("clst")) { schema_add($sql);}

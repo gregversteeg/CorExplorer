@@ -238,7 +238,7 @@ if ($GLID == 0)
 }
 if ($CRID == 0)
 {
-	dbq("insert into clr (lbl,meth,GLID,DSID) values('$dataset','$run_method','$GLID','$DSID')");
+	dbq("insert into clr (lbl,meth,GLID,DSID,load_dt) values('$dataset','$run_method','$GLID','$DSID',NOW())");
 	$CRID = dblastid("clr","ID");
 	print "new CRID: $CRID\n";
 }
@@ -712,7 +712,7 @@ function load_tc_values()
 	while ( ($line = fgets($fh)) )
 	{
 		$matches = array();
-		if (preg_match("/^Group[^\d]+(\d+)[^\d]+([\d\.]+)/",$line,$matches))
+		if (preg_match("/^Group[^\d]+(\d+)[^\d\-]+([\-\d\.]+)/",$line,$matches))
 		{
 			$cnum = $matches[1];
 			$tc = $matches[2];
