@@ -45,11 +45,15 @@ if ($mode == "WEB")
 	$retval = 0;
 	chdir($dataset_dir);
 	$zipfile = "$dataset.zip";
-	run_cmd("/usr/bin/wget -O $zipfile '$dataurl'");
+	run_cmd("/usr/bin/wget -O $zipfile '$dataurl'",$retval);
 	update_status($CRID,"UNZIP");
-	run_cmd("/usr/bin/unzip $zipfile ");
+	run_cmd("/usr/bin/unzip $zipfile ",$retval);
 	foreach (glob("*") as $dir)
 	{
+		if (preg_match("/__MACOSX/",$dir))
+		{
+			continue;
+		}
 		if (is_dir($dir))
 		{
 			$dataset_dir .= "/$dir";
@@ -238,9 +242,10 @@ if ($GLID == 0)
 }
 if ($CRID == 0)
 {
-	dbq("insert into clr (lbl,meth,GLID,DSID,load_dt) values('$dataset','$run_method','$GLID','$DSID',NOW())");
+	dbq("insert into clr (lbl,meth,GLID,DSID) values('$dataset','$run_method','$GLID','$DSID')");
 	$CRID = dblastid("clr","ID");
 	print "new CRID: $CRID\n";
+	dbq("update clr set load_dt=NOW() where id=$CRID");
 }
 
 $json = file_get_contents($param_file);
@@ -946,7 +951,6 @@ function load_gene_mapping_table()
 
 		$g2hugo[$gid] = $hugo;
 		$g2desc[$gid] = $desc;
-		$g2src[$gid] = $src;
 		$g2type[$gid] = $type;
 		$g2ensps[$gid] = $ensps;
 	}
