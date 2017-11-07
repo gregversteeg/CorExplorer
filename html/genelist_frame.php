@@ -77,18 +77,21 @@ if ($CID_sel != 0)
 
 	print "<h4>Factor $cname:</h4>\n";
 	print "<table rules=all border=true cellpadding=3>\n";
-	print "<tr><td><b>Gene</b></td><td><b>Weight</b></td><td><b>MI</b></td>".
-				"<td><b>HUGO</b></td><td><b>description</b></td></tr>\n";	
-	$st = dbps("select glist.lbl, glist.hugo, glist.descr, g2c.wt, g2c.mi ".
+	print "<tr><td><b>Gene</b></td><td><b>Weight/MI</b></td>".
+				"<td><b>HUGO</b></td><td><b>description</b></td><td><b>Gene Type</b></td></tr>\n";	
+	$st = dbps("select glist.lbl, glist.hugo, glist.descr, glist.gtype, g2c.wt, g2c.mi ".
 				"from glist join g2c on g2c.gid=glist.id ".
 				" where g2c.cid=?".
 				" order by $sortby ");
 	$st->bind_param("i",$CID_sel);
-	$st->bind_result($gene,$hugo,$descr,$wt,$mi);
+	$st->bind_result($gene,$hugo,$descr,$gtype,$wt,$mi);
 	$st->execute();
 	while ($st->fetch())
 	{
-		print "<tr><td>$gene</td><td>$wt</td><td>$mi</td><td>$hugo</td><td>$descr</td></tr>\n";	
+		$wt = .01*floor(100*$wt);
+		$mi = .01*floor(100*$mi);
+		$wtmi = "$wt/$mi";
+		print "<tr><td>$gene</td><td>$wtmi</td><td>$hugo</td><td>$descr</td><td>$gtype</td></tr>\n";	
 	}
 	$st->close();
 	print "</table>\n";

@@ -114,6 +114,7 @@ END;
 if ($CRID != 0)
 {
 	load_proj_data($data,$CRID);
+	$GLID = $data["GLID"];
 	$lbl = $data["lbl"];
 	$descr = trim($data["descr"]);
 	$ref = trim($data["ref"]);
@@ -144,6 +145,7 @@ END;
 END;
 	}
 	survival_graph($CRID);
+	gene_table($GLID);
 	if ($param != "")
 	{
 		echo <<<END
@@ -221,8 +223,14 @@ function survival_graph($CRID)
 	$varstr = "[\"Survival\"]";
 	
 	echo <<<END
-
+	<h4>Overall Survival</h4>
+	<table >
+		<tr>
+			<td width="655" height="455" valign="top" >
 		<canvas  id="canvasId" width="650" height="450" style="border:1px solid black;"></canvas>
+			</td>
+		</tr>
+	</table>
 	<script>
 	var data = {"y": {"vars": $varstr,
 					  "smps": $sampstr,
@@ -240,7 +248,33 @@ function survival_graph($CRID)
 END;
 
 }
+function gene_table($glid)
+{
+	echo <<<END
+<div >
+<h4>Gene Composition</h4>
+<table border="true" rules="all" cellpadding=3>
+	<tr><td><b>Gene Type</b></td><td><b>Count</b></td></tr>
+END;
 
+	
+	$s = dbps("select gtype,count(*) as cnt from glist where glid=$glid group by gtype order by cnt desc");
+	$s->bind_result($type,$count);
+	$s->execute();
+	while ($s->fetch())
+	{
+		echo <<<END
+	<tr><td>$type</td><td>$count</td></tr>
+END;
+
+	}
+	$s->close();
+	echo <<<END
+</table>
+</div>
+END;
+
+}
 
 ?>
 

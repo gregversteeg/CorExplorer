@@ -409,7 +409,9 @@ if (!table_exists("ppi")) { schema_add($sql);}
 # 	the table had to be expanded. For real hugo, src='hgnc'.
 # 	A better title might be "short_names" or (hopefully) "stable_names"
 #	as opposed to ENSG names which change by design with versions. 
+# 	These are collected from Gencode, StringDB, and (mainly and most recently) BioMart
 
+# OLD TABLE, REMOVE THIS
 $sql = "create table hugo_type (
 	ID int primary key auto_increment, 
 	lbl varchar(30) unique
@@ -418,9 +420,11 @@ if (!table_exists("hugo_type")) { schema_add($sql);}
 
 $sql = "create table hugo_lbl (
 	ID int primary key auto_increment,	 
-	htype int not null,		# ref hugo_type
+	htype int not null,		# ref hugo_type OLD, REMOVE THIS
+	gtype varchar(30), 		# gene type	
 	lbl varchar(30) unique,
-	src varchar(5),
+	src varchar(5),			# OLD, REMOVE THIS
+	gsrc varchar(30),
 	descr text 
 );";
 if (!table_exists("hugo_lbl")) { schema_add($sql);}
@@ -429,10 +433,11 @@ if (!table_exists("hugo_lbl")) { schema_add($sql);}
 
 ##########################################################################
 #
-#	Gene names mapped to HGNC names
-#	These come from two sources (so far):
+#	Gene names mapped to approximate HGNC names
+#	These come from three sources (so far):
 # 	1. HGNC complete file, which has some aliases and old versions
 #	2. Gencode files which map ENSG names to hugo
+#	3. Biomart mapping of ENSG to hugo
 #
 
 $sql = "create table map2hugo (

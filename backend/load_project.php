@@ -814,14 +814,17 @@ function build_gene_mapping_table()
 	$hugoID = array();
 	$hugo_desc = array();
 	$ID2hugo = array();
-	$res = dbq("select ID, lbl, descr from hugo_lbl");
+	$ID2type= array();
+	$res = dbq("select ID, lbl, descr,gtype from hugo_lbl");
 	while ($r = $res->fetch_assoc())
 	{
 		$lbl =	$r["lbl"];
 		$ID = 	$r["ID"];
 		$desc = $r["descr"];
+		$gtype = $r["gtype"];
 		$hugoID[strtolower($lbl)] = $ID;
 		$ID2hugo[$ID] = $lbl;   # keep this the original case so we don't get all lowers in the end
+		$ID2type[$ID] = $gtype;
 		$hugo_desc[$ID] = $desc;
 	}
 	$res = dbq("select HID, lbl from map2hugo");
@@ -870,7 +873,7 @@ function build_gene_mapping_table()
 
 	$fh = fopen($gene_map_outfile,"w");
 
-	fwrite($fh,"Gene\tHugo\tDescription\tENSP\n");
+	fwrite($fh,"Gene\tHugo\tDescription\ttype\tENSP\n");
 	foreach ($gene2ID as $gene_orig => $not_needed)
 	{
 		$desc = "";
@@ -885,6 +888,7 @@ function build_gene_mapping_table()
 			$HID = $hugoID[strtolower($gene)];
 			$desc = $hugo_desc[$HID];
 			$hugo = $ID2hugo[$HID];
+			$type = $ID2type[$HID];
 			if (strtolower($hugo) == strtolower($gene))
 			{
 				$gene = $hugo; # prefer to keep the same case
@@ -908,7 +912,7 @@ function build_gene_mapping_table()
 		{
 			print "Not mapped:$gene_orig\n";
 		}
-		fwrite($fh, "$gene_orig\t$hugo\t$desc\t$ensps\n");
+		fwrite($fh, "$gene_orig\t$hugo\t$desc\t$type\t$ensps\n");
 	}
 	fclose($fh);
 
@@ -923,6 +927,7 @@ function load_gene_mapping_table()
 	fgets($fh);   # header line
 	$g2hugo = array();
 	$g2desc = array();
+	$g2type = array();
 	$g2ensps = array();
 	while (($line = fgets($fh)) != false)
 	{
@@ -930,7 +935,8 @@ function load_gene_mapping_table()
 		$gene = $fields[0];
 		$hugo = $fields[1];
 		$desc = $fields[2];
-		$ensps = $fields[3];
+		$type = $fields[3];
+		$ensps = $fields[4];
 		
 		if (!isset($gene2ID[$gene]))
 		{
@@ -940,6 +946,8 @@ function load_gene_mapping_table()
 
 		$g2hugo[$gid] = $hugo;
 		$g2desc[$gid] = $desc;
+		$g2src[$gid] = $src;
+		$g2type[$gid] = $type;
 		$g2ensps[$gid] = $ensps;
 	}
 	fclose($fh);
@@ -953,14 +961,15 @@ function load_gene_mapping_table()
 	$gid = 0;
 	$desc = "";
 	$hugo = "";
-	$st = dbps("update glist set descr=?,hugo=? where ID=? ");
-	$st->bind_param("ssi",$desc,$hugo,$gid);	
+	$st = dbps("update glist set descr=?,hugo=?,gtype=? where ID=? ");
+	$st->bind_param("sssi",$desc,$hugo,$type,$gid);	
 	foreach ($g2hugo as $gid => $hugo)
 	{
 		$ensps = $g2ensps[$gid];
 		$desc = $g2desc[$gid];
+		$type = $g2type[$gid];
 
-		#print "$gid\t$hugo\t$ensps        \r";
+		#print "$gid\t$hugo\t$type\t$ensps        \r";
 
 		$st->execute();
 
