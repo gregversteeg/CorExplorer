@@ -45,9 +45,9 @@ if ($mode == "WEB")
 	$retval = 0;
 	chdir($dataset_dir);
 	$zipfile = "$dataset.zip";
-	run_cmd("/usr/bin/wget -O $zipfile '$dataurl'",$retval);
+	run_cmd("/usr/bin/wget -O $zipfile '$dataurl' > /dev/null 2>&1",$retval);
 	update_status($CRID,"UNZIP");
-	run_cmd("/usr/bin/unzip $zipfile ",$retval);
+	run_cmd("/usr/bin/unzip $zipfile  > /dev/null 2>&1",$retval);
 	foreach (glob("*") as $dir)
 	{
 		if (preg_match("/__MACOSX/",$dir))
@@ -245,8 +245,8 @@ if ($CRID == 0)
 	dbq("insert into clr (lbl,meth,GLID,DSID) values('$dataset','$run_method','$GLID','$DSID')");
 	$CRID = dblastid("clr","ID");
 	print "new CRID: $CRID\n";
-	dbq("update clr set load_dt=NOW() where id=$CRID");
 }
+dbq("update clr set load_dt=NOW() where id=$CRID"); # note date is not set by web uploader
 
 $json = file_get_contents($param_file);
 $run_descr = file_get_contents($descr_file);
