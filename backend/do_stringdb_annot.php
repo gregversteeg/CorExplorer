@@ -10,6 +10,10 @@ $annodir = $argv[2];
 
 $CRID = find_proj($projname);;
 
+if (!is_dir($annodir))
+{
+	mkdir($annodir);
+}
 run_cmd("rm $annodir/*",$retval);
 
 make_group_files();
@@ -36,19 +40,32 @@ function make_group_files()
 	foreach ($cids as $lbl => $cid)
 	{
 		$grpfile = "$annodir/group$lbl.txt";
+		print "$grpfile                            \n";
 		$names = array();
-		$res = dbq("select distinct term from g2e join g2c on g2c.GID=g2e.GID ".
-				" where g2c.CID=$cid and g2c.mi >= $minMI order by g2c.mi desc");
+		#
+		# Lists use hugo names because String doesn't process ENSG. 
+		# However, shrinkage2 used glist.lbl instead of glist.hugo
+		#
+		$res = dbq("select distinct hugo as name from glist join g2c on g2c.GID=glist.ID ".
+				" where g2c.CID=$cid and g2c.mi >= $minMI order by g2c.mi desc",1);
+		#$res = dbq("select distinct term from g2e join g2c on g2e.GID=g2c.GID ".
+		#		" where g2c.CID=$cid and g2c.mi >= $minMI order by g2c.mi desc",1);
+		$_names = array();
 		while ($r = $res->fetch_assoc())
 		{
-			$term = $r["term"];
-			$names[] = ensp_name($term);
+			$name = preg_replace("/\..*/","",$r["name"]); # String can't handle .N
+			$_names[$name] = 1;
+			#$_names[ensp_name($r["term"])] = 1;
 		}
+		$names = array_keys($_names); # ensures unique
 		if (count($names) > 0)
 		{
-			print "$grpfile                            \r";
 			$numFiles++;
 			file_put_contents($grpfile,implode("\n",$names)."\n");
+		}
+		else
+		{
+			print "Factor $lbl: empty group file!\n";
 		}
 	}
 	print "$numFiles created                                 \n";

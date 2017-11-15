@@ -10,7 +10,7 @@ groupdir = args[1];
 setwd(groupdir)
 
 pcutoff = .05
-LMAX = 400 # this is limitation of stringdb through R package
+LMAX = 40000 # this is limitation of stringdb through R package
 ngroups = 200;
 
 
@@ -31,6 +31,7 @@ for (i in 1:ngroups)
 	print(filename)
 	data <- read.table(filename, col.names=c("orig"), nrows=LMAX)
 	data_mapped <- stringdb$map(data,"orig",removeUnmappedRows=TRUE)
+	write.table(data_mapped,file=paste(i-1,".map.txt",sep=""))
 
 	# get ppi pvalues and cutoff for p > pcutoff
 	glens[i] = length(data_mapped$STRING_id)
