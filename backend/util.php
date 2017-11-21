@@ -218,5 +218,18 @@ function update_status($crid,$str)
 {
 	dbq("update clr set projstat='$str' where id=$crid");
 }
+function ensp_name($num)
+{
+	# return name of form ENSP00000323929
+	while (strlen($num) < 11)
+	{
+		$num = "0$num";
+	}	
+	return "ENSP$num";
+}
+function strip_gene_suffix(&$gene)
+{
+	$gene = preg_replace("/\..*/","",$gene);
+}
 ?>
 

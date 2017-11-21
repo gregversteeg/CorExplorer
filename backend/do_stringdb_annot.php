@@ -8,7 +8,10 @@ $minMI = .002;
 $projname = $argv[1];
 $annodir = $argv[2];
 
-$CRID = find_proj($projname);;
+$pdata = array();
+load_proj_data2($pdata,$projname);
+$CRID = $pdata["ID"];
+$GLID = $pdata["GLID"];
 
 if (!is_dir($annodir))
 {
@@ -22,6 +25,10 @@ print("Begin enrichment calls to StringDB\n");
 run_cmd("$Rscript_dir/stringdb_annos.R $annodir",$retval);
 
 load_enrich();
+load_ensp_maps();
+
+
+#########################################################################################
 
 function make_group_files()
 {
@@ -70,15 +77,9 @@ function make_group_files()
 	}
 	print "$numFiles created                                 \n";
 }
-function ensp_name($num)
-{
-	# return name of form ENSP00000323929
-	while (strlen($num) < 11)
-	{
-		$num = "0$num";
-	}	
-	return "ENSP$num";
-}
+
+#################################################################################
+
 function load_enrich()
 {
 	global $annodir,$CRID,$enrich_thresh;
@@ -233,6 +234,84 @@ function load_enrich()
 			}
 		}
 	}
+}
+
+#################################################################################
+
+function load_ensp_maps()
+{
+	global $annodir, $GLID;
+
+	print "Upload ENSP mapping...\n";
+
+	$hugo2term = array();
+	#
+	# Even though stringdb.map is called with takeFirst=TRUE, we get a few
+	# multi-maps due to separate calls for different factors...I guess that explains it.
+	# StringDB algorithm for mapping is not deterministic. 
+	# DB can handle one-to-multiple mappings. 
+	$doubles = array();
+
+	$files = glob("$annodir/*.map.txt");
+	foreach ($files as $file)
+	{
+		$fh = fopen($file,"r");
+		fgets($fh);
+		while (($line = fgets($fh)))
+		{
+			$fields = preg_split("/\s+/",trim($line));
+			if (count($fields) != 3)
+			{
+				print_r($fields);
+				die ("$file\nbad line\n$line");
+			}
+			$hugo = strtolower(preg_replace("/\"/","",$fields[1]));
+			$ensg = preg_replace("/\"/","",$fields[2]);
+			$eterm = preg_replace("/^.*\.ENSP0+/","",$ensg);
+			if (!isset($hugo2term[$hugo]))
+			{
+				$hugo2term[$hugo] = array();
+			}
+			$hugo2term[$hugo][$eterm] = 1;
+		}
+	}
+
+
+	# get the gene IDs for each hugo; note may not always be unique
+	$hugo_map = array();
+	$s = dbps("select id,hugo from glist where glist.glid=$GLID");
+	$s->bind_result($gid,$hugo);
+	$s->execute();
+	while ($s->fetch())
+	{
+		$hugo = strtolower($hugo);
+		strip_gene_suffix($hugo);
+		if (!isset($hugo_map[$hugo]))
+		{
+			$hugo_map[$hugo] = array();
+		}
+		$hugo_map[$hugo][] = $gid;
+	}
+	dbq("delete g2e.* from g2e, glist where g2e.gid=glist.id and glist.glid=$GLID");
+	foreach ($hugo2term as $hugo => $terms)
+	{
+		if (isset($hugo_map[$hugo]))
+		{
+			foreach ($hugo_map[$hugo] as $gid)
+			{
+				foreach ($terms as $term => $foo)
+				{
+					dbq("insert into g2e (gid,term)	values($gid,$term)");
+				}
+			}
+		}
+		else
+		{
+			print "Unknown $hugo!\n";
+		}
+	}
+
+
 }
 
 ?>

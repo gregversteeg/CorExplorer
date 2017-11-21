@@ -46,8 +46,13 @@ if ($mode == "WEB")
 	chdir($dataset_dir);
 	$zipfile = "$dataset.zip";
 	run_cmd("/usr/bin/wget -O $zipfile '$dataurl' > /dev/null 2>&1",$retval);
+	if (!is_file($zipfile))
+	{
+		die("Did not obtain zip file\n");
+	}
 	update_status($CRID,"UNZIP");
 	run_cmd("/usr/bin/unzip $zipfile  > /dev/null 2>&1",$retval);
+	run_cmd("chmod -R 777 *");
 	foreach (glob("*") as $dir)
 	{
 		if (preg_match("/__MACOSX/",$dir))
@@ -57,16 +62,14 @@ if ($mode == "WEB")
 		if (is_dir($dir))
 		{
 			$dataset_dir .= "/$dir";
-			#chdir($dataset_dir);
-			#$curdir = `pwd`;
-			#print "$curdir\n";
 		}
 	}
+	system("rm $zipfile");
 }
 else
 {
-	$dataset = "FOO"; 
-	$dataset_dir = "$data_root/$dataset";
+	$dataset = "shrink2_reload"; 
+	$dataset_dir = "$data_root/shrink2_reload/shrink2";
 }
 
 $expression_file = "$dataset_dir/reduced_data.csv";
@@ -76,9 +79,13 @@ $use_existing_gene_map = 0;  # Set to 1 if the gene.map file has been hand-edite
 $metadata_json_files = glob("$dataset_dir/metadata*.json");
 if (count($metadata_json_files) != 1)
 {
-	die("Can't identify metadata json file!\n");
+	#die("Can't identify metadata json file!\n");
+	$metadata_json_file = "";
 }
-$metadata_json_file = $metadata_json_files[0];
+else
+{
+	$metadata_json_file = $metadata_json_files[0];
+}
 
 ############################################################################
 #
@@ -125,11 +132,6 @@ $weights_dir = $corex_datadir;
 $wtfile_pfx = "$weights_dir/weights_layer";
 $mifile_pfx = "$weights_dir/mis_layer";
 $wtfile_sfx = ".csv";
-
-$gene_map_outfile = "$dataset_dir/gene.map";  # Name mapping file for genes 
-												# Created from stored mapping info.
-												# Written to disk so it can be edited and
-												# loaded separately if need be
 
 if ($mode == "")  # It's supposed to be a fresh install
 {
@@ -181,7 +183,7 @@ foreach ($garray as $gene)
 		print ("WARNING: Duplicate gene name: $gene\n");
 	}
 	$gene_seen[$gene] = 1;
-	if (preg_match('/[^\w\.]/',$gene))
+	if (preg_match('/[^\w\.\-]/',$gene))
 	{
 		die ("bad gene name:$gene\n");
 	}
@@ -342,23 +344,8 @@ dbq("delete lbls.* from lbls,clst where lbls.CID=clst.ID and clst.CRID=$CRID");
 load_corex_labels();
 load_tc_values();
 
-
-#
-# Now work on gene name mapping to Hugos, ENSP, GOs etc.
-# Hopefully the info already stored in the DB does the job. 
-# A file "gene.map" is written based on this info.
-# If it is not sufficient, hand-edit the file and set the flag at
-# the beginning of this script.
-#
-
-if ($use_existing_gene_map == 0)
-{
-	print "Build gene name mapping table\n";
-	build_gene_mapping_table();
-}
-
-# Now load the mapping info from the table
-load_gene_mapping_table();
+# Get the gene hugo names, descriptions, etc from biomart
+run_cmd("php $script_dir/biomart_map_genes.php $dataset $dataset_dir",$retval);
 
 #
 # If this is a GDC dataset, we can load the metadata and do survival
@@ -809,192 +796,5 @@ function load_corex_labels()
 
 
 }
-###################################################################
-function build_gene_mapping_table()
-{
-	global $gene2ID, $gene_map_outfile;
-
-	# First get the stored mappings
-
-	$hugoID = array();
-	$hugo_desc = array();
-	$ID2hugo = array();
-	$ID2type= array();
-	$res = dbq("select ID, lbl, descr,gtype from hugo_lbl");
-	while ($r = $res->fetch_assoc())
-	{
-		$lbl =	$r["lbl"];
-		$ID = 	$r["ID"];
-		$desc = $r["descr"];
-		$gtype = $r["gtype"];
-		$hugoID[strtolower($lbl)] = $ID;
-		$ID2hugo[$ID] = $lbl;   # keep this the original case so we don't get all lowers in the end
-		$ID2type[$ID] = $gtype;
-		$hugo_desc[$ID] = $desc;
-	}
-	$res = dbq("select HID, lbl from map2hugo");
-	while ($r = $res->fetch_assoc())
-	{
-		$hugoID[strtolower($r["lbl"])] = $r["HID"];
-	}
-
-	# ENSP-to-GO : we need this to map the genes to GO
-	$ensp2go = array();
-	$res = dbq("select eterm, gterm from esp2go");
-	while ($r = $res->fetch_assoc())
-	{
-		$gterm = $r["gterm"];
-		$eterm = $r["eterm"];
-		if (!isset($ensp2go[$eterm]))
-		{
-			$ensp2go[$eterm] = $gterm;
-		}
-		else
-		{
-			$ensp2go[$eterm] .= ",$gterm";
-		}
-	}
-	 
-	# Hugo-to-ENSP
-	$h2ensp = array();
-	$res = dbq("select HID, term from hugo2esp");
-	while ($r = $res->fetch_assoc())
-	{
-		$eterm = $r["term"];
-		$HID = $r["HID"];
-		if (!isset($h2ensp[$HID]))
-		{
-			$h2ensp[$HID] = $eterm;
-		}
-		else
-		{
-			$h2ensp[$HID] .= ",$eterm";
-		}
-	}
-
-	#
-	# Now print the table
-	#
-
-	$fh = fopen($gene_map_outfile,"w");
-
-	fwrite($fh,"Gene\tHugo\tDescription\ttype\tENSP\n");
-	foreach ($gene2ID as $gene_orig => $not_needed)
-	{
-		$desc = "";
-		$ensps = "";
-		$gos = "";
-		$hugo = "";
-
-		$gene = preg_replace("/\.\d+$/","",$gene_orig);
-
-		if (isset($hugoID[strtolower($gene)]))
-		{
-			$HID = $hugoID[strtolower($gene)];
-			$desc = $hugo_desc[$HID];
-			$hugo = $ID2hugo[$HID];
-			$type = $ID2type[$HID];
-			if (strtolower($hugo) == strtolower($gene))
-			{
-				$gene = $hugo; # prefer to keep the same case
-			}
-			if (isset($h2ensp[$HID]))
-			{
-				$ensps = $h2ensp[$HID];
-			}
-			$earr = explode(",",$ensps);
-			$garr = array();
-			foreach ($earr as $eterm)
-			{
-				if (isset($ensp2go[$eterm]))
-				{
-					$garr = array_merge($garr,explode(",",$ensp2go[$eterm]));	
-				}
-			}
-			$gos = implode(",",$garr);
-		}	
-		else
-		{
-			print "Not mapped:$gene_orig\n";
-		}
-		fwrite($fh, "$gene_orig\t$hugo\t$desc\t$type\t$ensps\n");
-	}
-	fclose($fh);
-
-}
-##################################################################
-
-function load_gene_mapping_table()
-{
-	global $CRID,$gene2ID, $gene_map_outfile;
-
-	$fh = fopen($gene_map_outfile,"r");
-	fgets($fh);   # header line
-	$g2hugo = array();
-	$g2desc = array();
-	$g2type = array();
-	$g2ensps = array();
-	while (($line = fgets($fh)) != false)
-	{
-		$fields = explode("\t",$line);
-		$gene = $fields[0];
-		$hugo = $fields[1];
-		$desc = $fields[2];
-		$type = $fields[3];
-		$ensps = $fields[4];
-		
-		if (!isset($gene2ID[$gene]))
-		{
-			die("unknown gene $gene\n");
-		}
-		$gid = $gene2ID[$gene];
-
-		$g2hugo[$gid] = $hugo;
-		$g2desc[$gid] = $desc;
-		$g2type[$gid] = $type;
-		$g2ensps[$gid] = $ensps;
-	}
-	fclose($fh);
-
-	foreach ($gene2ID as $lbl => $gid)
-	{
-		dbq("delete from g2e where gid=$gid");
-		dbq("delete from g2g where gid=$gid");
-	}
-
-	$gid = 0;
-	$desc = "";
-	$hugo = "";
-	$st = dbps("update glist set descr=?,hugo=?,gtype=? where ID=? ");
-	$st->bind_param("sssi",$desc,$hugo,$type,$gid);	
-	foreach ($g2hugo as $gid => $hugo)
-	{
-		$ensps = $g2ensps[$gid];
-		$desc = $g2desc[$gid];
-		$type = $g2type[$gid];
-
-		#print "$gid\t$hugo\t$type\t$ensps        \r";
-
-		$st->execute();
-
-		if (trim($ensps) == "")
-		{
-			continue;
-		}
-		$earr = explode(",",$ensps);
-		foreach ($earr as $eterm)
-		{
-			dbq("insert ignore into g2e (GID,term) values ($gid,$eterm)");
-			dbq("insert ignore into g2g (GID,term) ".
-					"(select $gid,gterm from esp2go where eterm=$eterm)");
-			dbq("insert ignore into gos (CRID,term,descr) ".
-				"(select $CRID,gterm,descr from esp2go ".
-				"join global_gos on global_gos.term=esp2go.gterm where esp2go.eterm=$eterm)");
-		}	
-	}
-
-}
-#########################################################################################
-
 ?>
 

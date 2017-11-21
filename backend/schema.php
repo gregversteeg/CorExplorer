@@ -37,9 +37,10 @@ $sql = "create table glist (
 	ID int primary key auto_increment,
 	GLID int not null, 			# gene list ID
 	lbl varchar(30) unique,		# the name as used in the dataset
-	hugo varchar(30),			# HGNC name of the gene, if can be determined
-	gtype varchar(30), 			# gene type, if we know
-	descr text,					# gene description, if available
+	hugo varchar(30),			# HGNC or other common name of the gene, if can be determined (BIOMART)
+	gtype varchar(30), 			# gene type (BIOMART)
+	gsrc varchar(30), 			# source of the gene name (e.g., HGNC) (BIOMART)
+	descr text,					# gene description (BIOMART)
 	eterm int default 0,		# ENSG number, if any. Redundant but convenient. 
 	index(lbl),
 	index(eterm),
