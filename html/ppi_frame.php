@@ -85,6 +85,30 @@ $('#popout_btn').click(function()
  	var win = window.open(window.location.href, '_blank');
   	win.focus();
 });
+$('#node_lbl_type').change(function() 
+{
+	newval= $('#node_lbl_type').val();
+ 	var all = cy.elements("node");
+   	for (i = 0; i < all.length; i++) 
+	{
+       	the_node = all[i];
+		the_node.removeClass('genelbl');
+		the_node.removeClass('hugolbl');
+		the_node.removeClass('ensplbl');
+		if (newval == 'hugo')
+		{
+			the_node.addClass('hugolbl');
+		}
+		else if (newval == 'gene')
+		{
+			the_node.addClass('genelbl');
+		}
+		else if (newval == 'ensp')
+		{
+			the_node.addClass('ensplbl');
+		}
+	}
+});
 </script>
 
 <?php
@@ -290,6 +314,24 @@ style:[
 		'title' : 'test'
       }
     },
+	{
+		selector: '.hugolbl',
+		style: {
+        	'label': 'data(hugo)'
+		}
+	},
+	{
+		selector: '.ensplbl',
+		style: {
+        	'label': 'data(ensp)'
+		}
+	},
+	{
+		selector: '.genelbl',
+		style: {
+        	'label': 'data(gene)'
+		}
+	},
     {
       selector: 'edge',
       style: {
