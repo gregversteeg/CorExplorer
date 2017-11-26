@@ -4,8 +4,16 @@ require_once("util.php");
 $CRID = getint("crid",0);
 ?>
 <head>
+<?php
+if ($CRID != 0)
+{
+	echo <<<END
+
 <link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
 <script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
+END;
+}
+?>
 <script>
 function toggle_params()
 {
@@ -18,6 +26,9 @@ function toggle_params()
 <?php
 if ($CRID == 0)
 {
+	#	
+	# No project was selected so we show the table
+	#
 	echo <<<END
 <h4>Datasets</h4>
 
@@ -73,7 +84,7 @@ while ($st->fetch())
 $st->close();
 
 
-$st = dbps("select id,glid,dsid,lbl,meth,date_format(load_dt,'%b %d %Y') from clr");
+$st = dbps("select id,glid,dsid,lbl,meth,date_format(load_dt,'%b %d %Y') from clr where hideme=0");
 $st->bind_result($crid,$glid,$dsid,$lbl,$meth,$date);
 $st->execute();
 while ($st->fetch())
@@ -82,7 +93,7 @@ while ($st->fetch())
 	$nsamp = $nsamps[$dsid];
 	$nsrv = $nsurv[$dsid];
 
-	$pctsrv = floor((100*$nsrv)/$nsamp);
+	#$pctsrv = floor((100*$nsrv)/$nsamp);
 
 	echo <<<END
 	<tr>
@@ -115,10 +126,12 @@ function form_submit(crid)
 </script>
 END;
 
-} ## end CRID != 0
-
-if ($CRID != 0)
+} ## end CRID == 0
+else
 {
+	#
+	# Show the data for a particular project
+	#
 	load_proj_data($data,$CRID);
 	$GLID = $data["GLID"];
 	$lbl = $data["lbl"];
@@ -151,6 +164,7 @@ END;
 END;
 	}
 	survival_graph($CRID);
+	factor_summary($CRID);
 	gene_table($GLID);
 	if ($param != "")
 	{
@@ -174,6 +188,58 @@ END;
 	}
 
 
+}
+function factor_summary($CRID)
+{
+	$s = dbps("select count(*) from clst where clst.crid=$CRID and survp <= 0.05");
+	$s->bind_result($numfacts);
+	$s->execute();
+	$s->fetch();
+	$s->close();
+	print "<h4>Survival-Associated Factors</h4>\n";
+	if ($numfacts == 0)
+	{
+		print "No factors with survival differential p-value &#60; 0.05<p>";
+		return;
+	}
+	print "$numfacts factors with survival differential p-value &#60; 0.05<p>";
+
+	# first get the best go for each factor
+	$cid2go = array();
+	$s = dbps("select clst2go.cid, min(clst2go.pval),gos.term,gos.descr from clst2go join clst on clst.id=clst2go.cid ".
+		" join gos on gos.term=clst2go.term where gos.crid=$CRID and clst.crid=$CRID group by clst2go.cid");
+	$s->bind_result($cid,$pval,$term,$descr);
+	$s->execute();
+	while ($s->fetch())
+	{
+		$cid2go[$cid] = array("pval" => $pval, "term" => $term, "desc" => $descr);
+	}
+	$s->close();
+	
+	# now get the top survival factors
+	print "<table cellpadding=3 rules=all border=true>\n";
+	print "<tr><td>Factor</td><td>Survival Diff</td><td>Top GO</td><td>GO pval</td><td>GO desc</td></tr>\n";
+	$st = dbps("select id,lbl,survp from clst where clst.crid=$CRID and survp <= 0.05 order by survp asc");
+	$st->bind_result($cid,$cnum,$survp);
+	$st->execute();
+	while ($st->fetch())
+	{
+		$goterm = "";
+		$gopval = "";
+		$godesc = "";
+		if (isset($cid2go[$cid]))
+		{
+			$goterm = go_name($cid2go[$cid]["term"]);
+			$gopval = sprintf("%1.0E",$cid2go[$cid]["pval"]);
+			$godesc = $cid2go[$cid]["desc"];
+		}
+		$survp = sprintf("%1.0E",$survp);
+		print "<tr><td>$cnum</td><td>$survp</td><td>$goterm</td><td>$gopval</td><td>$godesc</td></tr>\n";
+
+	}
+	$st->close();
+				
+	print "</table>\n";
 }
 function survival_graph($CRID)
 {
