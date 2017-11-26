@@ -175,6 +175,7 @@ $sql = "create table clr (
 	ref text,
 	projstat text,					# used during loading
 	dataurl text,					# origin url for the data - used during web load
+	hideme tinyint default 0,
 	load_dt datetime not null
 );";
 if (!table_exists("clr")) { schema_add($sql);}
