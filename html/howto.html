@@ -1,1 +1,48 @@
-<b>How-To</b>
+<div style="padding:20px;font-family:sans-serif; font-size:16px">
+    <!-- span style="color:red;font-weight:bold">Pages undergoing some tweaks - may be broken</span-->
+
+    <h1>How to navigate and understand results on this site</h1>
+
+    <h2>Quick start guide</h2>
+
+    <p>
+        To get a quick idea of the analysis here, click on <a href="http://corex.isi.edu/index.html?opt=dset">Datasets</a> and
+        then select a study, for instance "LUAD_default" (Lung Adenocarcinoma,
+        the data and abbreviations all come from the <a href="https://gdc.cancer.gov">Genomics Data Commons</a>).
+        The first screen summarizes some things about the dataset: the source of the data and some of the discovered
+        factors that are predictive of long-term survival, along with the annotations of these factors according to the
+        Gene Ontology (GO) database.
+    </p>
+
+    <p>
+        To look at the results in more depth, click "Explore this dataset" at the top of the page. This reveals
+        different frames for inspecting the results in detail. Start by looking at the "Survival" pane. For this example,
+        the "single factor" dropdown shows the factor that most predicts survival as factor 159. Clicking on it shows
+        the survival curves for different risk strata. To learn more about factor 159, we go to the "Heatmap" and choose
+        159 from the dropdown menu. We see a group of genes associated with factor 159 that are all highly correlated (or anti-correlated).
+        Next, we can switch Frame1 to "annotation" and again select factor 159. This shows the top annotations for
+        this group of genes along with their significance.
+    </p>
+
+    <h2>More things you can look at</h2>
+To be added: graph view, dataset comparisons, CorEx details, genelist, ppi, search
+
+
+    <h1>Technical notes</h1>
+
+    <p>
+        In the process of designing this analysis pipeline and applying it to many new datasets, we learned some
+        new lessons that did not appear in the original paper on ovarian cancer. First of all, the appearance of
+        zero counts in the data had a drastic deleterious effect on results. We screen out genes/columns that contain
+        zero counts. We also did this in the original study, but there were not as many genes with zero counts in that case.
+        Secondly, while the TCGA data (used in the published study) has in principle been migrated to GDC, we have noticed
+        significant deviations in the two datasets. For instance, some counts that were nonzero in TCGA were zeroes in the
+        GDC data. This appears to be related to differing gene definitions, please contact GDC if you would like to
+        understand the detailed differences in datasets.
+    </p>
+    <p>
+    Results on this site use the increasingly standard "upper quantile" normalization. The original study used standard
+        normalization. We did not see significant differences when comparing results.
+        The settings for running CorEx are otherwise identical to those used in the original study.
+    </p>
+</div>

@@ -1,1 +1,36 @@
-<b>Overview</b>
+<div style="padding:20px;font-family:sans-serif; font-size:16px">
+    <!-- span style="color:red;font-weight:bold">Pages undergoing some tweaks - may be broken</span-->
+
+    <h1>Overview and quick start guide</h1>
+
+    <p>
+        The goal of this website is to discover patterns in gene expression data that
+        can help in identifying new targets and treatments for different cancer types.
+        </p>
+    <p>
+        To get a quick idea of the analysis here, click on <a href="http://corex.isi.edu/index.html?opt=dset">Datasets</a> and
+        then select a study, for instance "LUAD_default" (Lung Adenocarcinoma,
+        the data and abbreviations all come from the <a href="https://gdc.cancer.gov">Genomics Data Commons</a>).
+        The first screen summarizes some things about the dataset: the source of the data and some of the discovered
+        factors that are predictive of long-term survival, along with the annotations of these factors according to the
+        Gene Ontology (GO) database.
+    </p>
+
+    <p>
+        To look at the results in more depth, click "Explore this dataset" at the top of the page. This reveals
+        different frames for inspecting the results in detail. Start by looking at the "Survival" pane. For this example,
+        the "single factor" dropdown shows the factor that most predicts survival as factor 159. Clicking on it shows
+        the survival curves for different risk strata. To learn more about factor 159, we go to the "Heatmap" and choose
+        159 from the dropdown menu. We see a group of genes associated with factor 159 that are all highly correlated (or anti-correlated).
+        Next, we can switch Frame1 to "annotation" and again select factor 159. This shows the top annotations for
+        this group of genes along with their significance.
+    </p>
+
+    <p>
+        For more information about what you can find on the site, click <a href="http://corex.isi.edu/index.html?opt=how">How To</a>.
+        Studies describing the methods are
+        in <a href="http://corex.isi.edu/index.html?opt=pub">Publications</a> and the code used to generate these results
+        is available in <a href="http://corex.isi.edu/index.html?opt=dl">Downloads</a>.
+    </p>
+
+</div>
