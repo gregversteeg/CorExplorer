@@ -163,7 +163,7 @@ END;
 <b>Reference:</b><br>$ref
 END;
 	}
-	survival_graph($CRID);
+#	survival_graph($CRID);
 	factor_summary($CRID);
 	gene_table($GLID);
 	if ($param != "")
@@ -191,7 +191,8 @@ END;
 }
 function factor_summary($CRID)
 {
-	$s = dbps("select count(*) from clst where clst.crid=$CRID and survp <= 0.05");
+	$survp_max = 0.01;
+	$s = dbps("select count(*) from clst where clst.crid=$CRID and survp <= $survp_max");
 	$s->bind_result($numfacts);
 	$s->execute();
 	$s->fetch();
@@ -199,10 +200,10 @@ function factor_summary($CRID)
 	print "<h4>Survival-Associated Factors</h4>\n";
 	if ($numfacts == 0)
 	{
-		print "No factors with survival differential p-value &#60; 0.05<p>";
+		print "No factors with survival differential p-value &#60; $survp_max<p>";
 		return;
 	}
-	print "$numfacts factors with survival differential p-value &#60; 0.05<p>";
+	print "$numfacts factors with survival differential p-value &#60; $survp_max<p>";
 
 	# first get the best go for each factor
 	$cid2go = array();
@@ -219,7 +220,7 @@ function factor_summary($CRID)
 	# now get the top survival factors
 	print "<table cellpadding=3 rules=all border=true>\n";
 	print "<tr><td>Factor</td><td>Survival Diff</td><td>Top GO</td><td>GO pval</td><td>GO desc</td></tr>\n";
-	$st = dbps("select id,lbl,survp from clst where clst.crid=$CRID and survp <= 0.05 order by survp asc");
+	$st = dbps("select id,lbl,survp from clst where clst.crid=$CRID and survp <= $survp_max order by survp asc");
 	$st->bind_result($cid,$cnum,$survp);
 	$st->execute();
 	while ($st->fetch())
@@ -234,7 +235,9 @@ function factor_summary($CRID)
 			$godesc = $cid2go[$cid]["desc"];
 		}
 		$survp = sprintf("%1.0E",$survp);
-		print "<tr><td>$cnum</td><td>$survp</td><td>$goterm</td><td>$gopval</td><td>$godesc</td></tr>\n";
+		$plink = "http://corex.isi.edu/explorer.html?crid=$CRID&cid=$cid";
+		print "<tr><td><a href='$plink'>$cnum</a></td><td>$survp</td>".
+			"<td>$goterm</td><td>$gopval</td><td>$godesc</td></tr>\n";
 
 	}
 	$st->close();
