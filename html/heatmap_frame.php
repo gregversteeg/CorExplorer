@@ -42,7 +42,7 @@ $Use_hugo = checkbox_val("use_hugo",1,1);
 		<td>Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>"> 
 		</td>
 		<td title="<?php print tip_text('hugo_names') ?>">HUGO names:
-			 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo,0) ?>>
+			 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo,1) ?>>
 		</td>
 		<td width=10>&nbsp;</td>
 		<td><input type="submit" value="Apply"></td>

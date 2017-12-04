@@ -16,7 +16,7 @@ $Min_corex_score = getnum("corex_score",0.05);
 $Max_genes = getint("ng",1000);
 $Multi_map = getval("mm",0);
 $Use_outside_links = getval("outside",0);
-$Node_lbl_type = getval("node_lbl_type","gene");
+$Node_lbl_type = getval("node_lbl_type","hugo");
 
 if ($CID != 0)
 {

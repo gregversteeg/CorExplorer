@@ -126,7 +126,7 @@ function form_submit(crid)
 </script>
 END;
 
-} ## end CRID == 0
+} ################################## end CRID == 0
 else
 {
 	#
@@ -219,7 +219,7 @@ function factor_summary($CRID)
 	
 	# now get the top survival factors
 	print "<table cellpadding=3 rules=all border=true>\n";
-	print "<tr><td>Factor</td><td>Survival Diff</td><td>Top GO</td><td>GO pval</td><td>GO desc</td></tr>\n";
+	print "<tr><td>Factor</td><td>Survival Diff Pval</td><td>Top GO</td><td>GO pval</td><td>GO desc</td></tr>\n";
 	$st = dbps("select id,lbl,survp from clst where clst.crid=$CRID and survp <= $survp_max order by survp asc");
 	$st->bind_result($cid,$cnum,$survp);
 	$st->execute();
