@@ -5,7 +5,7 @@ require_once("util.php");
 head_section("CorEx Portal");
 ?>
 
-<body>
+<body class="bodydiv">
 
 <?php
 $page_opts = array("","over","dset","search","how","dl","pub");
@@ -22,11 +22,11 @@ echo <<<END
 		style="background-color:#f5f5f5;border-left:1px solid #d5d5d5;border-right:1px solid #d5d5d5">
 	<tr>
 		<td align="left">
-	<table cellpadding=0 cellspacing=0 style="background-color:#f5f5f5" >
+	<table cellpadding=0 cellspacing=0 style="background-color:#f5f5f5;" >
 		<tr>
-			<td valign="middle" style="padding:0px 10px 0px 5px;cursor:pointer" 
+			<td valign="middle" style="padding:5px 10px 5px 5px;cursor:pointer;background-color:#e0e0e0;" 
 				onclick="location.href='/'">
-<span class="logotext" >Cor<span style='color:#cc6666'>Ex</span></span>
+<span class="logotext" >Cor<span style='color:#cc6666'>Explorer</span></span>
 			</td>
 END;
 
@@ -70,7 +70,7 @@ END;
 $bkgstyle = (isset($_GET["opt"]) ? "" : "background-image:url('splashfade2.png');background-size:cover");
 ?>
 
-<table cellspacing=0 cellpadding=0 style="margin:auto;height:80%">
+<table cellspacing=0 cellpadding=0 style="margin:auto;height:80%;width:950px">
 	<tr>
 		<td colspan=2>
 <?php headerbar() ?>
@@ -78,16 +78,29 @@ $bkgstyle = (isset($_GET["opt"]) ? "" : "background-image:url('splashfade2.png')
 	</tr>
 	<tr>
 		<td style="width:675px;height:100%;border:1px solid #d5d5d5;<?php echo $bkgstyle ?>" valign="top">
+<div style="background-color:rgba(255,255,255,0.5);width:100%;height:100%"</div>
 <?php load_content_html() ?>
 		</td>
 		<td style="width:275px;border-right:1px solid #d5d5d5;border-bottom:1px solid #d5d5d5" valign="top">
 <div class="side-header">
-	News
+	Quick Links
 </div>
 <div class="sidebar-inner">
 	<ul>
-	<li> News
-	<li> Dataset stats
+	<li> <a href="/explorer.html?crid=63">Ovarian (TCGA-OV)</a>
+	<li> <a href="/explorer.html?crid=78">Lung (TCGA-LUAD)</a>
+	<li> <a href="/explorer.html?crid=79">Melanoma (TCGA-SKCM)</a>
+	<li> <a href="/explorer.html?crid=80">Colon (TCGA-COAD)</a>
+	<li> <a href="/explorer.html?crid=1">Ovarian (BMC Paper)</a>
+	</ul>
+</div>
+<div class="side-header">
+	What's New
+</div>
+<div class="sidebar-inner">
+	<ul>
+	<li> Additions
+	<li> Papers
 	</ul>
 </div>
 		</td>
@@ -95,8 +108,6 @@ $bkgstyle = (isset($_GET["opt"]) ? "" : "background-image:url('splashfade2.png')
 	<tr>
 		<td colspan=2 align="center" valign="middle" height="50px" style="background-color:#f5f5f5;
 				border-left:1px solid #d5d5d5;border-right:1px solid #d5d5d5; border-bottom:1px solid #d5d5d5">
-This work supported by GRANTS A,B,C
-<br>
 We love feedback! <span id="fbem"></span>
 		</td>
 	</tr>

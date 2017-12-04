@@ -4,11 +4,8 @@ require_once("util.php");
 $CRID = getint("crid",crid_default());
 $CID = getint("cid",0);
 
+head_section("CorEx Browser");
 ?>
-<head>
-<title>CorEx</title>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-</head>
 <table width='100%' height='100%' cellpadding=0 cellspacing=0 
 		style="border-color:#0088cc;border-style:solid;border-width:1px 1px 2px 1px" >
 	<tr>
@@ -17,10 +14,23 @@ $CID = getint("cid",0);
 					border-color:#0088cc;border-style:solid;border-width:1px 1px 2px 1px" >
 				<tr>
 					<td align=left style="cursor:pointer" onclick="location.href='/'">
-							<h1>CorEx<span style='color:#cc6666'>plorer</span></h1>
+							<span class='logotext'>CorEx<span style='color:#cc6666'>plorer</span></span>
 					</td>
 					<td style="padding-left:20px" align=left>
+						<table cellspacing=0 cellpadding=0>
+							<tr>
+								<td align="left">
 						Dataset: <?php print run_sel("crid",$CRID) ?>
+								</td>
+							</tr>
+							<tr>
+								<td align="right">  
+						<a href="/index.html?opt=dset&crid=<?php echo $CRID; ?>" 
+							style="font-size:.9em" target="_blank">
+								dataset overview</a>
+								</td>
+							</tr>
+						</table>
 					</td>
 					<td style="padding-right:50px" align=right>
 						Frame1: <?php print frame_sel(1,1) ?> <b>&nbsp;&nbsp;</b>

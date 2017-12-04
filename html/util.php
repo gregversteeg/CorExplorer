@@ -149,7 +149,7 @@ function tip_text($tag)
 ###################################################
 function run_sel($name,$CRID,$def="")
 {
-	$st = dbps("select ID, lbl from clr order by ID asc");
+	$st = dbps("select ID, lbl from clr where hideme=0 order by lbl asc");
 	$st->bind_result($ID,$lbl);
 	$st->execute();
 	while ($st->fetch())

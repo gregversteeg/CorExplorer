@@ -914,11 +914,11 @@ function go_enrich_sel($name, $sel,&$go2clst)
 	$selected = ($Goterm == 0 ? " selected " : "");
 	$opts[] = "<option value='0' $selected>none</option>";
 	$terms_seen = array();
-	$st = $DB->prepare("select gos.term as term, gos.descr as descr,clst.id as cid ".
+	$st = dbps("select gos.term as term, gos.descr as descr,clst.id as cid ".
 				" from clst2go join gos on gos.term=clst2go.term ".
 				" join clst on clst.ID=clst2go.CID ".
 				" where clst.CRID=? and clst2go.pval <= ? ".
-				" and gos.CRID=? order by term asc, clst.ID asc ");
+				" and gos.CRID=? order by term asc, clst.ID asc ",1);
 	$st->bind_param("idi",$CRID,$go_enrich_pval,$CRID);
 	$st->bind_result($term,$descr,$cid);
 	$st->execute();
