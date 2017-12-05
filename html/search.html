@@ -12,6 +12,14 @@ To match just part
 <iframe id="geneFrame" src="gene_search.html"  style="border:none;width:100%;height:100px">
 </iframe>
 
+<h4>GO Search</h4>
+Search for GO-enriched factors. 
+Enter GO term or part of the GO description.
+<p>
+<iframe id="goFrame" src="go_search.html"  style="border:none;width:100%;height:100px">
+</iframe>
+
+
 <p>
 <h4>Sample Search</h4>
 <p>
@@ -30,6 +38,14 @@ function receiveMessage(event)
 	else if (msg == "GeneClear")
 	{
 		$("#geneFrame").height(100);
+	}
+	else if (msg == "GoSearch")
+	{
+		$("#goFrame").height(400);
+	}
+	else if (msg == "GoClear")
+	{
+		$("#goFrame").height(100);
 	}
 	else if (msg == "SampSearch")
 	{
