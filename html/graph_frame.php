@@ -685,6 +685,8 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		$gid2names[$GID] = $gene_name;
 		$gid2hugo[$GID] = $hugo_name;
 		$gid2desc[$GID] = $gene_desc;
+		$wt = sprintf("%.3f",$wt);
+		$mi = sprintf("%.3f",$mi);
 		$gene_node_data[$GID][] = array("cnum" => $cnum, "cid" => $CID, "wt" => $wt, "mi" => $mi);
 
 		$links[] = array("src" => "$GIDtag", "targ" => "$CIDtag", "wt" => $wt, "mi" => $mi);

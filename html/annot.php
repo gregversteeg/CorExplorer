@@ -1,6 +1,10 @@
 <?php
 require_once("util.php");
 
+#
+# Generates the graph comparing GO annotation levels
+#
+
 $selected_ids = array();
 
 $crid2name = array();
