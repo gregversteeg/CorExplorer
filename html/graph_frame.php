@@ -32,7 +32,7 @@ $kegg2clst = array();
         width: 95%;
         height: 95%;
         position: relative;
-		border:2px solid gray;
+		border:1px solid #d5d5d5;
     }
 	#foot {
         width: 80%;
@@ -989,7 +989,7 @@ function kegg_enrich_sel($name, $sel,&$kegg2clst)
 function get_clst_level($cid)
 {
 	global $DB;
-	$st = $DB->prepare("select lvl from clst where ID=$cid");
+	$st = $DB->prepare("select lvl from clst where ID=?");
 	$st->bind_param("i",$cid);
 	$st->bind_result($lvl);
 	$st->execute();

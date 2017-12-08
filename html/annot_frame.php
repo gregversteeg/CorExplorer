@@ -4,7 +4,7 @@ require_once("util.php");
 
 $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
-$type_sel = getval("type","");
+$type_sel = getval("type","both");
 
 
 
