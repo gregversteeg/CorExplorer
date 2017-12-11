@@ -4,9 +4,12 @@ require_once("util.php");
 $selected_ids = array();
 
 $Lbltype = getval("lbltype","hugo");
+$Use_shared = checkbox_val("shared",0);
 
 $crid1 = getint("crid1",0);
 $crid2 = getint("crid2",0);
+
+$shared_checked = ($Use_shared ? " checked='checked' " : "");
 
 ?>
 
@@ -45,6 +48,12 @@ if (count($selected_ids) != 0 && count($selected_ids) != 2)
 					</td>
 				</tr>
 				<tr>
+					<td> <input type="checkbox" name="shared" <?php echo $shared_checked ?>> 
+						Use only genes contained in both projects 
+						
+					</td>
+				</tr>
+				<tr>
 					<td> <input type="submit" value="submit"></td>
 				</tr>
 			</table>
@@ -57,7 +66,7 @@ if (count($selected_ids) != 0 && count($selected_ids) != 2)
 <?php
 function dump_results()
 {
-	global $selected_ids, $Lbltype, $crid1, $crid2;
+	global $selected_ids, $Lbltype, $crid1, $crid2,$Use_shared;
 	if ($crid1 == 0 || $crid2 == 0)
 	{
 		return;
@@ -144,11 +153,11 @@ function dump_results()
 	}	
 	#
 	# Now compute the RBO score for each pair
-	# Using only genes that are in both projects
+	# Using (if specified) only genes that are in both projects
 	#
 
 	#
-	# First we have to get the all-project gene lists
+	# If we're using shared genes, get the project gene lists
 	#
 	$pinfo1 = array(); $pinfo2 = array();
 	load_proj_data($pinfo1,$crid1);
@@ -157,24 +166,27 @@ function dump_results()
 	$glid2 = $pinfo2["GLID"];
 	$all_genes1 = array();
 	$all_genes2 = array();
-	$s = dbps("select lbl from glist where glid=$glid1");
-	$s->bind_result($lbl);
-	$s->execute();
-	while ($s->fetch())
+	if ($Use_shared)
 	{
-		$lbl = preg_replace("/\..*/","",$lbl);
-		$all_genes1[$lbl] = 1;
+		$s = dbps("select lbl from glist where glid=$glid1");
+		$s->bind_result($lbl);
+		$s->execute();
+		while ($s->fetch())
+		{
+			$lbl = preg_replace("/\..*/","",$lbl);
+			$all_genes1[$lbl] = 1;
+		}
+		$s->close();
+		$s = dbps("select lbl from glist where glid=$glid2");
+		$s->bind_result($lbl);
+		$s->execute();
+		while ($s->fetch())
+		{
+			$lbl = preg_replace("/\..*/","",$lbl);
+			$all_genes2[$lbl] = 1;
+		}
+		$s->close();
 	}
-	$s->close();
-	$s = dbps("select lbl from glist where glid=$glid2");
-	$s->bind_result($lbl);
-	$s->execute();
-	while ($s->fetch())
-	{
-		$lbl = preg_replace("/\..*/","",$lbl);
-		$all_genes2[$lbl] = 1;
-	}
-	$s->close();
 
 	$genes2 = array(); # store proj 2 factor gene lists as we get them
 	$results = array();
@@ -338,10 +350,11 @@ function get_genelist($cid,&$list,&$req_list)
 	$s->bind_param("i",$cid);
 	$s->bind_result($lbl);
 	$s->execute();
+	$use_all_genes = (count($req_list) == 0 ? 1 : 0);
 	while ($s->fetch())
 	{
 		$lbl = preg_replace("/\..*/","",$lbl);
-		if (isset($req_list[$lbl]))
+		if ($use_all_genes || isset($req_list[$lbl]))
 		{
 			$list[] = $lbl;
 		}
