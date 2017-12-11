@@ -16,6 +16,17 @@ $shared_checked = ($Use_shared ? " checked='checked' " : "");
 <head>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+<?php
+if ($crid1 != 0)
+{
+	# don't load if not needed
+	echo <<<END
+<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
+<link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
+END;
+}
+?>
 </head>
 
 <body>
@@ -190,12 +201,15 @@ function dump_results()
 
 	$genes2 = array(); # store proj 2 factor gene lists as we get them
 	$results = array();
+	$results2 = array();
+	$max_rbos1 = array();
 	foreach ($groups1 as $cid1)
 	{
 		$genes1 = array();
 		$results[$cid1] = array();
 		get_genelist($cid1,$genes1,$all_genes2);
 		$done = array();
+		$max_rbo = 0;
 		foreach ($cid2genes1[$cid1] as $lbl)
 		{
 			if (isset($genes2cid2[$lbl]))
@@ -213,16 +227,94 @@ function dump_results()
 						get_genelist($cid2,$genes2[$cid2],$all_genes1);
 					}
 					$rbo = sprintf("%.2f",rbo_score($genes1,$genes2[$cid2]));
+					if ($rbo > $max_rbo)
+					{
+						$max_rbo = $rbo;
+					}
 					$results[$cid1][$cid2]= $rbo;
+					$results2[$cid2][$cid1]= $rbo;
 				}
 			}
 		}
+		$max_rbos1[] = $max_rbo;
 	}
-	print "<table border=true rules=all cellpadding=3>\n";
+	$max_rbos2 = array();
+	$best_reverse_match = array();
+	foreach ($groups2 as $cid2)
+	{
+		$max_rbo = 0;
+		$best_cid1 = 0;
+		if (isset($results2[$cid2]))
+		{
+			foreach ($results2[$cid2] as $cid1 => $rbo)
+			{
+				if ($rbo > $max_rbo)
+				{
+					$max_rbo = $rbo;
+					$best_cid1 = $cid1;
+				}
+			}	
+		}
+		$max_rbos2[] = $max_rbo;
+		$best_reverse_match[$cid2] = $best_cid1;
+	}
+
 	$pname1 = $pinfo1["lbl"];
 	$pname2 = $pinfo2["lbl"];
+
+	#
+	# Set up the graph data
+	#
+	$vars = array("\"$pname1\"","\"$pname2\"");   # variables = selected runs
+	$varstr = "[".implode(",\n",$vars)."]";
+	# Some hoops in case number of groups differ
+	$samps = array();	
+	$nsamps = max(count($max_rbos1),count($max_rbos2));
+	for ($n = 0; $n <= $nsamps; $n++)
+	{
+		$samps[] = $n;
+	}
+	$sampstr = "[".implode(",\n",$samps)."]";
+	for ($i = count($max_rbos1); $i < $nsamps; $i++)
+	{
+		$max_rbos1[] = 0;
+	}
+	for ($i = count($max_rbos2); $i < $nsamps; $i++)
+	{
+		$max_rbos2[] = 0;
+	}
+	$datastrs = array();
+	arsort($max_rbos1);
+	arsort($max_rbos2);
+	$datastrs[] = "[".implode(",\n",$max_rbos1)."]";
+	$datastrs[] = "[".implode(",\n",$max_rbos2)."]";
+	$datastr = "[".implode(",\n",$datastrs)."]";
+echo <<<END
+    		<canvas  id="canvasId" width="800" height="500" ></canvas>
+<script>
+var data = {"y": {"vars": $varstr ,
+				  "smps": $sampstr ,
+				  "data": $datastr 
+				 }
+			};
+var conf = {"graphType": "Line",
+			"lineDecoration" : false,
+			"smpLabelInterval" : 40,
+			"smpTitle" : "Factor",
+			"graphOrientation" : "vertical"
+			};                 
+var cX = new CanvasXpress("canvasId", data, conf);
+</script>
+END;
+
+
+	#
+	# Print the table
+	#
+	print "<div style='position:absolute;top:600px;width:900px'>\n";
+	print "<table border=true rules=all cellpadding=3 >\n";
 	print "<tr><td colspan=2 align=center><b>$pname1</b></td><td colspan=4 align=center><b>$pname2</b></td></tr>\n";
-	print "<tr><td>Factor</td><td>Annotation</td><td>Best Match</td><td>RBO score</td><td>Annotation</td><td>Second Match</td><td>RBO score</td><td>Annotation</td></tr>\n";
+	print "<tr><td>Factor</td><td>Annotation</td><td>Best&nbsp;Match<sup>*</sup></td><td>RBO score</td><td>Annotation</td><td>Second Match</td><td>RBO score</td><td>Annotation</td></tr>\n";
 	foreach ($results as $cid => $arr)
 	{
 		arsort($arr);
@@ -230,11 +322,21 @@ function dump_results()
 		$cid1 = "";
 		$rbo1 = "";
 		$clink1 = "";
+		$revtext = "";
+		$revstyle = "";
 		if (count($arr) > 0)
 		{
 			$cid1 = $cids[0];
 			$rbo1 = $arr[$cid1];
 			$lbl1 = $cid2info[$cid1]["lbl"];
+			$best_reverse = $best_reverse_match[$cid1];
+			if ($best_reverse != $cid)
+			{
+				$br_lbl = $cid2info[$best_reverse]["lbl"];
+				$brscore = $results2[$cid1][$best_reverse];
+				$revtext = "&nbsp;($br_lbl:$brscore)";
+				$revstyle = "background-color:#f5f5f5;";
+			}
 			$clink1 = "<a href='/explorer.html?crid=$crid2&cid=$cid1' target='_blank'>$lbl1</a>";
 		}
 		$cid2 = "";
@@ -265,9 +367,11 @@ function dump_results()
 		{
 			$annot2 = $cid2info[$cid2]["desc"];	
 		}
-		print "<tr><td>$clink</td><td>$annot</td><td>$clink1</td><td>$rbo1</td><td>$annot1</td><td>$clink2</td><td>$rbo2</td><td>$annot2</td></tr>\n";
+		print "<tr ><td>$clink</td><td>$annot</td><td style='$revstyle'>$clink1$revtext</td><td>$rbo1</td><td>$annot1</td><td>$clink2</td><td>$rbo2</td><td>$annot2</td></tr>\n";
 	}
 	print "</table>\n";
+	print "<sup>*</sup> Reverse best match and score are also shown, if different, and the entry is shaded <p>";
+	print "</div>\n";
 }
 #
 # Computes RBO_EXT for uneven lists, eqn. (32) from paper
