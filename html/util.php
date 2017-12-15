@@ -1,5 +1,11 @@
 <?php
 require_once("db.php");
+session_start();
+
+$LOGGED_IN = 0;
+$USERNAME = "";
+$USERID = 0;
+$ADMIN = 0;
 
 function ensp_name($num)
 {
@@ -278,4 +284,92 @@ function load_proj_data(&$data,$crid)
 		die ("Can't find project $crid\n");
 	}
 }
+##########################################################
+#
+# Login - related things
+#
+############################################################
+
+function login_init()
+{
+	global $LOGGED_IN;
+	global $USERNAME;
+	global $USERID;
+	global $ADMIN;
+	
+	$LOGGED_IN = false;
+	$ADMIN = 0;
+
+	$msg = "";
+	if (isset($_POST["logout"]))
+	{
+		unset($_SESSION["username"]);
+		unset($_SESSION["hash"]);
+		$LOGGED_IN = false;
+	}
+	elseif (isset($_SESSION["username"]))
+	{
+		$username = $_SESSION["username"];
+		$hash = $_SESSION["hash"];
+		if (check_login($username,$hash,$USERID,$ADMIN))
+		{
+			$LOGGED_IN = true;
+			$USERNAME = $username;
+		}		
+		else
+		{
+			unset($_SESSION["username"]);
+			unset($_SESSION["hash"]);
+
+		}
+	}
+	elseif (isset($_POST["kibbles"]))
+	{
+		$username = $_POST["kibbles"];
+		$password = $_POST["bits"];
+		$hash = hash("sha256",$password);
+		
+		if (check_login($username,$hash,$USERID,$ADMIN))
+		{
+			$_SESSION["username"] = $username;
+			$USERNAME = $username;
+			$_SESSION["hash"] = $hash;
+			$LOGGED_IN = true;
+			$cur_link = "http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]"; # keep get, remove post
+			#header("Location:$cur_link");
+			#exit(0);
+		}
+		else
+		{
+			$msg = "Invalid username or password";
+		}
+		
+	}
+	return $msg;
+}
+function has_admin_access()
+{
+	global $ADMIN;
+	return ($ADMIN==1);
+}
+
+
+function check_login($username,$hash,&$uid,&$admin)
+{
+	$uid = 0;	
+	$admin = 0;
+	$s = dbps("select UID,uadmin from usrs where usr=? and passwd=?");
+	$s->bind_param("ss",$username,$hash);
+	$s->bind_result($uid,$admin);
+	$s->execute();
+	$s->fetch();
+	if ($uid != 0)
+	{
+		return true;
+	}
+	return false;
+}
+
+
+
 ?>

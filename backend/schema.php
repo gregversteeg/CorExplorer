@@ -518,6 +518,23 @@ $sql = "create table hugo2esp (
 );";
 if (!table_exists("hugo2esp")) { schema_add($sql);}
 
+######################################################################
+#
+# Users table
+#
+$sql = "create table usrs (
+	UID int primary key auto_increment,
+	usr int not null,
+	passwd varchar(100) not null,		# hashed password
+	descr tinytext,  					# what this user is - maybe never need this
+	uadmin boolean default 0,
+	adddate timestamp default current_timestamp
+);";
+if (!table_exists("usrs")) 
+{ 
+	schema_add($sql);}
+
+
 ##############################################################################
 
 function schema_add($sql)
