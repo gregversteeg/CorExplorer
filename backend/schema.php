@@ -175,7 +175,9 @@ $sql = "create table clr (
 	ref text,
 	projstat text,					# used during loading
 	dataurl text,					# origin url for the data - used during web load
-	hideme tinyint default 0,
+	hideme tinyint default 0, 		# if set, project not shown to anyone
+	publc tinyint default 0,		# if set, project readable to anyone - if not hidden
+	ownedby int not null,			# user who uploaded the project
 	load_dt datetime not null
 );";
 if (!table_exists("clr")) { schema_add($sql);}
@@ -524,7 +526,7 @@ if (!table_exists("hugo2esp")) { schema_add($sql);}
 #
 $sql = "create table usrs (
 	UID int primary key auto_increment,
-	usr int not null,
+	usr varchar(30) not null unique,
 	passwd varchar(100) not null,		# hashed password
 	descr tinytext,  					# what this user is - maybe never need this
 	uadmin boolean default 0,
@@ -532,9 +534,22 @@ $sql = "create table usrs (
 );";
 if (!table_exists("usrs")) 
 { 
-	schema_add($sql);}
+	schema_add($sql);
+}
 
-
+######################################################################
+#
+# Access table  users x projects
+#
+$sql = "create table access (
+	UID int not null,
+	CRID int not null,
+	wrt boolean default 1     # has write access
+);";
+if (!table_exists("access")) 
+{ 
+	schema_add($sql);
+}
 ##############################################################################
 
 function schema_add($sql)
