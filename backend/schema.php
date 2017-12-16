@@ -530,6 +530,7 @@ $sql = "create table usrs (
 	passwd varchar(100) not null,		# hashed password
 	descr tinytext,  					# what this user is - maybe never need this
 	uadmin boolean default 0,
+	addprj boolean default 1,			# user can load data
 	adddate timestamp default current_timestamp
 );";
 if (!table_exists("usrs")) 
