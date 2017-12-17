@@ -1,5 +1,5 @@
 <?php
-$DB = mysqli_connect("localhost","root","corex","corex");
+$DB = mysqli_connect("localhost",getenv("DBUSER"),getenv("DBPASS"),"corex");
 
 if (mysqli_connect_errno())
 {
