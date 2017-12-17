@@ -6,6 +6,7 @@ $LOGGED_IN = 0;
 $USERNAME = "";
 $USERID = 0;
 $ADMIN = 0;
+$ACCESS = array();
 
 function ensp_name($num)
 {
@@ -155,13 +156,42 @@ function tip_text($tag)
 ###################################################
 function run_sel($name,$CRID,$def="")
 {
+	global $ACCESS;
 	$st = dbps("select ID, lbl from clr where hideme=0 order by lbl asc");
 	$st->bind_result($ID,$lbl);
 	$st->execute();
 	while ($st->fetch())
 	{
-		$selected = ($ID == $CRID ? " selected " : "");
-		$opts[] = "<option value=$ID $selected>$lbl</option>";
+		if (read_access($ID))
+		{
+			$selected = ($ID == $CRID ? " selected " : "");
+			$opts[] = "<option value=$ID $selected>$lbl</option>";
+		}
+	}
+	$st->close();
+	$html = "<select name='$name' id='sel_$name'>\n";
+	if ($def != "")
+	{
+		$selected = ($CRID==0 ? " selected " : "");
+		$html .= "<option $selected value='0'>$def</option>\n";
+	}
+	$html .= implode("\n",$opts)."\n</select>\n";
+	return $html;
+}
+# Run selector for write access operations
+function run_write_sel($name,$CRID,$def="")
+{
+	global $ACCESS;
+	$st = dbps("select ID, lbl from clr where hideme=0 order by lbl asc");
+	$st->bind_result($ID,$lbl);
+	$st->execute();
+	while ($st->fetch())
+	{
+		if (write_access($ID))
+		{
+			$selected = ($ID == $CRID ? " selected " : "");
+			$opts[] = "<option value=$ID $selected>$lbl</option>";
+		}
 	}
 	$st->close();
 	$html = "<select name='$name' id='sel_$name'>\n";
@@ -296,9 +326,11 @@ function login_init()
 	global $USERNAME;
 	global $USERID;
 	global $ADMIN;
+	global $ACCESS;
 	
 	$LOGGED_IN = false;
 	$ADMIN = 0;
+	$ACCESS = array();
 
 	$msg = "";
 	if (isset($_POST["logout"]))
@@ -311,7 +343,7 @@ function login_init()
 	{
 		$username = $_SESSION["username"];
 		$hash = $_SESSION["hash"];
-		if (check_login($username,$hash,$USERID,$ADMIN))
+		if (check_login($username,$hash,$USERID,$ADMIN,$ACCESS))
 		{
 			$LOGGED_IN = true;
 			$USERNAME = $username;
@@ -329,15 +361,15 @@ function login_init()
 		$password = $_POST["bits"];
 		$hash = hash("sha256",$password);
 		
-		if (check_login($username,$hash,$USERID,$ADMIN))
+		if (check_login($username,$hash,$USERID,$ADMIN,$ACCESS))
 		{
 			$_SESSION["username"] = $username;
 			$USERNAME = $username;
 			$_SESSION["hash"] = $hash;
 			$LOGGED_IN = true;
 			$cur_link = "http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]"; # keep get, remove post
-			#header("Location:$cur_link");
-			#exit(0);
+			header("Location:$cur_link");
+			exit(0);
 		}
 		else
 		{
@@ -354,7 +386,7 @@ function has_admin_access()
 }
 
 
-function check_login($username,$hash,&$uid,&$admin)
+function check_login($username,$hash,&$uid,&$admin,&$access)
 {
 	$uid = 0;	
 	$admin = 0;
@@ -363,13 +395,76 @@ function check_login($username,$hash,&$uid,&$admin)
 	$s->bind_result($uid,$admin);
 	$s->execute();
 	$s->fetch();
+	$s->close();
 	if ($uid != 0)
 	{
+		$s = dbps("select crid, wrt from access where uid=?");
+		$s->bind_param("i",$uid);
+		$s->bind_result($crid,$wrt);
+		$s->execute();
+		while ($s->fetch())
+		{
+			$access[$crid] = $wrt;
+		}
+		$s->close();
 		return true;
 	}
 	return false;
 }
 
+function read_access($crid)
+{
+	global $ACCESS;
+	if (has_admin_access())
+	{
+		return 1;
+	}
+	if (isset($ACCESS[$crid]))
+	{
+		return 1;
+	}
+	return 0;
+}
+function write_access($crid)
+{
+	global $ACCESS;
+	if (has_admin_access())
+	{
+		return 1;
+	}
+	if (isset($ACCESS[$crid]))
+	{
+		if ($ACCESS[$crid] == 1)
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+function require_login()
+{
+	global $LOGGED_IN;
+	if (!$LOGGED_IN)
+	{
+		die("Must be logged in!");
+	}
+}
+function can_load_data()
+{
+	global $USERID;
+	$s = dbps("select addprj from usrs where uid=?");
+	$s->bind_param("i",$USERID);
+	$s->bind_result($addprj);
+	$s->execute();
+	if ($s->fetch() == TRUE)
+	{
+		if ($addprj == 1)
+		{
+			return 1;
+		}
+	}	
+	return 0;
+}
 
 
 ?>

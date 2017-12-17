@@ -1,5 +1,9 @@
 <?php
-$DB = mysqli_connect("localhost",getenv("DBUSER"),getenv("DBPASS"),"corex");
+$DBUSER = (isset($_SERVER["DBUSER"]) ? $_SERVER["DBUSER"] : getenv("DBUSER"));
+$DBPASS = (isset($_SERVER["DBPASS"]) ? $_SERVER["DBPASS"] : getenv("DBPASS"));
+print "DBUSER=$DBUSER, DBPASS=$DBPASS\n";
+
+$DB = mysqli_connect("localhost",$DBUSER,$DBPASS,"corex");
 
 if (mysqli_connect_errno())
 {

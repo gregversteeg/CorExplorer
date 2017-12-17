@@ -1,6 +1,8 @@
 <?php
 
-$DB = mysqli_connect("localhost",$_SERVER["DBUSER"],$_SERVER["DBPASS"],"corex");
+$DBUSER = $_SERVER["DBUSER"];
+$DBPASS = $_SERVER["DBPASS"];
+$DB = mysqli_connect("localhost",$DBUSER,$DBPASS,"corex");
 
 if (mysqli_connect_errno())
 {

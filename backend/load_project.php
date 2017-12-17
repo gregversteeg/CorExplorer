@@ -52,7 +52,7 @@ if ($mode == "WEB")
 	}
 	update_status($CRID,"UNZIP");
 	run_cmd("/usr/bin/unzip $zipfile  > /dev/null 2>&1",$retval);
-	run_cmd("chmod -R 777 *");
+	run_cmd("chmod -R 777 *",$retval);
 	foreach (glob("*") as $dir)
 	{
 		if (preg_match("/__MACOSX/",$dir))
