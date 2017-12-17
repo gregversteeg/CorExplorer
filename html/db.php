@@ -1,5 +1,6 @@
 <?php
-$DB = mysqli_connect("localhost","root","corex","corex");
+
+$DB = mysqli_connect("localhost",$_SERVER["DBUSER"],$_SERVER["DBPASS"],"corex");
 
 if (mysqli_connect_errno())
 {
@@ -38,5 +39,19 @@ function table_exists($tbl)
 	return true;
 }
 
-
+function dba($sql)
+{
+	global $DB;
+	$res = $DB->query($sql);
+	if (!$res)
+	{
+		die ($DB->error);
+	}
+	return $res->fetch_assoc();
+}
+function dblastid($table, $id)
+{
+	$r = dba("select max($id) as lastid from $table");
+	return $r["lastid"];
+}
 ?>
