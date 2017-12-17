@@ -1,11 +1,14 @@
 <?php
-require_once("db.php");
 require_once("util.php");
 
 $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
 $type_sel = getval("type","both");
 
+if (!read_access($CRID))
+{
+	die("access denied");
+}
 
 
 ?>

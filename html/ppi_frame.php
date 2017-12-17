@@ -18,6 +18,11 @@ $Multi_map = getval("mm",0);
 $Use_outside_links = getval("outside",0);
 $Node_lbl_type = getval("node_lbl_type","hugo");
 
+if (!read_access($CRID))
+{
+	die("access denied");
+}
+
 if ($CID != 0)
 {
 #die("<b>cid=$CID, crid=$CRID</b>");

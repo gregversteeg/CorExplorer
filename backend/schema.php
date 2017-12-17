@@ -178,6 +178,7 @@ $sql = "create table clr (
 	hideme tinyint default 0, 		# if set, project not shown to anyone
 	publc tinyint default 0,		# if set, project readable to anyone - if not hidden
 	ownedby int not null,			# user who uploaded the project
+	projdir text, 					# disk location of project files and log file
 	load_dt datetime not null
 );";
 if (!table_exists("clr")) { schema_add($sql);}

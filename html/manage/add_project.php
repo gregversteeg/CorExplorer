@@ -50,14 +50,26 @@ $DSID = 0;
 $GLID = 0;
 $CRID = 0;
 
-$succeed_dsid = dbq("insert into dset (lbl,expr_type) values('$Projname','fpkm')" );
+$s = dbps("insert into dset (lbl,expr_type) values(?,'fpkm')" );
+$s->bind_param("s",$Projname);
+$succeed_dsid = $s->execute();
+$s->close();
+#$succeed_dsid = dbq("insert into dset (lbl,expr_type) values('$Projname','fpkm')" );
 $DSID = dblastid("dset","ID");
 
-$succeed_glid = dbq("insert into glists (descr) values('$Projname')");
+$s = dbps("insert into glists (descr) values(?)");
+$s->bind_param("s",$Projname);
+$succeed_glid = $s->execute();
+$s->close();
+#$succeed_glid = dbq("insert into glists (descr) values('$Projname')");
 $GLID = dblastid("glists","ID");
 
-$succeed_crid = dbq("insert into clr (lbl,meth,GLID,DSID,projstat,dataurl,ownedby) ".
-			" values('$Projname','corex','$GLID','$DSID','START','$Datalink',$USERID)");
+$s = dbps("insert into clr (lbl,meth,GLID,DSID,projstat,dataurl,ownedby,projdir) values(?,'corex',?,?,'START',?,?,?)");
+$s->bind_param("siisis",$Projname,$GLID,$DSID,$Datalink,$USERID,$dataset_dir);
+$succeed_crid = $s->execute();
+$s->close();
+#$succeed_crid = dbq("insert into clr (lbl,meth,GLID,DSID,projstat,dataurl,ownedby,projdir) ".
+#			" values('$Projname','corex','$GLID','$DSID','START','$Datalink',$USERID,'$dataset_dir')");
 $CRID = dblastid("clr","ID");
 
 if (!$succeed_crid || !$succeed_glid || !$succeed_dsid)

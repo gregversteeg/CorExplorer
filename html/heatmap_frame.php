@@ -1,5 +1,4 @@
 <?php
-require_once("db.php");
 require_once("util.php");
 
 $minWt = getnum("mw",0);
@@ -9,6 +8,10 @@ $numGenes = getint("ng",100);
 $maxZ = getval("maxz",2);
 $Use_hugo = checkbox_val("use_hugo",1,1);
 
+if (!read_access($CRID))
+{
+	die("access denied");
+}
 ?>
 
 <head>

@@ -1,5 +1,4 @@
 <?php
-require_once("db.php");
 require_once("util.php");
 
 $CRID = getint("crid",1);
@@ -9,6 +8,11 @@ $FT = getval("ft","");
 $CID2 = 0;
 $FromForm = getint("fromform",0); # tell us if it's initial page load or form submit
 $Pvalsort = checkbox_val("pvalsort",1,$FromForm);
+
+if (!read_access($CRID))
+{
+	die("access denied");
+}
 
 check_numeric($CRID);
 check_numeric($CID);

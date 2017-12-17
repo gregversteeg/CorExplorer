@@ -8,6 +8,8 @@ $USERID = 0;
 $ADMIN = 0;
 $ACCESS = array();
 
+$LOGIN_MSG = login_init();
+
 function ensp_name($num)
 {
 	# return name of form ENSP00000323929
@@ -332,6 +334,16 @@ function login_init()
 	$ADMIN = 0;
 	$ACCESS = array();
 
+	# Add public projects to readonly access
+	$s = dbps("select id from clr where publc=1");
+	$s->bind_result($crid);
+	$s->execute();
+	while ($s->fetch())
+	{
+		$ACCESS[$crid] = 0;
+	}
+	$s->close();
+
 	$msg = "";
 	if (isset($_POST["logout"]))
 	{
@@ -385,11 +397,16 @@ function has_admin_access()
 	return ($ADMIN==1);
 }
 
-
+#
+# This function checks login creds and also 
+# adds user specific access entries
+#
 function check_login($username,$hash,&$uid,&$admin,&$access)
 {
 	$uid = 0;	
 	$admin = 0;
+
+	# Check login creds and add rest of access projects
 	$s = dbps("select UID,uadmin from usrs where usr=? and passwd=?");
 	$s->bind_param("ss",$username,$hash);
 	$s->bind_result($uid,$admin);

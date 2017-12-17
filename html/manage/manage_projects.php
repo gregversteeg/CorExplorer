@@ -10,8 +10,7 @@ print <<<END
 END;
 
 check_exec_hide();
-print "User: $USERNAME<p>\n";
-print "<h4>CorExplorer Current Projects:</h4>\n";
+print "<h4>CorExplorer Current Projects for User=$USERNAME:</h4>\n";
 
 $gene_counts = array();
 $samp_counts = array();
@@ -49,12 +48,8 @@ while ($st->fetch())
 	}
 	$ngenes = (isset($gene_counts[$glid]) ? $gene_counts[$glid] : 0);
 	$nsamp = (isset($samp_counts[$dsid]) ? $samp_counts[$dsid] : 0);
-	$logpath = find_log($projname);
-	$loglink = "";
-	if ($logpath != "")
-	{
-		$loglink = "<a href='/manage/log.php?path=$logpath' target='_blank'>view log</a>";
-	}
+	$loglink = "<a href='/manage/log.php?crid=$crid' target='_blank'>view log</a>";
+	
 	$projlink = "<a href='/explorer.html?crid=$crid' target='_blank'>$projname</a>";
 	$checked = ($hidden==1 ? "checked='checked'" : "");
 	print "<tr><td>$projlink</td><td>$projstat</td><td>$ngenes</td><td>$nsamp</td><td>$loaddate</td>";

@@ -1,5 +1,4 @@
 <?php
-require_once("db.php");
 require_once("util.php");
 
 # convention: inital caps for the page parameters
@@ -14,6 +13,11 @@ $Goterm = getint("goterm",0);
 $Keggterm = getint("keggterm",0);
 $Bestinc = checkbox_val("bestinc",1,$FromForm);
 $Use_hugo = checkbox_val("use_hugo",1,$FromForm);
+
+if (!read_access($CRID))
+{
+	die("access denied");
+}
 
 $go_enrich_pval = 0.005;
 $kegg_enrich_pval = 0.005;

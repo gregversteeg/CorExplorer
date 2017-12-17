@@ -1,11 +1,14 @@
 <?php
-require_once("db.php");
 require_once("util.php");
 
 $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
-$sort = getval("sort","");
+$Sort = getval("sort","");
 
+if (!read_access($CRID))
+{
+	die("access denied");
+}
 ?>
 
 <head>
@@ -20,12 +23,7 @@ $sort = getval("sort","");
 		<td><b>Gene List:</b></td>
 		<td> Factor: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
 		<td>
-			Sort by: <select name='sort' id='sel_sort' autocomplete='off'>
-					<option value='name'>Gene name</option>
-					<option value='hugo'>HUGO name</option>
-					<option selected value='wt'>Weight</option>
-					<option value='mi'>MI</option>
-					</select>
+			Sort by: <?php sort_sel($Sort) ?>
 		</td>
 		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
@@ -36,7 +34,6 @@ $sort = getval("sort","");
 <script>
 $(document).ready(function() 
 {
-	$("#sel_sort").val('<?php echo $sort ?>');
 });
 $('#sel_cid').change(function() 
 {
@@ -62,15 +59,15 @@ if ($CID_sel != 0)
 	$st->execute(); $st->fetch(); $st->close();
 
 	$sortby = "g2c.wt desc";
-	if ($sort == "hugo")
+	if ($Sort == "hugo")
 	{
 		$sortby = "glist.hugo asc";
 	}
-	else if ($sort == "name")
+	else if ($Sort == "name")
 	{
 		$sortby = "glist.lbl asc";
 	}
-	else if ($sort == "mi")
+	else if ($Sort == "mi")
 	{
 		$sortby = "g2c.mi desc";
 	}
@@ -95,5 +92,22 @@ if ($CID_sel != 0)
 	}
 	$st->close();
 	print "</table>\n";
+}
+function sort_sel($sel)
+{
+	if ($sel == "")
+	{
+		$sel = "wt";
+	}
+	$opts = array("name" => "Gene name", "hugo" => "HUGO name", "wt" => "Weight", "mi" => "MI");
+	
+	print "<select name='sort' id='sel_sort' >\n";
+	foreach ($opts as $val => $lbl)
+	{
+		$selected = ($sel == $val ? " selected " : "");
+		print "<option $selected value='$val'>$lbl</option>\n";
+	}
+	print "</select>\n";
+
 }
 ?>
