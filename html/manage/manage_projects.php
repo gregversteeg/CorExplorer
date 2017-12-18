@@ -2,15 +2,33 @@
 require_once("../util.php");
 login_init();
 require_login();
-
-print <<<END
-<head>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-</head>
-END;
-
+head_section("Manage Projects");
+?>
+<body>
+<table cellspacing=0 cellpadding=0 width="100%">
+	<tr>
+		<td colspan=2 align=left>
+			<table width='100%'  cellpadding=0 cellspacing=0 
+					class="graybord" >
+				<tr>
+					<td width='100%' height='20' align=left colspan=2>
+						<table  cellpadding=0 cellspacing=0 width=100% class="graybord" style="background-color:#f5f5f5;">
+							<tr>
+								<td align=left style="cursor:pointer" onclick="location.href='/'">
+									<img src="/logo.png">
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=2 align=left  style="padding:20px">
+<?php 
 check_exec_hide();
-print "<h4>CorExplorer Current Projects for User=$USERNAME:</h4>\n";
+print "<h3>CorExplorer Current Projects for User:$USERNAME</h3>\n";
 
 $gene_counts = array();
 $samp_counts = array();
@@ -33,12 +51,14 @@ while ($st->fetch())
 }
 $st->close();
 
-$st = dbps("select id,lbl,projstat,dsid,glid,load_dt,hideme from clr");
-$st->bind_result($crid,$projname,$projstat,$dsid,$glid,$loaddate,$hidden);
+$st = dbps("select id,lbl,projstat,dsid,glid,load_dt,hideme,publc,usrs.usr from clr ".
+			" join usrs on usrs.uid=clr.ownedby");
+$st->bind_result($crid,$projname,$projstat,$dsid,$glid,$loaddate,$hidden,$public,$uname);
 $st->execute();
 
 print "<table border=1 rule=all cellpadding=3>\n";
-print "<tr><td>Project</td><td>Status</td><td># Genes</td><td># Samples</td><td>Date</td><td>Hidden</td><td>ID</td><td></td></tr>\n";
+print "<tr><td>Project</td><td>Status</td><td># Genes</td><td># Samples</td><td>Date</td>".
+		"<td>Hidden</td><td>Public</td><td>ID</td><td>Owner</td><td></td></tr>\n";
 
 while ($st->fetch())
 {
@@ -52,7 +72,9 @@ while ($st->fetch())
 	
 	$projlink = "<a href='/explorer.html?crid=$crid' target='_blank'>$projname</a>";
 	$checked = ($hidden==1 ? "checked='checked'" : "");
+	$pbchecked = ($public==1 ? "checked='checked'" : "");
 	print "<tr><td>$projlink</td><td>$projstat</td><td>$ngenes</td><td>$nsamp</td><td>$loaddate</td>";
+
 	# For toggling the hidden status we just use a hidden field rather than messing
 	# with the cumbersome states of checkboxes
 	if (write_access($crid))
@@ -65,7 +87,18 @@ while ($st->fetch())
 		print "<td><input disabled='true' type='checkbox' name='foo'  $checked style='padding:0px;margin:0px' ></td>";
 
 	}
-	print "<td>$crid</td><td>$loglink</td></tr>\n";
+	if (write_access($crid))
+	{
+		print "<td><form style='padding:0px;margin:0px' ><input type='hidden' name='pub$crid' value=''>".
+			"<input type='checkbox' name='foo' onchange='this.form.submit()' ".
+			"$pbchecked style='padding:0px;margin:0px' ></form></td>";
+	}
+	else
+	{
+		print "<td><input disabled='true' type='checkbox' name='foo'  $pbchecked style='padding:0px;margin:0px' ></td>";
+
+	}
+	print "<td>$crid</td><td>$uname</td><td>$loglink</td></tr>\n";
 }
 
 print "</table>\n";
@@ -153,6 +186,13 @@ $('#sel_crid').change(function()
 </script>
 END;
 
+?>
+		</td>
+	</tr>
+</table>
+
+<?php
+
 function find_log($pname)
 {
 	$logfile = "/lfs1/datasets/$pname/load.log";
@@ -190,6 +230,9 @@ END;
 	$s->close();
 	print "</script>\n";
 }
+#
+# Respond to hide and/or public checkbox changes
+#
 function check_exec_hide()
 {
 	global $_GET;
@@ -198,12 +241,18 @@ function check_exec_hide()
 	$s->bind_result($crid);
 	$s->execute();
 	$toggles = array();
+	$ptoggles = array();
 	while ($s->fetch())
 	{
 		$var = "hide$crid";
 		if (isset($_GET[$var]))
 		{
 			$toggles[] = $crid;
+		}
+		$var = "pub$crid";
+		if (isset($_GET[$var]))
+		{
+			$ptoggles[] = $crid;
 		}
 	}
 	$s->close();
@@ -212,6 +261,19 @@ function check_exec_hide()
 		if (write_access($crid))
 		{
 			$s = dbps("update clr set hideme=(1-hideme) where id=$crid");
+			$s->execute();
+			$s->close();
+		}
+		else
+		{
+			die("Attempt to alter $crid without access!");
+		}
+	}
+	foreach ($ptoggles as $crid)
+	{
+		if (write_access($crid))
+		{
+			$s = dbps("update clr set publc=(1-publc) where id=$crid");
 			$s->execute();
 			$s->close();
 		}
