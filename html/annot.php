@@ -140,6 +140,7 @@ var conf = {"graphType": "Line",
 			"lineDecoration" : false,
 			"smpLabelInterval" : 10,
 			"smpTitle" : "Annotation E-Value",
+			"smpLabelRotate" : 90,
 			"graphOrientation" : "vertical"
 			};                 
 var cX = new CanvasXpress("canvasId", data, conf);

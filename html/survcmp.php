@@ -124,6 +124,7 @@ var conf = {"graphType": "Line",
 			"lineDecoration" : false,
 			"smpLabelInterval" : 10,
 			"smpTitle" : "Factor",
+			"smpLabelRotate" : 90,
 			"graphOrientation" : "vertical"
 			};                 
 var cX = new CanvasXpress("canvasId", data, conf);

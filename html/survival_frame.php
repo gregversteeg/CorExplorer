@@ -123,6 +123,7 @@ var conf = {"graphType": "Line",
 			"lineDecoration" : false,
 			"smpLabelInterval" : 300,
 			"smpTitle" : "Months",
+			"smpLabelRotate" : 90,
 			"graphOrientation" : "vertical"
 			};                 
 var cX = new CanvasXpress("canvasId", data, conf);

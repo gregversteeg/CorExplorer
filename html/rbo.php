@@ -301,6 +301,7 @@ var conf = {"graphType": "Line",
 			"lineDecoration" : false,
 			"smpLabelInterval" : 40,
 			"smpTitle" : "Factor",
+			"smpLabelRotate" : 90,
 			"graphOrientation" : "vertical"
 			};                 
 var cX = new CanvasXpress("canvasId", data, conf);
@@ -311,7 +312,7 @@ END;
 	#
 	# Print the table
 	#
-	print "<div style='position:absolute;top:600px;width:900px'>\n";
+	print "<div style='position:absolute;top:650px;width:900px'>\n";
 	print "<table border=true rules=all cellpadding=3 >\n";
 	print "<tr><td colspan=2 align=center><b>$pname1</b></td><td colspan=4 align=center><b>$pname2</b></td></tr>\n";
 	print "<tr><td>Factor</td><td>Annotation</td><td>Best&nbsp;Match<sup>*</sup></td><td>RBO score</td><td>Annotation</td><td>Second Match</td><td>RBO score</td><td>Annotation</td></tr>\n";
