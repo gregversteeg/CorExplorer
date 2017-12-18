@@ -28,9 +28,9 @@ if ($mode == "WEB")
 	# Launched from web. 
 	# The project shell was created by the web page. 
 	$CRID = $argv[2];
-	print "CRID=$CRID\n";
+	#print "CRID=$CRID\n";
 	$pdata = array();
-	load_proj_data($pdata,$CRID);
+	#load_proj_data($pdata,$CRID);
 	print_r($pdata);
 	$GLID = $pdata["GLID"];
 	$DSID = $pdata["DSID"];

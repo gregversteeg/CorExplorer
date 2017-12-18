@@ -90,7 +90,7 @@ $s->close();
 $logfile = "$dataset_dir/load.log";
 $cmd = "/usr/bin/php $scriptdir/load_project.php WEB $CRID";
 $fullcmd = "DBUSER=$DBUSER DBPASS=$DBPASS $cmd  > $logfile 2>&1 &";
-error_log($fullcmd);
+#error_log($fullcmd);
 exec($fullcmd);
 
 header('Location: /manage/manage_projects.php');
