@@ -5,8 +5,11 @@ $Gene = getval("gene","");
 $CRID = getint("crid",0);
 $MinWt = getnum("mw",0.05);
 $MinMI = getnum("mi",0.05);
+$Search = getnum("search",0);
 
 if (!is_numeric($CRID)) {die("bad CRID\n");}
+check_read_access($CRID);
+
 ?>
 <head>
 <title>Gene Search</title>
@@ -14,6 +17,7 @@ if (!is_numeric($CRID)) {die("bad CRID\n");}
 </head>
 <body style="margin:0px">
 <form>
+<input type="hidden" name="search" value="1">
 <table>
 	<tr>
 		<td>
@@ -26,7 +30,7 @@ Gene:
 Dataset:
 		</td>
 		<td>
-<?php print run_sel("crid",$CRID,"all datasets") ?>
+<?php print run_sel("crid",$CRID,"All datasets") ?>
 		</td>
 		<td>
 <input type="submit" value="Search" 
@@ -63,9 +67,17 @@ $('#popout_btn').click(function()
 </script>
 
 <?php
-if ($Gene == "")
+if ($Search == 0)
 {
 	exit(0);
+}
+if ($Gene == "")
+{
+	$Gene = "*";
+}
+else if (!preg_match('/\*/',$Gene))
+{
+	$Gene = "*$Gene"."*";
 }
 # First get the GID's using both project and hugo names
 # This query might get slow since it can't use an index...deal with it then
@@ -78,12 +90,16 @@ $gquery = preg_replace('/\*/','%',$Gene);
 $st = $DB->prepare("select glist.lbl,glist.hugo,glist.id,clr.id,clr.lbl as cname ".
 	" from glist ".
 	" join clr on glist.glid=clr.glid ".
-	" where (glist.lbl like ? or glist.hugo like ?) $crid_where"); 
+	" where (glist.lbl like ? or glist.hugo like ?) and (clr.hideme = 0) $crid_where"); 
 $st->bind_param("ss",$gquery,$gquery);
 $st->execute();
 $st->bind_result($lbl,$hugo,$GID,$crid,$cname);
 while ($st->fetch())
 {
+	if (!read_access($crid))
+	{
+		continue;
+	}
 	$gid2name[$GID] = $lbl;
 	$gid2hugo[$GID] = $hugo;
 	$crid2name[$crid] = $cname; # filled redundantly - no matter
@@ -95,6 +111,12 @@ if (0 == count($gid2name))
 	print "No genes found!";
 	exit(0);
 }
+$maxResults = 50000;
+if ($CRID==0 && count($gid2name) > $maxResults)
+{
+	print "More than $maxResults genes found; please limit search query<p>";
+	exit(0);	
+}
 # Now get the factors for each GID
 # Unfortunately must repeat the previous query info to avoid
 # possibly hitting mysql limit for large IN block
@@ -103,7 +125,8 @@ $gidset = "(".implode(",",array_keys($gid2name)).")";
 $st = $DB->prepare("select g2c.gid, clst.lbl, clst.id, g2c.wt, g2c.mi,clst.crid ".
 			" from g2c join clst on g2c.cid=clst.id ".
 			" join glist on glist.id=g2c.gid ".
-			" where (glist.lbl like ? or glist.hugo like ?) $crid_where ".
+			" join clr on clr.id=clst.crid ".
+			" where (glist.lbl like ? or glist.hugo like ?) and (clr.hideme = 0) $crid_where ".
 			" and g2c.wt >= $MinWt and g2c.mi >= $MinMI ".
 			" order by g2c.gid asc, wt desc ");
 $st->bind_param("ss",$gquery,$gquery);
@@ -116,6 +139,10 @@ $prev_crid = 0;
 $toggle_state = TRUE; # controls the shading to help distinguish genes
 while ($st->fetch())
 {
+	if (!read_access($crid))
+	{
+		continue;
+	}
 	$gname = $gid2name[$GID];
 	$hugo = $gid2hugo[$GID];
 	$pname = $crid2name[$crid];
@@ -125,6 +152,8 @@ while ($st->fetch())
 		$toggle_state = !$toggle_state;
 	}
 	$style = ($toggle_state ? " style='background-color:e6ffff' " : "");
+	$wt = sprintf("%0.3f",$wt);
+	$mi = sprintf("%0.3f",$mi);
 
 	print <<<END
 	<tr $style><td>$gname</td><td>$hugo</td><td>$pname</td>

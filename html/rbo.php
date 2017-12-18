@@ -11,25 +11,22 @@ $crid2 = getint("crid2",0);
 
 $shared_checked = ($Use_shared ? " checked='checked' " : "");
 
-?>
-
-<head>
-
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-
-<?php
+$head_xtra = "";
 if ($crid1 != 0)
 {
+	check_read_access($crid1);
+	check_read_access($crid2);
 	# don't load if not needed
-	echo <<<END
+	$head_xtra = <<<END
 <script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
 <link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
 END;
 }
-?>
-</head>
 
-<body>
+head_section("RBO Compare", $head_xtra);
+body_start();
+?>
+
 
 <?php
 if (count($selected_ids) != 0 && count($selected_ids) != 2)
@@ -72,9 +69,12 @@ if (count($selected_ids) != 0 && count($selected_ids) != 2)
 		</td>
 	</tr>
 </table>
-</body>
 
 <?php
+body_end();
+
+####################################################################
+
 function dump_results()
 {
 	global $selected_ids, $Lbltype, $crid1, $crid2,$Use_shared;

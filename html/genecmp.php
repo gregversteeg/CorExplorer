@@ -3,35 +3,36 @@ require_once("util.php");
 
 $selected_ids = array();
 
-$Lbltype = $_GET["lbltype"];
+$Lbltype = getval("lbltype","hugo");
 if ($Lbltype != "lbl" )
 {
 	$Lbltype = "hugo";
 }
 
 $crid2name = array();
-$s = dbps("select id,lbl from clr");
+$s = dbps("select id,lbl from clr where hideme=0");
 $s->bind_result($crid,$pname);
 $s->execute();
 while ($s->fetch())
 {
-	$crid2name[$crid] = $pname;
 	if (checkbox_val("ID$crid",0))
 	{
 		$selected_ids[$crid] = 1;
+		check_read_access($crid);
 	}
+	if (!read_access($crid))
+	{
+		continue;
+	}
+	$crid2name[$crid] = $pname;
 }
 $s->close();
 
 
+head_section("Gene List Compare", $head_xtra);
+body_start();
 ?>
 
-<head>
-
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-</head>
-
-<body>
 
 <?php
 if (count($selected_ids) != 0 && count($selected_ids) != 2)
@@ -51,9 +52,13 @@ if (count($selected_ids) != 0 && count($selected_ids) != 2)
 		</td>
 	</tr>
 </table>
-</body>
 
 <?php
+body_end();
+
+
+#############################################################################
+
 function dump_results()
 {
 	global $selected_ids, $Lbltype;
@@ -72,7 +77,7 @@ function dump_results()
 	$pname2 = $pdata["lbl"];	
 	foreach ($ids as $crid)
 	{
-		$s = dbps("select glist.$Lbltype from glist join clr on glist.glid=clr.glid and clr.id=$crid",1);
+		$s = dbps("select glist.$Lbltype from glist join clr on glist.glid=clr.glid and clr.id=$crid");
 		$s->bind_result($name);
 		$s->execute();
 		while ($s->fetch())

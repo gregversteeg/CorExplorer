@@ -5,10 +5,12 @@ $Samp = getval("samp","");
 $CRID = getint("crid",crid_default()); 	
 $Fact = getval("fact","");  # empty, or comma-list of factor numbers
 $Lbl = getval("lbl","");	# empty, or comma-list of factor labels (numbers 0-2 usually)
+$Search = getnum("search",0);
 
 if (!is_numeric($CRID)) {die("bad CRID\n");}
 # We don't support a cross-project sample search right now. Maybe we could. 
 if ($CRID == 0) {die("CRID=0\n");}  
+check_read_access($CRID);
 ?>
 <head>
 <title>Sample Search</title>
@@ -16,6 +18,7 @@ if ($CRID == 0) {die("CRID=0\n");}
 </head>
 <body style="margin:0px">
 <form>
+<input type="hidden" name="search" value="1">
 <table>
 	<tr>
 		<td>
@@ -69,9 +72,17 @@ $('#popout_btn').click(function()
 </script>
 
 <?php
-if ($Samp == "")
+if ($Search == 0)
 {
 	exit(0);
+}
+if ($Samp == "")
+{
+	$Samp = "*";
+}
+else if (!preg_match('/\*/',$Samp))
+{
+	$Samp = "*$Samp"."*";
 }
 # First get the SID's 
 # This query might get slow since it can't use an index...deal with it then

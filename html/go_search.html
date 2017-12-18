@@ -7,6 +7,7 @@ $Pval = getnum("pval",1E-8);
 $Search = getnum("search",0);
 
 if (!is_numeric($CRID)) {die("bad CRID\n");}
+check_read_access($CRID);
 ?>
 <head>
 <title>GO Search</title>
@@ -97,6 +98,11 @@ else
 	}
 	$s->close();
 }
+if (count($terms) == 0)
+{
+	print "No results<p>\n";
+	exit(0);
+}
 
 # Now get the factors for these terms
 $crid_where = ($CRID==0 ? "" : " and clst.crid=$CRID ");
@@ -105,8 +111,8 @@ $s = dbps("select clst.id,clst.lbl,clst2go.pval,clr.id,clr.lbl,gos.descr,gos.ter
 				" clst join clst2go on clst2go.cid=clst.id ".
 				" join clr on clr.id=clst.crid ".
 				" join gos on gos.term=clst2go.term and gos.crid=clst.crid ".
-				" where clst2go.term in ($termlist) and clst2go.pval <= $Pval $crid_where ".
-				" order by clst.crid asc, clst2go.pval asc  ",1);
+				" where clst2go.term in ($termlist) and clst2go.pval <= $Pval and (clr.hideme = 0) $crid_where ".
+				" order by clst.crid asc, clst2go.pval asc  ");
 $s->bind_result($cid,$clbl,$pval,$crid,$pname,$godesc,$goterm);
 $s->execute();
 $count = 0;
@@ -114,6 +120,10 @@ print "<table rules=all border=true cellpadding=3>\n";
 print "<tr><td>GO</td><td>GO description</td><td>Dataset</td><td>Factor</td><td>P-value</td></tr>\n";
 while ($s->fetch())
 {
+	if (!read_access($crid))
+	{
+		continue;
+	}
 	$count++;
 	$pval = sprintf("%1.0E",$pval);
 	$goname = go_name($goterm);
@@ -121,36 +131,6 @@ while ($s->fetch())
 	print "<tr><td>$goname</td><td>$godesc</td><td>$pname</td><td>$clink</td><td>$pval</td></tr>\n";
 }
 $s->close();
-print "</table>\n";
-exit(0);
-print "<tr><td>Gene</td><td>Hugo</td><td>Dataset</td><td>Factor</td><td>Weight</td><td>MI</td></tr>\n";
-$prev_name = "";
-$prev_crid = 0;
-$toggle_state = TRUE; # controls the shading to help distinguish genes
-while ($st->fetch())
-{
-	$gname = $gid2name[$GID];
-	$hugo = $gid2hugo[$GID];
-	$pname = $crid2name[$crid];
-
-	if ($gname != $prev_name || $crid != $prev_crid)
-	{
-		$toggle_state = !$toggle_state;
-	}
-	$style = ($toggle_state ? " style='background-color:e6ffff' " : "");
-	$wt = sprintf("%0.3f",$wt);
-	$mi = sprintf("%0.3f",$mi);
-
-	print <<<END
-	<tr $style><td>$gname</td><td>$hugo</td><td>$pname</td>
-			<td><a href="/explorer.html?crid=$crid&cid=$cid" target="_blank">$clbl<a></td>
-			<td>$wt</td><td>$mi</td>
-	</tr>
-END;
-
-	$prev_name = $gname;
-	$prev_crid = $crid;
-}
 print "</table>\n";
 
 ?>

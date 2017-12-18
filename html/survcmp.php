@@ -6,16 +6,21 @@ $selected_ids = array();
 $max_pval = 0.1;
 
 $crid2name = array();
-$s = dbps("select id,lbl from clr");
+$s = dbps("select id,lbl from clr where hideme=0");
 $s->bind_result($crid,$pname);
 $s->execute();
 while ($s->fetch())
 {
-	$crid2name[$crid] = $pname;
 	if (checkbox_val("ID$crid",0))
 	{
 		$selected_ids[$crid] = 1;
+		check_read_access($crid);
 	}
+	if (!read_access($crid))
+	{
+		continue;
+	}
+	$crid2name[$crid] = $pname;
 }
 $s->close();
 
@@ -89,16 +94,15 @@ foreach ($selected_ids as $crid => $foo)
 }
 $datastr = "[".implode(",\n",$datastrs)."]";
 
+$head_xtra = <<<END
+<link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
+<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
+END;
+
+head_section("Survival Differential Compare", $head_xtra);
+body_start();
 ?>
 
-<head>
-<link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
-
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-</head>
-
-<body>
-<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
 <h3>Compare Survival Differential (E-value)</h3>
 <table>
 	<tr>
@@ -124,9 +128,11 @@ var conf = {"graphType": "Line",
 			};                 
 var cX = new CanvasXpress("canvasId", data, conf);
 </script>
-</body>
 
 <?php
+body_end();
+
+###########################################################################
 
 function dump_checkboxes()
 {

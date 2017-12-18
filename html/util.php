@@ -10,6 +10,18 @@ $ACCESS = array();
 
 $LOGIN_MSG = login_init();
 
+$head_xtra = "";
+
+# Check crid access here and in the future always use the lowercase parameter
+if (isset($_GET["CRID"]))
+{
+	check_read_access($_GET["CRID"]);
+}
+else if (isset($_GET["crid"]))
+{
+	check_read_access($_GET["crid"]);
+}
+
 function ensp_name($num)
 {
 	# return name of form ENSP00000323929
@@ -260,14 +272,15 @@ function clst_sel($name,$CID,$singlelvl=-1,$defstr="all")
 #
 ####################################################################
 
-function head_section($title)
+function head_section($title,$xtra="")
 {
 	echo <<<END
 <head>
 <title>$title</title>
 <meta http-equiv="content-type" content="text/html" charset="utf-8" />
-<link rel="stylesheet" type="text/css" href="corex.css"> 
+<link rel="stylesheet" type="text/css" href="/corex.css"> 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+$xtra
 </head>
 
 END;
@@ -278,15 +291,39 @@ function body_start()
 {
 	echo <<<END
 <body>
-<div class="outer">
+<table cellspacing=0 cellpadding=0 width="100%">
+	<tr>
+		<td colspan=2 align=left>
+			<table width='100%'  cellpadding=0 cellspacing=0 
+					class="graybord" >
+				<tr>
+					<td width='100%' height='20' align=left colspan=2>
+						<table  cellpadding=0 cellspacing=0 width=100% class="graybord" style="background-color:#f5f5f5;">
+							<tr>
+								<td align=left style="cursor:pointer" onclick="location.href='/'">
+									<img src="/logo.png">
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td colspan=2 align=left  style="padding:20px">
 END;
 }
 
-#$page_opts = array("","over","dset","search","how","dl","pub");
-#$page_lbls = array("","Overview","Datasets","Search","How-To","Download","Publications");
-#$page_pgs = array("welcome.html","overview.html","datasets.html","search.html", "howto.html",
-#				"download.html","publications.html");
-
+function body_end()
+{
+	echo <<<END
+		</td>
+	</tr>
+</table>
+</body>
+END;
+}
 
 
 ##################################################################
@@ -428,10 +465,27 @@ function check_login($username,$hash,&$uid,&$admin,&$access)
 	}
 	return false;
 }
-
+function check_read_access($crid)
+{
+	if (!read_access($crid))
+	{
+		die("No access");
+	}
+}
+function check_write_access($crid)
+{
+	if (!write_access($crid))
+	{
+		die("No access");
+	}
+}
 function read_access($crid)
 {
 	global $ACCESS;
+	if (!isset($crid) || $crid == 0)
+	{
+		return 1;
+	}
 	if (has_admin_access())
 	{
 		return 1;
