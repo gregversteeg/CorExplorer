@@ -30,8 +30,8 @@ if ($mode == "WEB")
 	$CRID = $argv[2];
 	#print "CRID=$CRID\n";
 	$pdata = array();
-	#load_proj_data($pdata,$CRID);
-	print_r($pdata);
+	load_proj_data($pdata,$CRID);
+	#print_r($pdata);
 	$GLID = $pdata["GLID"];
 	$DSID = $pdata["DSID"];
 	$dataset = $pdata["lbl"];
