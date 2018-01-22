@@ -109,7 +109,14 @@ $('#popout_btn').click(function()
 
 <?php if ($CID == 0) { exit(0); } ?>
 
-Survival differential p-value (risk stratum R3 vs. R1): <?php echo $this_survp ?>
+<?php 
+$survp_disp = sprintf("%1.2E",$this_survp);
+echo <<<END
+Survival differential p-value (risk stratum R3 vs. R1): $survp_disp
+<p>
+END;
+
+?>
 
 <script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
     <canvas  id="canvasId" width="800" height="540"></canvas>
@@ -205,7 +212,7 @@ function get_surv_data(&$varstr,&$sampstr,&$datastr)
 	{
 		if (isset($times[$t]))
 		{
-			$months = $t/30.0;
+			$months = floor($t/30.0);
 			$samps[] = "\"$months\"";
 		}
 	}
@@ -289,7 +296,7 @@ function get_pair_surv_data(&$varstr,&$sampstr,&$datastr)
 	{
 		if (isset($times[$t]))
 		{
-			$months = $t/30.0;
+			$months = floor($t/30.0);
 			$samps[] = "\"$months\"";
 		}
 	}
@@ -327,6 +334,7 @@ function clst_sel_surv($name,$CID,$CID2)
 	{
 		$selected = ($ID == $CID && $CID2 == 0 ? " selected " : "");
 		#$pval = floor(1000*$pval)/1000;
+		$pval = sprintf("%1.0E",$pval);
 		$opts[] = "<option value=$ID $selected>$lbl (p=$pval)</option>";
 	}
 	$st->close();
@@ -355,6 +363,7 @@ function clst_sel_pair($name,$CID,$CID2)
 		$selected = ($cid1==$CID && $cid2==$CID2 ? " selected " : "");
 		$opt_lbl = $lbl1."_".$lbl2;
 		$opt_val = $cid1."_".$cid2;
+		$pval = sprintf("%1.0E",$pval);
 		$opts[] = "<option value='$opt_val' $selected>$opt_lbl (p=$pval)</option>";
 	}
 	$st->close();
