@@ -17,6 +17,10 @@ if (!read_access($CRID))
 check_numeric($CRID);
 check_numeric($CID);
 
+$pdata = array();
+load_proj_data($pdata,$CRID);
+$numsamp = $pdata["NUMSAMP"];
+
 # Line graph: 3 variables == strata, samples = times of events
 $graph_vars = "";
 $graph_samps = "";
@@ -119,7 +123,19 @@ END;
 ?>
 
 <script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
-    <canvas  id="canvasId" width="800" height="540"></canvas>
+<table>
+	<tr>
+		<td>
+			<canvas  id="canvasId" width="800" height="540"></canvas>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			Patients at risk: <?php echo $numsamp ?>
+		</td>
+	</tr>
+</table>
+
 <script>
 var data = {"y": {"vars": <?php echo $graph_vars ?>,
 				  "smps":<?php echo $graph_samps ?>,
@@ -369,5 +385,7 @@ function clst_sel_pair($name,$CID,$CID2)
 	$st->close();
 	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
 }
+
+
 
 ?>

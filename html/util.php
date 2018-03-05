@@ -352,6 +352,21 @@ function load_proj_data(&$data,$crid)
 	{
 		die ("Can't find project $crid\n");
 	}
+	$numsamp = get_num_samps($data);
+	$data["NUMSAMP"] = $numsamp;
+}
+
+function get_num_samps(&$pdata)
+{
+	global $DB;
+	$numsamp = 0;
+	$st = $DB->prepare("select count(*) from samp where dsid=?");
+	$st->bind_param("i",$pdata["DSID"]);
+	$st->bind_result($numsamp);
+	$st->execute();
+	$st->fetch();
+	$st->close();
+	return $numsamp;
 }
 ##########################################################
 #
