@@ -12,8 +12,8 @@ if (!can_load_data())
 # 2. Create project dir and initialize project tables (mainly in order to be able to report status immediately)
 # 3. Call the load script which will download the zip and do the rest
 
-$datadir = "/lfs1/datasets";
-$scriptdir = "/lfs1/corex";
+$datadir = $_SERVER["COREXDATADIR"];
+$scriptdir = $_SERVER["COREXSCRIPTDIR"];
 
 $Projname = $_GET["projname"];
 $Datalink = $_GET["datalink"];

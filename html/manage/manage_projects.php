@@ -3,6 +3,7 @@ require_once("../util.php");
 login_init();
 require_login();
 head_section("Manage Projects");
+
 ?>
 <body>
 <table cellspacing=0 cellpadding=0 width="100%">
@@ -192,16 +193,6 @@ END;
 </table>
 
 <?php
-
-function find_log($pname)
-{
-	$logfile = "/lfs1/datasets/$pname/load.log";
-	if (is_file($logfile))
-	{
-		return $logfile;
-	}
-	return "";
-}
 
 ####################################################################
 

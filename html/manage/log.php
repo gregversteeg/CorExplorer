@@ -2,6 +2,8 @@
 require_once("../util.php");
 require_login();
 
+$DATADIR = $_SERVER["COREXDATADIR"];
+
 $crid = $_GET["crid"];
 if (!write_access($crid))
 {
@@ -9,10 +11,23 @@ if (!write_access($crid))
 }
 $pinfo = array();
 load_proj_data($pinfo,$crid);
-$path = $pinfo["projdir"]."/load.log";
+$pname = $pinfo["lbl"];
+#$path = $pinfo["projdir"]."/load.log";
+$path = find_log($pname);
 
 $txt = file_get_contents($path);
 print "<pre>$txt</pre>";
 
+
+function find_log($pname)
+{
+	global $DATADIR;
+	$logfile = "$DATADIR/$pname/load.log";
+	if (is_file($logfile))
+	{
+		return $logfile;
+	}
+	return "";
+}
 
 ?>
