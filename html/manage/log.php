@@ -14,6 +14,10 @@ load_proj_data($pinfo,$crid);
 $pname = $pinfo["lbl"];
 #$path = $pinfo["projdir"]."/load.log";
 $path = find_log($pname);
+if (!is_file($path))
+{
+	die("Can't find this log file");
+}
 
 $txt = file_get_contents($path);
 print "<pre>$txt</pre>";

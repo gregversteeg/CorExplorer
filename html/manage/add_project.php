@@ -12,8 +12,8 @@ if (!can_load_data())
 # 2. Create project dir and initialize project tables (mainly in order to be able to report status immediately)
 # 3. Call the load script which will download the zip and do the rest
 
-$datadir = $_SERVER["COREXDATADIR"];
-$scriptdir = $_SERVER["COREXSCRIPTDIR"];
+$DATADIR = $_SERVER["COREXDATADIR"];
+$SCRIPTDIR = $_SERVER["COREXSCRIPTDIR"];
 
 $Projname = $_GET["projname"];
 $Datalink = $_GET["datalink"];
@@ -88,8 +88,8 @@ $s->execute();
 $s->close();
 
 $logfile = "$dataset_dir/load.log";
-$cmd = "/usr/bin/php $scriptdir/load_project.php WEB $CRID";
-$fullcmd = "DBUSER=$DBUSER DBPASS=$DBPASS $cmd  > $logfile 2>&1 &";
+$cmd = "/usr/bin/php $SCRIPTDIR/load_project.php WEB $CRID";
+$fullcmd = "DBUSER=$DBUSER DBPASS=$DBPASS COREXDATADIR=$DATADIR COREXSCRIPTDIR=$SCRIPTDIR $cmd  > $logfile 2>&1 &";
 #error_log($fullcmd);
 exec($fullcmd);
 

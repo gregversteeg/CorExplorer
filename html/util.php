@@ -192,31 +192,6 @@ function run_sel($name,$CRID,$def="")
 	$html .= implode("\n",$opts)."\n</select>\n";
 	return $html;
 }
-# Run selector for write access operations
-function run_write_sel($name,$CRID,$def="")
-{
-	global $ACCESS;
-	$st = dbps("select ID, lbl from clr where hideme=0 order by lbl asc");
-	$st->bind_result($ID,$lbl);
-	$st->execute();
-	while ($st->fetch())
-	{
-		if (write_access($ID))
-		{
-			$selected = ($ID == $CRID ? " selected " : "");
-			$opts[] = "<option value=$ID $selected>$lbl</option>";
-		}
-	}
-	$st->close();
-	$html = "<select name='$name' id='sel_$name'>\n";
-	if ($def != "")
-	{
-		$selected = ($CRID==0 ? " selected " : "");
-		$html .= "<option $selected value='0'>$def</option>\n";
-	}
-	$html .= implode("\n",$opts)."\n</select>\n";
-	return $html;
-}
 function clst_sel($name,$CID,$singlelvl=-1,$defstr="all")
 {
 	global $CRID;
@@ -354,6 +329,20 @@ function load_proj_data(&$data,$crid)
 	}
 	$numsamp = get_num_samps($data);
 	$data["NUMSAMP"] = $numsamp;
+}
+function project_exists($crid)
+{
+	global $DB;
+	if (!is_numeric($crid))
+	{
+		die("sorry");
+	}
+	$res = $DB->query("select * from clr where id=$crid");
+	if (!($data = $res->fetch_assoc()))
+	{
+		return 0;
+	}
+	return 1;
 }
 
 function get_num_samps(&$pdata)
@@ -535,6 +524,9 @@ function require_login()
 		die("Must be logged in!");
 	}
 }
+#
+# Does the user have write permission to the database
+#
 function can_load_data()
 {
 	global $USERID;

@@ -138,13 +138,9 @@ Data link:
 </table>
 </form>
 END;
-}
-else
-{
-	print "You do not currently have permission to load new projects. <p>\n";
-}
 
-$runsel = run_write_sel("crid",0);
+$runsel = run_write_sel("crid","crid_edit",0);
+$runsel2 = run_write_sel("crid","crid_del",0);
 dump_projinfo_jscript();
 echo <<<END
 
@@ -172,6 +168,34 @@ echo <<<END
 	</tr>
 </table>
 </form>
+
+<!--
+<h4>Delete Project</h4>
+<form action="web_delete_proj.php">
+<table>
+	<tr>
+		<td>Project:</td>
+		<td>$runsel2</td>
+	</tr>	
+	<tr>
+		<td colspan=2 align="left">
+			<input type="submit" value="Delete" onclick="return confirm_delete();">
+		</td>
+	</tr>
+</table>
+</form>
+-->
+
+END;
+
+}
+else
+{
+	print "You do not currently have permission to load or modify projects. <p>\n";
+}
+
+echo <<<END
+
 <script>
 $(document).ready(function () {
 	crid = $('#sel_crid').val();
@@ -184,6 +208,15 @@ $('#sel_crid').change(function()
 	$('#edit_name').val(projinfo[crid]['lbl']);
 	$('#edit_descr').val(projinfo[crid]['descr']);
 });
+function confirm_delete()
+{
+	proj = $('#crid_del option:selected').html();	
+	if (!confirm("Delete project \'" + proj + "\': are you sure?"))
+	{
+		return false;
+	}
+	return true;
+}
 </script>
 END;
 
@@ -275,4 +308,31 @@ function check_exec_hide()
 	}
 }
 
+#
+# Run selector for write access operations
+#
+function run_write_sel($name,$id,$CRID,$def="")
+{
+	global $ACCESS;
+	$st = dbps("select ID, lbl from clr  order by lbl asc");
+	$st->bind_result($ID,$lbl);
+	$st->execute();
+	while ($st->fetch())
+	{
+		if (write_access($ID))
+		{
+			$selected = ($ID == $CRID ? " selected " : "");
+			$opts[] = "<option value=$ID $selected>$lbl</option>";
+		}
+	}
+	$st->close();
+	$html = "<select name='$name' id='$id'>\n";
+	if ($def != "")
+	{
+		$selected = ($CRID==0 ? " selected " : "");
+		$html .= "<option $selected value='0'>$def</option>\n";
+	}
+	$html .= implode("\n",$opts)."\n</select>\n";
+	return $html;
+}
 ?>

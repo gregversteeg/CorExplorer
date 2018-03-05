@@ -1,5 +1,7 @@
 <?php
 require_once("db.php");
+$DATADIR = (isset($_SERVER["COREXDATADIR"]) ? $_SERVER["COREXDATADIR"] : getenv("COREXDATADIR"));
+$SCRIPTDIR = (isset($_SERVER["COREXSCRIPTDIR"]) ? $_SERVER["COREXSCRIPTDIR"] : getenv("COREXSCRIPTDIR"));
 
 
 # NOTE THIS FUNCTION DOESN'T PROPERLY HANDLE CSV FILES WITH COMMAS IN THE DATA!!!!
@@ -185,28 +187,6 @@ function clear_expr_by_DS($DSID)
 		print "$nSamps      \r";
 		dbq("delete from expr where DSID=$DSID and SID=$SID");
 		$nSamps--;
-	}
-}
-function clear_expr($CRID)
-{
-	$info = array();
-	load_proj_data($info,$CRID);
-	$DSID = $info["DSID"];
-	$GLID = $info["GLID"];
-		
-	print "Clear expression table for CRID=$CRID\n";
-	$gids = array();
-	$res = dbq("select ID from glist where GLID=$GLID");
-	while ($r = $res->fetch_assoc())
-	{
-		$gids[] = $r["ID"];
-	}
-	$nGenes = count($gids);
-	foreach ($gids as $GID)
-	{
-		print "$nGenes      \r";
-		dbq("delete from expr where DSID=$DSID and GID=$GID");
-		$nGenes--;
 	}
 }
 function run_cmd($cmd, &$retval)
