@@ -57,7 +57,7 @@ if (!$fromweb)
 	yesno("Delete project $projname (CRID=$CRID)");
 }
 
-logstr("rm -Rf $projdir");
+logstr("delete $proj_data_dirname directory");
 system("rm -Rf $projdir");
 
 logstr("Deleting $projname tables");

@@ -169,7 +169,6 @@ echo <<<END
 </table>
 </form>
 
-<!--
 <h4>Delete Project</h4>
 <form action="web_delete_proj.php">
 <table>
@@ -184,7 +183,6 @@ echo <<<END
 	</tr>
 </table>
 </form>
--->
 
 END;
 
