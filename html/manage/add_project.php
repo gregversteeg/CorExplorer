@@ -32,7 +32,7 @@ if ($st->fetch())
 	die("Project $Projname exists\n");
 }
 
-$dataset_dir = "$datadir/$Projname";
+$dataset_dir = "$DATADIR/$Projname";
 if (is_dir($dataset_dir) || is_file($dataset_dir))
 {
 	die("Data directory $Projname already exists\n");
