@@ -7,12 +7,17 @@ $data_root = "/lfs1/datasets";
 $script_dir = "/lfs1/corex";
 $php = "/usr/bin/php";
 
+$metadata_tbl_name 	= "metadata.tsv";  # also will look for GDC file metadata*.json 
+$expr_file_name 	= "reduced_data.csv";
+$descr_file_name 	= "run_details.txt";
+$corex_datadir_name = "text_files";
+
 require_once("util.php");
 $time_start = time();
 
 $mode = (isset($argv[1]) ? $argv[1] : "");
 #
-# Modes:
+# Modes (note, modes other than WEB are legacy and have not been tried for a while)
 # <empty> : new install using the $dataset_dir and $dataset settings
 # CHK : just check files and exit
 # CONT : continue load of project that already exists
@@ -72,19 +77,28 @@ else
 	$dataset_dir = "$data_root/shrink2_reload/shrink2";
 }
 
-$expression_file = "$dataset_dir/reduced_data.csv";
-$descr_file = "$dataset_dir/run_details.txt";
-$use_existing_gene_map = 0;  # Set to 1 if the gene.map file has been hand-edited and
-							# should not be overwritten
-$metadata_json_files = glob("$dataset_dir/metadata*.json");
-if (count($metadata_json_files) != 1)
+$expression_file = "";
+$descr_file = "";
+$metadata_tbl_file = "";
+find_file($dataset_dir,$expr_file_name,$expression_file,0,1);
+find_file($dataset_dir,$descr_file_name,$descr_file,0,1);
+
+if (!find_file($dataset_dir,$metadata_tbl_name,$metadata_tbl_file,0,0))
 {
-	#die("Can't identify metadata json file!\n");
+	$metadata_json_files = glob("$dataset_dir/metadata*.json");
 	$metadata_json_file = "";
-}
-else
-{
-	$metadata_json_file = $metadata_json_files[0];
+	if (count($metadata_json_files) != 1)
+	{
+		#die("Can't identify metadata json file!\n");
+	}
+	else
+	{
+		$metadata_json_file = $metadata_json_files[0];
+	}
+	if ($metadata_json_file == "")
+	{
+		die ("Could not find metadata (either $metadata_tbl_name or json file)");
+	}
 }
 
 ############################################################################
@@ -94,7 +108,9 @@ else
 # In this case,  set the DSID,GLID,CRID below,
 # and carry on. 
 #
-$corex_datadir = "$dataset_dir/output/text_files";
+$corex_datadir = "";
+find_file($dataset_dir,$corex_datadir_name,$corex_datadir,1,1);
+
 $labelfile = "$corex_datadir/labels.txt";
 $grpfile = "$corex_datadir/groups.txt";
 $clabelfile = "$corex_datadir/cont_labels.txt";
@@ -112,7 +128,6 @@ check_file($clabelfile);
 check_file($param_file);
 check_file($descr_file);
 check_file($expression_file);
-check_file($metadata_json_file);
 
 if ($mode == "CHK")
 {
@@ -348,13 +363,20 @@ load_tc_values();
 run_cmd("php $script_dir/biomart_map_genes.php $dataset $dataset_dir",$retval);
 
 #
-# If this is a GDC dataset, we can load the metadata and do survival
+# Load survival metadata, if we have it
 #
 if ($metadata_json_file != "")
 {
 	update_status($CRID,"SURVIVAL");
-	print "Loading metadata\n";
+	print "Loading metadata from json\n";
 	run_cmd("$php $script_dir/load_gdc_metadata.php $dataset $metadata_json_file",$retval);
+	run_cmd("$php $script_dir/do_survival.php $dataset $rdatafile",$retval);
+}
+else if ($metadata_tbl_file != "")
+{
+	update_status($CRID,"SURVIVAL");
+	print "Loading metadata from tsv\n";
+	run_cmd("$php $script_dir/load_tsv_metadata.php $dataset $metadata_tbl_file",$retval);
 	run_cmd("$php $script_dir/do_survival.php $dataset $rdatafile",$retval);
 }
 #
@@ -795,6 +817,47 @@ function load_corex_labels()
 	}
 
 
+}
+# look for specified file or directory within directories under $topdir
+function find_file($topdir,$name,&$result_path,$is_dir,$die_if_absent)
+{
+	$dir_iterator = new RecursiveDirectoryIterator($topdir,
+			RecursiveDirectoryIterator::SKIP_DOTS
+			);
+	$iterator = new RecursiveIteratorIterator($dir_iterator,
+			RecursiveIteratorIterator::SELF_FIRST,
+			RecursiveIteratorIterator::CATCH_GET_CHILD
+			);
+
+	foreach ($iterator as $file_obj) 
+	{
+		$filename = $file_obj->getFilename();
+		if ($filename == $name)
+		{
+			if ($is_dir)
+			{
+				if ($file_obj->isDir())
+				{
+					$result_path = $file_obj->getPath()."/".$filename;
+					return 1;
+				}
+			}
+			else
+			{
+				if ($file_obj->isFile())
+				{
+					$result_path = $file_obj->getPath()."/".$filename;
+					return 1;
+				}
+			}
+		}
+
+	}
+	if ($die_if_absent)
+	{
+		$type = ($is_dir ? "directory" : "file");
+		die("Unable to find required $type : $name");
+	}
 }
 ?>
 

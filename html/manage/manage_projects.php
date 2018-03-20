@@ -106,10 +106,17 @@ print "</table>\n";
 
 $st->close();
 
+# Block new load if another load is under way. Currently they will interfere. 
+$load_inprog = load_in_progress();
+$disabledtag = ($load_inprog ? " disabled=true " : "");
+$blocktxt = ($load_inprog ? " <span style='color:red'>Another dataset currently loading, please check back later to load a project</span><br> " : "");
+
 if (can_load_data())
 {
 echo <<<END
 <h4>New project:</h4>
+$blocktxt 
+<span style='color:red'>Temporarily unavailable</span><br>
 <form action="add_project.php">
 <table cellpadding=3>
 	<tr>
@@ -132,7 +139,7 @@ Data link:
 	</tr>
 	<tr>
 		<td colspan=2 align=left>
-<input type="submit" value="Submit" >
+<input type="submit" value="Submit"  $disabledtag>
 		</td>
 	</tr>
 </table>
@@ -332,5 +339,17 @@ function run_write_sel($name,$id,$CRID,$def="")
 	}
 	$html .= implode("\n",$opts)."\n</select>\n";
 	return $html;
+}
+function load_in_progress()
+{
+	exec("ps -ef | grep  'load_project' | grep -v 'vi' | grep -v grep", $output);
+	if(empty($output))
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
 }
 ?>
