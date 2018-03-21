@@ -436,6 +436,13 @@ function login_init()
 	}
 	return $msg;
 }
+function strip_query_and_reload()
+{
+	# Pages which process their own form results need to do this after
+	# processing so that a later reload by the user doesn't re-submit form data
+	$reloadURL = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+	header("Location:$reloadURL");
+}
 function has_admin_access()
 {
 	global $ADMIN;
