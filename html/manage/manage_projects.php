@@ -118,7 +118,7 @@ if (can_load_data())
 echo <<<END
 <h4>New project:</h4>
 $blocktxt 
-<span style='color:red'>Temporarily unavailable</span><br>
+<!--span style='color:red'>Temporarily unavailable</span><br-->
 <form action="add_project.php">
 <table cellpadding=3>
 	<tr>
