@@ -32,7 +32,9 @@ $s->close();
 $genestr = implode("\n",array_keys($name2id))."\n";
 file_put_contents($genelist,$genestr);
 
-system("$rscript $projdir");
+$cmd = "$rscript $projdir";
+print "$cmd\n";
+system($cmd);
 
 if (!is_file($genetbl))
 {

@@ -416,8 +416,9 @@ $sql = "create table usrs (
 	usr varchar(30) not null unique,
 	passwd varchar(100) not null,		# hashed password
 	descr tinytext,  					# what this user is - maybe never need this
-	uadmin boolean default 0,
+	uadmin boolean default 0,			# use is an administrator
 	addprj boolean default 1,			# user can load data
+	disab boolean default 0,			# user has been disabled
 	adddate timestamp default current_timestamp
 );";
 if (!table_exists("usrs")) 

@@ -28,7 +28,9 @@ head_section("Manage Projects");
 	<tr>
 		<td colspan=2 align=left  style="padding:20px">
 <?php 
-check_exec_hide();
+
+check_exec_hide();  # if we got here from checking/unchecking one of the boxes in the table
+
 print "<h3>CorExplorer Current Projects for User:$USERNAME</h3>\n";
 
 $gene_counts = array();
@@ -58,7 +60,7 @@ $st->bind_result($crid,$projname,$projstat,$dsid,$glid,$loaddate,$hidden,$public
 $st->execute();
 
 print "<table border=1 rule=all cellpadding=3>\n";
-print "<tr><td>Project</td><td>Status</td><td># Genes</td><td># Samples</td><td>Date</td>".
+print "<tr style='font-weight:bold'><td>Project</td><td>Status</td><td># Genes</td><td># Samples</td><td>Date</td>".
 		"<td>Hidden</td><td>Public</td><td>ID</td><td>Owner</td><td></td></tr>\n";
 
 while ($st->fetch())

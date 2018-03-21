@@ -80,13 +80,13 @@ else
 $expression_file = "";
 $descr_file = "";
 $metadata_tbl_file = "";
+$metadata_json_file = "";
 find_file($dataset_dir,$expr_file_name,$expression_file,0,1);
 find_file($dataset_dir,$descr_file_name,$descr_file,0,1);
 
 if (!find_file($dataset_dir,$metadata_tbl_name,$metadata_tbl_file,0,0))
 {
 	$metadata_json_files = glob("$dataset_dir/metadata*.json");
-	$metadata_json_file = "";
 	if (count($metadata_json_files) != 1)
 	{
 		#die("Can't identify metadata json file!\n");
@@ -361,7 +361,6 @@ load_tc_values();
 
 # Get the gene hugo names, descriptions, etc from biomart
 run_cmd("php $script_dir/biomart_map_genes.php $dataset $dataset_dir",$retval);
-
 #
 # Load survival metadata, if we have it
 #

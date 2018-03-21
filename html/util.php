@@ -62,6 +62,10 @@ function getval($lbl,$default,$required=0)
 	{
 		return trim($_GET[$lbl]);
 	}
+	else if (isset($_PUT[$lbl]))
+	{
+		return trim($_PUT[$lbl]);
+	}
 	else if ($required == 1)
 	{
 		die ("Missing required parameter $lbl\n");
@@ -448,7 +452,7 @@ function check_login($username,$hash,&$uid,&$admin,&$access)
 	$admin = 0;
 
 	# Check login creds and add rest of access projects
-	$s = dbps("select UID,uadmin from usrs where usr=? and passwd=?");
+	$s = dbps("select UID,uadmin from usrs where usr=? and passwd=? and disab=0");
 	$s->bind_param("ss",$username,$hash);
 	$s->bind_result($uid,$admin);
 	$s->execute();
