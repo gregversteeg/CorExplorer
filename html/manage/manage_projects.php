@@ -13,10 +13,21 @@ head_section("Manage Projects");
 					class="graybord" >
 				<tr>
 					<td width='100%' height='20' align=left colspan=2>
-						<table  cellpadding=0 cellspacing=0 width=100% class="graybord" style="background-color:#f5f5f5;">
+						<table  cellpadding=0 cellspacing=0 width=100%  
+								class="graybord" style="background-color:#f5f5f5;">
 							<tr>
-								<td align=left style="cursor:pointer" onclick="location.href='/'">
+								<td align=left style="cursor:pointer;width:300px" onclick="location.href='/'">
 									<img src="/logo.png">
+								</td>
+								<td align=left style='padding-left:50px'>
+<?php
+if (has_admin_access())
+{
+	print "<a href='/manage/manage_users.php'>Manage Users</a>";
+}
+?>
+
+
 								</td>
 							</tr>
 						</table>
@@ -54,59 +65,86 @@ while ($st->fetch())
 }
 $st->close();
 
-$st = dbps("select id,lbl,projstat,dsid,glid,load_dt,hideme,publc,usrs.usr from clr ".
-			" join usrs on usrs.uid=clr.ownedby");
-$st->bind_result($crid,$projname,$projstat,$dsid,$glid,$loaddate,$hidden,$public,$uname);
-$st->execute();
-
-print "<table border=1 rule=all cellpadding=3>\n";
-print "<tr style='font-weight:bold'><td>Project</td><td>Status</td><td># Genes</td><td># Samples</td><td>Date</td>".
-		"<td>Hidden</td><td>Public</td><td>ID</td><td>Owner</td><td></td></tr>\n";
-
-while ($st->fetch())
+# get the number of projects, so we can show a msg if there aren't any
+$num_proj = 0;
+if (has_admin_access())
 {
-	if (!write_access($crid))
-	{
-		continue;
-	}
-	$ngenes = (isset($gene_counts[$glid]) ? $gene_counts[$glid] : 0);
-	$nsamp = (isset($samp_counts[$dsid]) ? $samp_counts[$dsid] : 0);
-	$loglink = "<a href='/manage/log.php?crid=$crid' target='_blank'>view log</a>";
-	
-	$projlink = "<a href='/explorer.html?crid=$crid' target='_blank'>$projname</a>";
-	$checked = ($hidden==1 ? "checked='checked'" : "");
-	$pbchecked = ($public==1 ? "checked='checked'" : "");
-	print "<tr><td>$projlink</td><td>$projstat</td><td>$ngenes</td><td>$nsamp</td><td>$loaddate</td>";
-
-	# For toggling the hidden status we just use a hidden field rather than messing
-	# with the cumbersome states of checkboxes
-	if (write_access($crid))
-	{
-		print "<td><form style='padding:0px;margin:0px' ><input type='hidden' name='hide$crid' value=''><input type='checkbox' name='foo' onchange='this.form.submit()' ".
-			"$checked style='padding:0px;margin:0px' ></form></td>";
-	}
-	else
-	{
-		print "<td><input disabled='true' type='checkbox' name='foo'  $checked style='padding:0px;margin:0px' ></td>";
-
-	}
-	if (write_access($crid))
-	{
-		print "<td><form style='padding:0px;margin:0px' ><input type='hidden' name='pub$crid' value=''>".
-			"<input type='checkbox' name='foo' onchange='this.form.submit()' ".
-			"$pbchecked style='padding:0px;margin:0px' ></form></td>";
-	}
-	else
-	{
-		print "<td><input disabled='true' type='checkbox' name='foo'  $pbchecked style='padding:0px;margin:0px' ></td>";
-
-	}
-	print "<td>$crid</td><td>$uname</td><td>$loglink</td></tr>\n";
+	$st = dbps("select count(*) from clr");
+	$st->bind_result($num_proj);
+	$st->execute();
+	$st->fetch();
+	$st->close();
+}
+else
+{
+	$st = dbps("select count(*) from clr where ownedby=?");
+	$st->bind_param("i",$USERID);
+	$st->bind_result($num_proj);
+	$st->execute();
+	$st->fetch();
+	$st->close();
 }
 
-print "</table>\n";
+if ($num_proj == 0)
+{
+	print "<hr>No projects loaded yet<hr>\n";
+}
+else
+{
+	$st = dbps("select id,lbl,projstat,dsid,glid,load_dt,hideme,publc,usrs.usr from clr ".
+				" join usrs on usrs.uid=clr.ownedby");
+	$st->bind_result($crid,$projname,$projstat,$dsid,$glid,$loaddate,$hidden,$public,$uname);
+	$st->execute();
 
-$st->close();
+	print "<table border=1 rule=all cellpadding=3>\n";
+	print "<tr style='font-weight:bold'><td>Project</td><td>Status</td><td># Genes</td><td># Samples</td><td>Date</td>".
+			"<td>Hidden</td><td>Public</td><td>ID</td><td>Owner</td><td></td></tr>\n";
+
+	while ($st->fetch())
+	{
+		if (!write_access($crid))
+		{
+			continue;
+		}
+		$ngenes = (isset($gene_counts[$glid]) ? $gene_counts[$glid] : 0);
+		$nsamp = (isset($samp_counts[$dsid]) ? $samp_counts[$dsid] : 0);
+		$loglink = "<a href='/manage/log.php?crid=$crid' target='_blank'>view log</a>";
+		
+		$projlink = "<a href='/explorer.html?crid=$crid' target='_blank'>$projname</a>";
+		$checked = ($hidden==1 ? "checked='checked'" : "");
+		$pbchecked = ($public==1 ? "checked='checked'" : "");
+		print "<tr><td>$projlink</td><td>$projstat</td><td>$ngenes</td><td>$nsamp</td><td>$loaddate</td>";
+
+		# For toggling the hidden status we just use a hidden field rather than messing
+		# with the cumbersome states of checkboxes
+		if (write_access($crid))
+		{
+			print "<td><form style='padding:0px;margin:0px' ><input type='hidden' name='hide$crid' value=''><input type='checkbox' name='foo' onchange='this.form.submit()' ".
+				"$checked style='padding:0px;margin:0px' ></form></td>";
+		}
+		else
+		{
+			print "<td><input disabled='true' type='checkbox' name='foo'  $checked style='padding:0px;margin:0px' ></td>";
+
+		}
+		if (write_access($crid))
+		{
+			print "<td><form style='padding:0px;margin:0px' ><input type='hidden' name='pub$crid' value=''>".
+				"<input type='checkbox' name='foo' onchange='this.form.submit()' ".
+				"$pbchecked style='padding:0px;margin:0px' ></form></td>";
+		}
+		else
+		{
+			print "<td><input disabled='true' type='checkbox' name='foo'  $pbchecked style='padding:0px;margin:0px' ></td>";
+
+		}
+		print "<td>$crid</td><td>$uname</td><td>$loglink</td></tr>\n";
+	}
+
+	print "</table>\n";
+
+	$st->close();
+}
 
 # Block new load if another load is under way. Currently they will interfere. 
 $load_inprog = load_in_progress();
@@ -287,6 +325,10 @@ function check_exec_hide()
 		}
 	}
 	$s->close();
+	if (count($toggles) == 0 && count($ptoggles) == 0)
+	{
+		return;
+	}
 	foreach ($toggles as $crid)
 	{
 		if (write_access($crid))
@@ -313,6 +355,7 @@ function check_exec_hide()
 			die("Attempt to alter $crid without access!");
 		}
 	}
+	strip_query_and_reload();		
 }
 
 #
