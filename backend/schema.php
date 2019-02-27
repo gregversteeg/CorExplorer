@@ -1,6 +1,5 @@
 <?php
 include_once("db.php");
-
 #
 # Handling of gene names:
 # Each distinct experiment will have its own list of gene names, indexed
@@ -64,6 +63,15 @@ $sql = "create table g2e (
 	unique index (GID,term)
 );";
 if (!table_exists("g2e")) { schema_add($sql);}
+
+$sql = "create table eprot (
+	term int not null unique,			
+	descr text
+);";
+if (!table_exists("eprot")) { schema_add($sql);}
+
+
+
 
 
 ##########################################################################
@@ -214,7 +222,8 @@ $sql = "create table g2c (
 	wt float not null,   		# link strength
 	mi float default 0, 		# mutual information, if corex
 	unique index (GID, CID),
-	index (CID)
+	index (CID),
+	index (CRID)
 );";
 if (!table_exists("g2c")) { schema_add($sql);}
 
