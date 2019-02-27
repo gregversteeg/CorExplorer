@@ -924,7 +924,7 @@ function go_enrich_sel($name, $sel,&$go2clst)
 				" from clst2go join gos on gos.term=clst2go.term ".
 				" join clst on clst.ID=clst2go.CID ".
 				" where clst.CRID=? and clst2go.pval <= ? ".
-				" and gos.CRID=? order by term asc, clst.ID asc ",1);
+				" and gos.CRID=? order by term asc, clst.ID asc ",0);
 	$st->bind_param("idi",$CRID,$go_enrich_pval,$CRID);
 	$st->bind_result($term,$descr,$cid);
 	$st->execute();
@@ -1032,14 +1032,19 @@ function gene_sel($name,$sel_GID,$minwt,&$gids_shown)
 
 	$g2c = array();
 	$gids = array();
-	$st = $DB->prepare("select glist.ID as GID,glist.lbl as gname, clst.ID as CID,clst.lbl as cnum ".
+	$st = $DB->prepare("select glist.ID as GID,glist.hugo as gname, glist.lbl as altname, 
+					clst.ID as CID,clst.lbl as cnum ".
 		"  from glist join g2c on g2c.GID=glist.ID ".
 		" join clst on clst.ID=g2c.CID where g2c.CRID=? and g2c.wt >= ? order by gname asc");
 	$st->bind_param("id",$CRID,$minwt);
-	$st->bind_result($GID,$gname,$CID,$cnum);
+	$st->bind_result($GID,$gname,$altname,$CID,$cnum);
 	$st->execute();
 	while ($st->fetch())
 	{
+		if ($gname == "") // in case we didn't locate a hugo name
+		{
+			$gname = $altname;
+		}
 		$g2c[$gname][] = $cnum;
 		$gids[$gname] = $GID;
 	}
