@@ -20,11 +20,10 @@ check_numeric($CID);
 $pdata = array();
 load_proj_data($pdata,$CRID);
 $numsamp = $pdata["NUMSAMP"];
+$DSID = $pdata["DSID"];
 
-# Line graph: 3 variables == strata, samples = times of events
-$graph_vars = "";
-$graph_samps = "";
-$graph_data = "";
+$graph_nodes = "";
+$max_day = 0;
 
 $this_survp = 0;
 
@@ -42,7 +41,7 @@ if ($CID_pair != "")
 	$st->fetch();
 	$st->close();
 
-	get_pair_surv_data($graph_vars,$graph_samps,$graph_data);
+	get_pair_surv_data($graph_nodes,$max_day);
 }
 else if ($CID != 0)
 {
@@ -53,12 +52,42 @@ else if ($CID != 0)
 	$st->fetch();
 	$st->close();
 
-	get_surv_data($graph_vars,$graph_samps,$graph_data);
+	get_surv_data($graph_nodes,$max_day);
 }
+if ($CID_pair != "" or $CID != 0)
+{
+	$tickstr = "";
+	$atriskstr = "";
+	get_tick_values($max_day,$tickstr,$atriskstr);
+}
+
 ?>
 
 <head>
-<link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
+<style>
+.hiddenline line{
+	stroke:white;
+}
+.hiddenline path{
+	stroke:white;
+}
+.svg-container {
+    display: inline-block;
+    position: relative;
+    width: 95%;
+    padding-bottom: 95%; /* aspect ratio */
+    vertical-align: top;
+    overflow: hidden;
+}
+.svg-content-responsive {
+    display: inline-block;
+    position: absolute;
+    top: 10px;
+    left: 0;
+}
+</style>
+
+<script src="https://d3js.org/d3.v5.min.js"></script>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 </head>
@@ -122,34 +151,121 @@ END;
 
 ?>
 
-<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
-<table>
-	<tr>
-		<td>
-			<canvas  id="canvasId" width="800" height="540"></canvas>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			Patients at risk: <?php echo $numsamp ?>
-		</td>
-	</tr>
-</table>
+<div  id="graph" ></div>
 
 <script>
-var data = {"y": {"vars": <?php echo $graph_vars ?>,
-				  "smps":<?php echo $graph_samps ?>,
-				  "data": <?php echo $graph_data ?>
-				 }
-			};
-var conf = {"graphType": "Line",
-			"lineDecoration" : false,
-			"smpLabelInterval" : 300,
-			"smpTitle" : "Months",
-			"smpLabelRotate" : 90,
-			"graphOrientation" : "vertical"
-			};                 
-var cX = new CanvasXpress("canvasId", data, conf);
+function link_clr(strat)
+{
+	if (strat == 1)
+	{
+		return "red";
+	}
+	if (strat == 2)
+	{
+		return "blue";
+	}
+	if (strat == 3)
+	{
+		return "green";
+	}
+	return "black";
+}
+var nodes2 = <?php echo $graph_nodes ?>  // array of {x=months, y=survival, s=stratum}
+var links = new Array();
+var prev_strat = nodes2[0].s;
+var max_months = 0;
+for (var i = 1; i < nodes2.length; i++)
+{
+	if (nodes2[i].s == prev_strat)
+	{
+		links.push({source:nodes2[i-1], target:nodes2[i], clr:link_clr(nodes2[i].s)});
+	}
+	if (nodes2[i].x > max_months)
+	{
+		max_months = nodes2[i].x;
+	}
+	prev_strat = nodes2[i].s;
+}
+/*
+// set up approximately 5 ticks, but each one a multiple of 10 months
+ticksize = max_months/5.0;
+ticksize = 10*Math.floor(ticksize/10);
+var ticks = new Array();
+for (t = ticksize; t <= max_months; t += ticksize)
+{
+	ticks.push(t);
+}
+*/
+<?php echo $tickstr ?>
+var atrisk = new Array();
+<?php echo $atriskstr ?>
+
+var margin = {top: 20, right: 20, bottom: 100, left: 50},
+    width = 600 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom;
+
+// create the svg with params making it auto-size to the window size
+var vis = d3.select("#graph")
+			.append("div")
+			.classed("svg-container",true)
+            .append("svg")
+.attr("preserveAspectRatio", "xMinYMin meet")
+   .attr("viewBox", "0 0 600 400")
+	.classed("svg-content-responsive",true)
+	.append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+var xscale = d3.scaleLinear().range([0,width]);
+var yscale = d3.scaleLinear().range([height,0]);
+
+xscale.domain([0, d3.max(nodes2, function(d) { return d.x; })]);
+yscale.domain([0, d3.max(nodes2, function(d) { return d.y; })]);
+
+
+vis.selectAll(".line")
+   .data(links)
+   .enter()
+   .append("line")
+   .attr("x1", function(d) { return xscale(d.source.x )})
+   .attr("y1", function(d) { return yscale(d.source.y )})
+   .attr("x2", function(d) { return xscale(d.target.x )})
+   .attr("y2", function(d) { return yscale(d.target.y )})
+   .style("stroke", function(d) { return d.clr});
+
+var xAxis = d3.axisBottom()
+    .scale(xscale)
+	.tickValues(ticks);
+
+vis.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+//ticks.unshift(0);
+//atrisk[0] = "At Risk";
+var xAxis2 = d3.axisBottom()
+    .scale(xscale)
+	.tickValues(ticks)
+	.tickFormat(function(n) { return atrisk[n]})
+
+vis.append("g")
+      .attr("transform", "translate(0," + (height + 60) + ")")
+	.attr("class", "hiddenline")
+      .call(xAxis2);
+
+vis.append("g")
+      .call(d3.axisLeft(yscale));
+
+vis.append("text")             
+      .attr("transform", "translate(" + (width/2) + " ," + (height + margin.top + 20) + ")")
+      .style("text-anchor", "middle")
+      .text("Months");
+vis.append("text")             
+      .attr("transform", "translate(" + (width/2) + " ," + (height + margin.top + 75) + ")")
+      .style("text-anchor", "middle")
+	  .style("font-size","14px")
+      .text("At-risk");
+
 </script>
 
 </body>
@@ -158,174 +274,102 @@ var cX = new CanvasXpress("canvasId", data, conf);
 
 ##################################################################
 
-function get_surv_data(&$varstr,&$sampstr,&$datastr)
+function get_surv_data(&$nodestr,&$max_day)
 {
 	global $CID,$DB;
 
-	$st = $DB->prepare("select max(strat) as maxstrat from survdt where cid=? ");
-	$st->bind_param("i",$CID);
-	$st->bind_result($numstrat);
-	$st->execute();
-	$st->fetch();
-	$st->close();
-
-	$vars = array();   # variables = strata
-	$data = array();   # survival per stratum for each timepoint
-	for ($s = 1; $s <= $numstrat; $s++)
-	{
-		$vars[] = "\"R$s\"";
-		$data[$s-1] = array();
-		$data[$s-1][0] = 1.0;
-	}
-
-	$st = $DB->prepare("select dte,strat,surv from survdt where cid=? order by dte asc");
+	$st = $DB->prepare("select dte,strat,surv from survdt where cid=? order by strat asc, dte asc");
 	$st->bind_param("i",$CID);
 	$st->bind_result($time,$strat,$surv);
 	$st->execute();
-	$prev_time = 0;
-	$times = array();
-	$times[0] = 1;
+	$prev_strat = -1;
+	$nodes = array();
+	$max_day = 0;
 	while ($st->fetch())
 	{
-		#
-		# Here we ensure that each time point is represented across all
-		# of the strata, by initializing the strata from prior timepoints.
-		# Later we will fill in additional time points for best graph display. 
-		#
-		if (!isset($times[$time]))
+		if ($strat != $prev_strat)
 		{
-			for ($s = 1; $s <= $numstrat; $s++)
-			{
-				$data[$s-1][$time] = $data[$s-1][$prev_time];
-			}
+			$nodes[] = "{x:0, y:1.0, s:$strat}";
 		}
-		$times[$time] = 1;
-		$data[$strat-1][$time] = $surv;
-		$prev_time = $time;
+		$prev_strat = $strat;
+		if ($time > $max_day)
+		{
+			$max_day = $time;
+		}
+		$time /= 30.0;
+		$nodes[] = "{x:$time, y:$surv, s:$strat}";
 	}
 	$st->close();
-	$max_time = $prev_time;
-	
-	# fill in missing times
-	for ($t = 0; $t <= $max_time; $t++)
-	{
-		if (!isset($times[$t]))
-		{
-			$times[$t] = 1;
-			for ($s = 1; $s <= $numstrat; $s++)
-			{
-				$data[$s-1][$t] = $data[$s-1][$t-1];
-			}
-		}
-	}
-	
-	# The "samples" in the language of CanvasXpress, are the time points.
-	# The "variables" are the strata. 
-	# The "data" are concatentated arrays, one for each stratum, that give the
-	# survival values at each time point. 
-	$samps = array();	
-	for ($t = 0; $t <= $max_time; $t++)
-	{
-		if (isset($times[$t]))
-		{
-			$months = floor($t/30.0);
-			$samps[] = "\"$months\"";
-		}
-	}
-	$varstr = "[".implode(",\n",$vars)."]";
-	$sampstr = "[".implode(",\n",$samps)."]";
 
-	$datastrs = array();
-	foreach ($data as $strat => $vals)
-	{
-		ksort($vals, SORT_NUMERIC);
-		$datastrs[] = "[".implode(",\n",$vals)."]";
-	}
-	$datastr = "[".implode(",\n",$datastrs)."]";
+	$nodestr = "[".implode(",\n",$nodes)."];";
 }
 
 ######################################################################
 
-function get_pair_surv_data(&$varstr,&$sampstr,&$datastr)
+function get_pair_surv_data(&$nodestr,&$max_day)
 {
 	global $CID, $CID2, $DB;
 
-	$st = $DB->prepare("select max(strat) as maxstrat from pair_survdt where cid1=? and cid2=? ");
-	$st->bind_param("ii",$CID,$CID2);
-	$st->bind_result($numstrat);
-	$st->execute();
-	$st->fetch();
-	$st->close();
-
-	$vars = array();   # variables = strata
-	$data = array();   # survival per stratum for each timepoint
-	for ($s = 1; $s <= $numstrat; $s++)
-	{
-		$vars[] = "\"R$s\"";
-		$data[$s-1] = array();
-		$data[$s-1][0] = 1.0;
-	}
-
-	$st = $DB->prepare("select dte,strat,surv from pair_survdt where cid1=? and cid2=? order by dte asc");
+	$st = $DB->prepare("select dte,strat,surv from pair_survdt where cid1=? and cid2=? order by strat asc, dte asc");
 	$st->bind_param("ii",$CID,$CID2);
 	$st->bind_result($time,$strat,$surv);
 	$st->execute();
-	$prev_time = 0;
-	$times = array();
-	$times[0] = 1;
+	$prev_strat = -1;
+	$nodes = array();
+	$max_day = 0;
 	while ($st->fetch())
 	{
-		#
-		# Here we ensure that each time point is represented across all
-		# of the strata, by initializing the strata from prior timepoints.
-		# Later we will fill in additional time points for best graph display. 
-		#
-		if (!isset($times[$time]))
+		if ($strat != $prev_strat)
 		{
-			for ($s = 1; $s <= $numstrat; $s++)
-			{
-				$data[$s-1][$time] = $data[$s-1][$prev_time];
-			}
+			$nodes[] = "{x:0, y:1.0, s:$strat}";
 		}
-		$times[$time] = 1;
-		$data[$strat-1][$time] = $surv;
-		$prev_time = $time;
+		$prev_strat = $strat;
+		if ($time > $max_day)
+		{
+			$max_day = $time;
+		}
+		$time /= 30.0;
+		$nodes[] = "{x:$time, y:$surv, s:$strat}";
 	}
 	$st->close();
-	$max_time = $prev_time;
-	
-	# fill in missing times
-	for ($t = 0; $t <= $max_time; $t++)
-	{
-		if (!isset($times[$t]))
-		{
-			$times[$t] = 1;
-			for ($s = 1; $s <= $numstrat; $s++)
-			{
-				$data[$s-1][$t] = $data[$s-1][$t-1];
-			}
-		}
-	}
-	
-	$samps = array();	
-	for ($t = 0; $t <= $max_time; $t++)
-	{
-		if (isset($times[$t]))
-		{
-			$months = floor($t/30.0);
-			$samps[] = "\"$months\"";
-		}
-	}
-	$varstr = "[".implode(",\n",$vars)."]";
-	$sampstr = "[".implode(",\n",$samps)."]";
+	$nodestr = "[".implode(",\n",$nodes)."];";
+}
 
-	$datastrs = array();
-	foreach ($data as $strat => $vals)
+################################################################
+
+function get_tick_values($max_day, &$tickstr,&$atriskstr)
+{
+	global $CRID, $DSID, $DB;
+	$max_month = $max_day/30;
+	$ticksize_approx = $max_month/(4.5);  # ~4 ticks
+	$ticksize = 10*floor($ticksize_approx/10);	
+	$ticks = array();
+	for ($t = 0; $t <= $max_month; $t += $ticksize)
 	{
-		ksort($vals, SORT_NUMERIC);
-		$datastrs[] = "[".implode(",\n",$vals)."]";
+		$ticks[] = $t;
 	}
-	$datastr = "[".implode(",\n",$datastrs)."]";
+	$tickstr = "[".implode(",",$ticks)."]";
+	$tickstr = "var ticks = $tickstr ;";
+	
+	# now we set up javascript to map the tick times to their
+	# at risk values
+	# We have to compute the atrisk number for each tick
+	$atrisk = array();
+	$query = "select count(*) as cnt from samp join sampdt on sampdt.SID=samp.ID ".
+					" where samp.DSID=? and (sampdt.dtd >= ?  or (sampdt.dtlc >= ? or sampdt.dtlc = -1))";
+	$st = $DB->prepare($query);
+	$st->bind_result($atrisknum);
+	foreach ($ticks as $t)
+	{
+		$day = $t*30;
+		$st->bind_param("iii",$DSID,$day,$day);
+		$st->execute();
+		$st->fetch();
+		$atrisk[] = "atrisk[$t] = $atrisknum;";
+	}
+	$atriskstr = implode(" ",$atrisk);
+	$st->close();
+
 }
 
 ################################################################
