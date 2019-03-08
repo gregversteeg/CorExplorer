@@ -5,6 +5,7 @@ $minWt = getnum("mw",0);
 $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
 $numGenes = getint("ng",100);
+$numSamps = getint("ns",500);
 $maxZ = getval("maxz",2);
 $Use_hugo = checkbox_val("use_hugo",1,1);
 
@@ -15,7 +16,14 @@ if (!read_access($CRID))
 ?>
 
 <head>
-<link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
+<style>
+.axisLabel
+{
+	font-family:monospace;
+	font-size:3px;
+}
+</style>
+<script src="https://d3js.org/d3.v5.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 
 </head>
@@ -41,6 +49,8 @@ if (!read_access($CRID))
 		<td width=10>&nbsp;</td>
 		<td>Num genes: <input name="ng" type="text" size="4" value="<?php print $numGenes ?>"> 
 		</td>
+		<!--td>Num samples: <input name="ns" type="text" size="4" value="<?php print $numSamps ?>"> 
+		</td-->
 		<td width=10>&nbsp;</td>
 		<td>Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>"> 
 		</td>
@@ -68,6 +78,14 @@ $('#popout_btn').click(function()
 });
 </script>
 
+<div id="heatmap" ></div>
+<!--table width=500 height=500>
+	<tr>
+		<td id="heatmap" width="100%" height="100%">
+		</td>
+	</tr>
+</table-->
+
 <?php
 if ($CID_sel != 0) 
 {  
@@ -76,38 +94,110 @@ if ($CID_sel != 0)
 	$heat_samps = "";
 	$heat_expr = "";
 	$heat_wts = "";
-	get_heat_data($heat_genes,$heat_samps,$heat_expr,$heat_wts,
-				$CRID,$CID_sel,$minWt,$numGenes,$maxZ);
+	$samp_strata = "";
+	get_heat_data($heat_genes,$heat_samps,$heat_expr,$heat_wts,$samp_strata,
+				$CRID,$CID_sel,$minWt,$numGenes,$numSamps,$maxZ);
 	echo <<<END
 
-<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
-<canvas  id="canvasId" width="540" height="540"></canvas>
+
 
 <script>
-var data = {"y": {"vars": $heat_genes,
-				  "smps": $heat_samps,
-				  "data": $heat_expr
-				 },
-			"z": {"weight": $heat_wts
-				}
-			};
-var conf = {"graphType": "Heatmap",
-			"heatmapCellBox" : false,
-			"showSampleNames" : false,
-			"isReproducibleResearch" : false,
-			"colorSpectrum": ["#00ff00", "#000000", "#ff0000"]};                 
-var cX = new CanvasXpress("canvasId", data, conf);
+var genes = $heat_genes ;
+var samps = $heat_samps ;
+var vals = $heat_expr ;
+
+//var margin = { top: 100, right: 10, bottom: 50, left: 300 },
+var margin = { top: 50, right: 0, bottom: 0, left: 60 },
+cellSize=3;
+numCols = genes.length;
+numRows = samps.length;
+width = numCols*cellSize + margin.left + margin.right;
+height = numRows*cellSize + margin.top + margin.bottom;
+var maxZ = $maxZ;
+var cscalePos = d3.scaleLinear() .range(["black", "red"]) .domain([0,maxZ])
+var cscaleNeg = d3.scaleLinear() .range(["green", "black"]) .domain([-maxZ,0])
+
+var svg = d3.select("#heatmap")
+			.append("div")
+			.classed("svg-container",true)
+            .append("svg")
+   .attr("viewBox", "0 0 " + width + " " +  height)
+	.append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+/*var svg = d3.select("#heatmap")
+			.append("div")
+			.classed("svg-container",true)
+            .append("svg")
+.attr("preserveAspectRatio", "xMinYMin meet")
+   .attr("viewBox", "0 0 " + width + " " +  height)
+	.classed("svg-content-responsive",true)
+	.append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+*/
+
+var rowLabels = svg.append("g")
+      .selectAll(".rowLabelg")
+      .data(samps)
+      .enter()
+      .append("text")
+      .text(function (d) { return d.lbl; })
+      .attr("x", 0)
+      .attr("y", function (d, i) { return d.i* cellSize; })
+      .style("text-anchor", "end")
+      .attr("transform", "translate(-2,0)") 
+      //.attr("class", function (d,i) { return "rowLabel mono r"+i;} ) 
+	  .attr("class","axisLabel")
+      ;
+
+var colLabels = svg.append("g")
+      .selectAll(".colLabelg")
+      .data(genes)
+      .enter()
+      .append("text")
+      .text(function (d) { return d.lbl; })
+      .attr("x", 0)
+      .attr("y", function (d, i) {return d.i * cellSize; })
+      .style("text-anchor", "left")
+      .attr("transform", "translate(2,-2) rotate (-90)")
+      .attr("class", "axisLabel" )
+      ;
+var heatMap = svg.append("g").attr("class","g3")
+        .selectAll(".cellg")
+        .data(vals,function(d){return d.s+":"+d.g;})
+        .enter()
+        .append("rect")
+        .attr("x", function(d) { return d.g * cellSize; })
+        .attr("y", function(d) { return d.s * cellSize; })
+        .attr("width", cellSize)
+        .attr("height", cellSize)
+        .style("fill", function(d) { return (d.z >= 0 ? cscalePos(d.z) : cscaleNeg(d.z)); });
+
+var zoom = d3.zoom()
+    .scaleExtent([1, 40])
+    //.translateExtent([[-100, -100], [width + 90, height + 100]])
+    .on("zoom", zoomed);
+
+svg.call(zoom);
+
+function zoomed() {
+  	heatMap.attr("transform", d3.event.transform);
+  	rowLabels.attr("transform", d3.event.transform.toString() + " translate(-2,0) ");
+  	colLabels.attr("transform", d3.event.transform.toString() + " translate(2,-2) rotate(-90) ");
+}
+
 </script>
 END;
 }
-
 ?>
 </body>
 
 <?php
 
-function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
-				$crid, $cid,$minwt,$maxGenes,$maxZ)
+function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_strata,
+				$crid, $cid,$minwt,$maxGenes,$maxsamps,$maxZ)
 {
 	global $DB, $Use_hugo;
 	$st = $DB->prepare("select dsid,glid from clr where id=?");
@@ -123,19 +213,20 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 	$genestrs = array();
 	$sampstrs = array();
 	$wtstrs = array();
-
-	$maxsamps = 40000;
+	$rstrat = array();
 
 	# first get the samples sorted by continuous label
-	$st = $DB->prepare("select sid,samp.lbl from lbls join samp on samp.id=lbls.sid ".
-				" where cid=? order by clbl asc, sid asc limit $maxsamps");
+	# also get the risk strata
+	$st = $DB->prepare("select sid,samp.lbl,risk_strat from lbls join samp on samp.id=lbls.sid ".
+				" where cid=? order by clbl asc, sid asc ");
 	$st->bind_param("i",$cid);
-	$st->bind_result($sid,$sname);
+	$st->bind_result($sid,$sname,$risk_strat);
 	$st->execute();
 	while ($st->fetch())
 	{
 		$samps[] = $sid;
-		$sampstrs[] = "\"$sname\"";
+		$sampstrs[] = $sname;
+		$rstrat[] = "\"$risk_strat\"";
 	}
 	$st->close();
 	$numSamps = count($samps);
@@ -147,10 +238,13 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 	$st->bind_param("id",$cid,$minwt);
 	$st->bind_result($gid,$gname,$hugo,$wt);
 	$st->execute();
+	$genenum = 0;
 	while ($st->fetch())
 	{
+		$genenum++;
 		$genes[] = $gid;
-		$genestrs[] = ($Use_hugo ? "\"$hugo\"" : "\"$gname\"");
+		$genename = ($Use_hugo ? $hugo : $gname);
+		$genestrs[] = "{lbl:\"$genename\",i:$genenum}";
 		$wt = .01*floor(100*$wt);
 		$wtstrs[] = "\"$wt\"";
 	}
@@ -165,7 +259,7 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 		$st = $DB->prepare("select expr.sid,expr.logz from expr  ".
 						" join lbls on lbls.sid=expr.sid ".
 						" where expr.dsid=? and expr.gid=? and lbls.cid=? ".
-						" order by lbls.clbl asc, lbls.sid asc  limit $maxsamps"); 
+						" order by lbls.clbl asc, lbls.sid asc  "); 
 		$zs = array();
 		$st->bind_param("iii",$dsid,$gid,$cid);
 		$st->bind_result($sid,$z);
@@ -190,13 +284,62 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,
 			$snum++;
 		}
 		$st->close();
-		$vals[] = "[".implode(",",$zs)."]";
+		$vals[] = $zs;
 	}
-
+	# Now we subset the samples from the top and bottom
+	if (0) #$maxsamps < $numSamps)
+	{
+		$samps2 = array();
+		for ($i = 0; $i < $maxsamps/2; $i++)
+		{
+			$samps2[] = $sampstrs[$i];	
+		}
+		for ($i = $maxsamps/2; $i >= 1; $i--)
+		{
+			$samps2[] = $sampstrs[$numSamps - $i];	
+		}
+		$vals2 = array();
+		for ($g = 0; $g < $numGenes; $g++)
+		{
+			$newvals = array();
+			for ($i = 0; $i < $maxsamps/2; $i++)
+			{
+				$newvals[] = $vals[$g][$i];	
+			}
+			for ($i = $maxsamps/2; $i >= 1; $i--)
+			{
+				$newvals[] = $vals[$g][$numSamps - $i];	
+			}
+			$vals2[] = $newvals;
+		}
+		$numSamps = $maxsamps;
+		$sampstrs = $samps2;
+		$vals = $vals2;
+	} 
+	# put the sample names into array with index numbers, as we need for the page
+	$sampobjs = array();
+	for ($i = 1; $i <= count($sampstrs); $i++)
+	{
+		$samp = $sampstrs[$i-1];
+		$sampobjs[] = "{lbl:\"$samp\",i:$i}";
+	}
+	
+	$heatstrs = array();
+	for ($g = 0; $g < $numGenes; $g++)
+	{
+		for ($s = 0; $s < $numSamps; $s++)
+		{
+			$z = $vals[$g][$s];
+			$valstr = "{g:$g, s:$s, z:$z}";
+			$heatstrs[] = $valstr;
+		}
+	}
+	$heat_expr = "[".implode(",",$heatstrs)."]";
 	$heat_genes = "[".implode(",",$genestrs)."]";
-	$heat_samps = "[".implode(",",$sampstrs)."]";
-	$heat_expr = "[".implode(",",$vals)."]";
-	$heat_wts = "[".implode(",",$wtstrs)."]";
+	$heat_samps = "[".implode(",",$sampobjs)."]";
+	#$samp_strata = "[".implode(",",$rstrat)."]";
+	#$heat_wts = "[".implode(",",$wtstrs)."]";
+	
 }
 
 
