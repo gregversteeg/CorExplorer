@@ -85,6 +85,14 @@ if ($CID_pair != "" or $CID != 0)
     top: 10px;
     left: 0;
 }
+.legend
+{
+	font-size:12px;
+}
+rect
+{
+	stroke-width:1;
+}
 </style>
 
 <script src="https://d3js.org/d3.v5.min.js"></script>
@@ -265,6 +273,30 @@ vis.append("text")
       .style("text-anchor", "middle")
 	  .style("font-size","14px")
       .text("At-risk");
+
+var colors = [{c:"red",s:1},{c:"blue",s:2},{c:"green",s:3}];
+var legendRectSize = 10;
+var legendSpacing = 10;
+var legend = vis.selectAll('.legend')
+  .data(colors)
+  .enter()
+  .append('g')
+  .attr('class', 'legend')
+  .attr('transform', function(d, i) {
+    var height = legendRectSize + legendSpacing;
+    var horz = 300;
+    var vert =  i*height;
+    return 'translate(' + horz + ',' + vert + ')';
+  });
+legend.append("rect")
+	.attr('width', legendRectSize)
+  .attr('height', legendRectSize)
+  .style('fill', function(d){return d.c})
+  .style('stroke', function(d){return d.c});
+legend.append('text')
+  .attr('x', legendRectSize + legendSpacing)
+  .attr('y', legendRectSize)
+  .text(function(d) { return "R"+d.s; });
 
 </script>
 
