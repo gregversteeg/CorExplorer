@@ -150,16 +150,11 @@ $('#popout_btn').click(function()
 
 <?php if ($CID == 0) { exit(0); } ?>
 
-<?php 
-$survp_disp = sprintf("%1.2E",$this_survp);
-echo <<<END
-Survival differential p-value (risk stratum R3 vs. R1): $survp_disp
-<p>
-END;
-
-?>
 
 <div  id="graph" ></div>
+<?php 
+$survp_disp = sprintf("%1.2E",$this_survp);
+?>
 
 <script>
 function link_clr(strat)

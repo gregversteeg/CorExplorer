@@ -1,11 +1,11 @@
 <?php
 require_once("util.php");
 
-$minWt = getnum("mw",0);
+$minWt = getnum("mw",0.05);
 $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
-$numGenes = getint("ng",100);
-$numSamps = getint("ns",500);
+$numGenes = getint("ng",1000);
+$numSamps = getint("ns",5000);
 $maxZ = getval("maxz",2);
 $Use_hugo = checkbox_val("use_hugo",1,1);
 
@@ -20,7 +20,7 @@ if (!read_access($CRID))
 .axisLabel
 {
 	font-family:monospace;
-	font-size:3px;
+	font-size:10px;
 }
 </style>
 <script src="https://d3js.org/d3.v5.min.js"></script>
@@ -47,8 +47,8 @@ if (!read_access($CRID))
 			 <input name="mw" type="text" size="4" value="<?php print $minWt ?>">
 		</td>
 		<td width=10>&nbsp;</td>
-		<td>Num genes: <input name="ng" type="text" size="4" value="<?php print $numGenes ?>"> 
-		</td>
+		<!--td>Num genes: <input name="ng" type="text" size="4" value="<?php print $numGenes ?>"> 
+		</td-->
 		<!--td>Num samples: <input name="ns" type="text" size="4" value="<?php print $numSamps ?>"> 
 		</td-->
 		<td width=10>&nbsp;</td>
@@ -62,6 +62,14 @@ if (!read_access($CRID))
 	</tr>
 </table>
 </form>
+<?php
+if ($CID_sel != 0) 
+{  
+	echo <<<END
+<button>Reset Zoom</button>
+END;
+}
+?>
 <script>
 $('#sel_cid').change(function() 
 {
@@ -78,7 +86,15 @@ $('#popout_btn').click(function()
 });
 </script>
 
-<div id="heatmap" ></div>
+<div id="heatmap" >
+<?php
+if ($CID_sel != 0) 
+{  
+	echo "<span id='inprogress'>Drawing heatmap...</span>";
+}
+?>
+</div>
+
 <!--table width=500 height=500>
 	<tr>
 		<td id="heatmap" width="100%" height="100%">
@@ -105,14 +121,16 @@ if ($CID_sel != 0)
 var genes = $heat_genes ;
 var samps = $heat_samps ;
 var vals = $heat_expr ;
+var strat_colors = ["green","black","red"];
 
-//var margin = { top: 100, right: 10, bottom: 50, left: 300 },
+//var margin = { top: 50, right: 10, bottom: 50, left: 300 },
 var margin = { top: 50, right: 0, bottom: 0, left: 60 },
-cellSize=3;
-numCols = genes.length;
-numRows = samps.length;
-width = numCols*cellSize + margin.left + margin.right;
-height = numRows*cellSize + margin.top + margin.bottom;
+cellHeight=10;
+cellWidth=2;
+numRows = genes.length + 1;
+numCols = samps.length;
+width = numCols*cellWidth + margin.left + margin.right;
+height = numRows*cellHeight + margin.top + margin.bottom;
 var maxZ = $maxZ;
 var cscalePos = d3.scaleLinear() .range(["black", "red"]) .domain([0,maxZ])
 var cscaleNeg = d3.scaleLinear() .range(["green", "black"]) .domain([-maxZ,0])
@@ -138,42 +156,30 @@ var svg = d3.select("#heatmap")
           "translate(" + margin.left + "," + margin.top + ")");
 */
 
-var rowLabels = svg.append("g")
+var geneLabels = svg.append("g")
       .selectAll(".rowLabelg")
-      .data(samps)
-      .enter()
-      .append("text")
-      .text(function (d) { return d.lbl; })
-      .attr("x", 0)
-      .attr("y", function (d, i) { return d.i* cellSize; })
-      .style("text-anchor", "end")
-      .attr("transform", "translate(-2,0)") 
-      //.attr("class", function (d,i) { return "rowLabel mono r"+i;} ) 
-	  .attr("class","axisLabel")
-      ;
-
-var colLabels = svg.append("g")
-      .selectAll(".colLabelg")
       .data(genes)
       .enter()
       .append("text")
       .text(function (d) { return d.lbl; })
       .attr("x", 0)
-      .attr("y", function (d, i) {return d.i * cellSize; })
-      .style("text-anchor", "left")
-      .attr("transform", "translate(2,-2) rotate (-90)")
+      .attr("y", function (d, i) {return (d.i)*cellHeight - 1; })
+      .style("text-anchor", "end")
+      .attr("transform", "translate(-2,0)")
       .attr("class", "axisLabel" )
       ;
 var heatMap = svg.append("g").attr("class","g3")
         .selectAll(".cellg")
-        .data(vals,function(d){return d.s+":"+d.g;})
+        .data(vals,function(d){return d.g+":"+d.s;})
         .enter()
         .append("rect")
-        .attr("x", function(d) { return d.g * cellSize; })
-        .attr("y", function(d) { return d.s * cellSize; })
-        .attr("width", cellSize)
-        .attr("height", cellSize)
-        .style("fill", function(d) { return (d.z >= 0 ? cscalePos(d.z) : cscaleNeg(d.z)); });
+        .attr("x", function(d) { return d.s * cellWidth; })
+        .attr("y", function(d) { return (d.g) * cellHeight; })
+        .attr("width", cellWidth)
+        .attr("height", cellHeight)
+        .style("fill", function(d) { return (d.z >= 0 ? cscalePos(d.z) : cscaleNeg(d.z)); })
+        .style("stroke", function(d) { return (d.z >= 0 ? cscalePos(d.z) : cscaleNeg(d.z)); });
+$( "#inprogress" ).hide();
 
 var zoom = d3.zoom()
     .scaleExtent([1, 40])
@@ -184,11 +190,20 @@ svg.call(zoom);
 
 function zoomed() {
   	heatMap.attr("transform", d3.event.transform);
-  	rowLabels.attr("transform", d3.event.transform.toString() + " translate(-2,0) ");
-  	colLabels.attr("transform", d3.event.transform.toString() + " translate(2,-2) rotate(-90) ");
+  	geneLabels.attr("transform", d3.event.transform.toString() + " translate(-2,0) ");
+  	//colLabels.attr("transform", d3.event.transform.toString() + " translate(2,-2) rotate(-90) ");
+}
+d3.select("button").on("click", resetted);
+
+function resetted() {
+  svg.transition()
+      .duration(750)
+      .call(zoom.transform, d3.zoomIdentity);
 }
 
+
 </script>
+<p>Number of genes shown: $numGenes<br>
 END;
 }
 ?>
@@ -197,7 +212,7 @@ END;
 <?php
 
 function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_strata,
-				$crid, $cid,$minwt,$maxGenes,$maxsamps,$maxZ)
+				$crid, $cid,$minwt,&$numGenes,$maxsamps,$maxZ)
 {
 	global $DB, $Use_hugo;
 	$st = $DB->prepare("select dsid,glid from clr where id=?");
@@ -218,23 +233,35 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_s
 	# first get the samples sorted by continuous label
 	# also get the risk strata
 	$st = $DB->prepare("select sid,samp.lbl,risk_strat from lbls join samp on samp.id=lbls.sid ".
-				" where cid=? order by clbl asc, sid asc ");
+				" where cid=? order by  clbl asc, sid asc ");
 	$st->bind_param("i",$cid);
 	$st->bind_result($sid,$sname,$risk_strat);
 	$st->execute();
+	$snum = 0;	
 	while ($st->fetch())
 	{
 		$samps[] = $sid;
 		$sampstrs[] = $sname;
-		$rstrat[] = "\"$risk_strat\"";
+		$z=0;
+		if ($risk_strat == 3)
+		{
+			$z = $maxZ;
+		}
+		if ($risk_strat == 1)
+		{
+			$z = -$maxZ;
+		}
+		$rstrat[] = "{g:-1, s:$snum, z:$z}"; # package this to fit in the heatmap value array
+		$snum++;
 	}
 	$st->close();
 	$numSamps = count($samps);
 	
 	# get the genes in the cluster
+	$genestrs[] = "{lbl:\"risk_strat\",i:0}";
 	$st = $DB->prepare("select gid,lbl,hugo,wt from g2c join glist on glist.id=g2c.gid ".
 				" where g2c.cid=? and g2c.wt >= ? ".
-				" order by g2c.mi desc limit $maxGenes ");
+				" order by g2c.mi desc"); # limit $numGenes ");
 	$st->bind_param("id",$cid,$minwt);
 	$st->bind_result($gid,$gname,$hugo,$wt);
 	$st->execute();
@@ -320,11 +347,12 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_s
 	$sampobjs = array();
 	for ($i = 1; $i <= count($sampstrs); $i++)
 	{
-		$samp = $sampstrs[$i-1];
+		$samp = ""; #$sampstrs[$i-1];
 		$sampobjs[] = "{lbl:\"$samp\",i:$i}";
 	}
 	
 	$heatstrs = array();
+	$heatstrs = $rstrat;
 	for ($g = 0; $g < $numGenes; $g++)
 	{
 		for ($s = 0; $s < $numSamps; $s++)
