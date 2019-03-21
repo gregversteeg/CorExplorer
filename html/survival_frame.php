@@ -161,15 +161,15 @@ function link_clr(strat)
 {
 	if (strat == 1)
 	{
-		return "red";
+		return "#ff751a";
 	}
 	if (strat == 2)
 	{
-		return "blue";
+		return "#777777";
 	}
 	if (strat == 3)
 	{
-		return "green";
+		return "#3366ff";
 	}
 	return "black";
 }
@@ -269,7 +269,7 @@ vis.append("text")
 	  .style("font-size","14px")
       .text("At-risk");
 
-var colors = [{c:"red",s:1},{c:"blue",s:2},{c:"green",s:3}];
+var colors = [{c:"#ff751a",s:1},{c:"#777777",s:2},{c:"#3366ff",s:3}];
 var legendRectSize = 10;
 var legendSpacing = 10;
 var legend = vis.selectAll('.legend')
@@ -280,7 +280,7 @@ var legend = vis.selectAll('.legend')
   .attr('transform', function(d, i) {
     var height = legendRectSize + legendSpacing;
     var horz = 300;
-    var vert =  i*height;
+    var vert =  10+ i*height;
     return 'translate(' + horz + ',' + vert + ')';
   });
 legend.append("rect")
@@ -292,6 +292,17 @@ legend.append('text')
   .attr('x', legendRectSize + legendSpacing)
   .attr('y', legendRectSize)
   .text(function(d) { return "R"+d.s; });
+
+var legendlbl = vis.selectAll('.legendlbl')
+  .data([0])
+  .enter()
+  .append('g')
+  .attr('class', 'legend')
+  .attr('transform',  'translate(300,0)');
+legendlbl.append('text')
+  .attr('x', 0)
+  .attr('y', 0)
+  .text('risk strata:');
 
 </script>
 

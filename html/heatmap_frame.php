@@ -22,6 +22,10 @@ if (!read_access($CRID))
 	font-family:monospace;
 	font-size:10px;
 }
+.legend
+{
+	font-size:12px;
+}
 </style>
 <script src="https://d3js.org/d3.v5.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
@@ -121,7 +125,6 @@ if ($CID_sel != 0)
 var genes = $heat_genes ;
 var samps = $heat_samps ;
 var vals = $heat_expr ;
-var strat_colors = ["green","black","red"];
 
 //var margin = { top: 50, right: 10, bottom: 50, left: 300 },
 var margin = { top: 50, right: 0, bottom: 0, left: 60 },
@@ -129,8 +132,10 @@ cellHeight=10;
 cellWidth=2;
 numRows = genes.length + 1;
 numCols = samps.length;
+legendHeight = 20;
 width = numCols*cellWidth + margin.left + margin.right;
-height = numRows*cellHeight + margin.top + margin.bottom;
+mapHeight = numRows*cellHeight;
+height = mapHeight + legendHeight + margin.top + margin.bottom;
 var maxZ = $maxZ;
 var cscalePos = d3.scaleLinear() .range(["black", "red"]) .domain([0,maxZ])
 var cscaleNeg = d3.scaleLinear() .range(["green", "black"]) .domain([-maxZ,0])
@@ -177,9 +182,53 @@ var heatMap = svg.append("g").attr("class","g3")
         .attr("y", function(d) { return (d.g) * cellHeight; })
         .attr("width", cellWidth)
         .attr("height", cellHeight)
-        .style("fill", function(d) { return (d.z >= 0 ? cscalePos(d.z) : cscaleNeg(d.z)); })
-        .style("stroke", function(d) { return (d.z >= 0 ? cscalePos(d.z) : cscaleNeg(d.z)); });
+        .style("fill", function(d) { return heatmap_color(d.z,d.g); })
+        .style("stroke", function(d) { return heatmap_color(d.z,d.g); })
 $( "#inprogress" ).hide();
+
+var colors = [{c:"#ffffff",s:0},{c:"#ff751a",s:1},{c:"#777777",s:2},{c:"#3366ff",s:3}];
+var legendRectSize = 10;
+var legendSpacing = 10;
+var legendItemWidth = legendRectSize + legendSpacing + 60;
+var legendY = mapHeight;
+var legend = svg.selectAll('.legend')
+  .data(colors)
+  .enter()
+  .append('g')
+  .attr('class', 'legend')
+  .attr('transform', function(d, i) {
+    var horz = i*legendItemWidth;
+    var vert = legendY;
+    return 'translate(' + horz + ',' + vert + ')';
+  });
+legend.append("rect")
+	.attr('width', legendRectSize)
+  .attr('height', legendRectSize)
+  .style('fill', function(d){return d.c})
+  .style('stroke', function(d){return d.c});
+legend.append('text')
+  .attr('x', function(d) {return (d.s > 0 ? legendRectSize + legendSpacing : 0);})
+  .attr('y', legendRectSize)
+  .text(function(d) { return (d.s > 0 ? "R"+d.s : "risk strata:"); });
+
+function heatmap_color(z,g)
+{
+	if (g > -1)
+	{
+		return (z >= 0 ? cscalePos(z) : cscaleNeg(z));
+	}
+	else
+	{
+		if (z == 0)
+		{
+			return "#777777";
+		}
+		else
+		{
+			return (z >= 0 ? "#ff751a" : "#3366ff");
+		}
+	}
+}
 
 var zoom = d3.zoom()
     .scaleExtent([1, 40])
