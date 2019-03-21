@@ -56,7 +56,7 @@ if (!read_access($CRID))
 		<!--td>Num samples: <input name="ns" type="text" size="4" value="<?php print $numSamps ?>"> 
 		</td-->
 		<td width=10>&nbsp;</td>
-		<td>Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>"> 
+		<td title="Ceiling on expression Z-value (Z = log(expr) normalized by std dev)">Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>" > 
 		</td>
 		<td title="<?php print tip_text('hugo_names') ?>">HUGO names:
 			 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo,1) ?>>
@@ -184,7 +184,27 @@ var heatMap = svg.append("g").attr("class","g3")
         .attr("height", cellHeight)
         .style("fill", function(d) { return heatmap_color(d.z,d.g); })
         .style("stroke", function(d) { return heatmap_color(d.z,d.g); })
+		.on("mouseover",handleMouseOver)
+		.on("mouseout",handleMouseOut)
 $( "#inprogress" ).hide();
+
+function handleMouseOver(d,i)
+{
+	var g = d.g + 1;
+	var s = d.s - 1;
+	var z = d.z;
+	var gname = genes[g].lbl;
+	var sname = samps[s].lbl;
+	$("#motext").text("gene:" + gname);
+	$("#motext2").text("sample:" + sname);
+	$("#motext3").text("Z:" + z);
+}
+function handleMouseOut(d,i)
+{
+	$("#motext").text("");
+	$("#motext2").text("");
+	$("#motext3").text("");
+}
 
 var colors = [{c:"#ffffff",s:0},{c:"#ff751a",s:1},{c:"#777777",s:2},{c:"#3366ff",s:3}];
 var legendRectSize = 10;
@@ -217,7 +237,7 @@ function heatmap_color(z,g)
 	{
 		return (z >= 0 ? cscalePos(z) : cscaleNeg(z));
 	}
-	else
+	else // colors of the risk strata - sort of a kludj since I put them in the expression array
 	{
 		if (z == 0)
 		{
@@ -252,7 +272,15 @@ function resetted() {
 
 
 </script>
-<p>Number of genes shown: $numGenes<br>
+<p>Number of genes shown: $numGenes
+<p>
+<table cellspacing=0 cellpadding=0>
+	<tr>
+		<td width='130' height='15' valign='top'><span id='motext'>&nbsp;</span></td>
+		<td width='360' valign='top'><span id='motext2'>&nbsp;</span></td>
+		<td valign='top'><span id='motext3'>&nbsp;</span></td>
+	</tr>
+</table>
 END;
 }
 ?>
@@ -396,7 +424,7 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_s
 	$sampobjs = array();
 	for ($i = 1; $i <= count($sampstrs); $i++)
 	{
-		$samp = ""; #$sampstrs[$i-1];
+		$samp = $sampstrs[$i-1];
 		$sampobjs[] = "{lbl:\"$samp\",i:$i}";
 	}
 	
