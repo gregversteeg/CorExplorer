@@ -4,31 +4,72 @@ require_once("util.php");
 $CRID = getint("crid",crid_default());
 $CID = getint("cid",0);
 
+$bestCID = 0; $bestCLbl = ""; $bestPval = 1.0;
+get_best_cluster($bestCID,$bestCLbl,$bestPval);
+$defaultCID = ($CID > 0 ? $CID : $bestCID);
+
 if (!read_access($CRID))
 {
 	die("access denied");
 }
 
-head_section("CorEx Browser");
+$xtra = <<<END
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<style>
+.ui-button:focus { outline:none !important }
+.ui-dialog 
+{
+	padding:0px;
+}
+.ui-dialog .ui-dialog-content 
+{
+	padding:0px;
+}
+.ui-dialog .ui-dialog-titlebar 
+{
+    height: 20px;
+	padding:1px 0px 0px 10px;
+}
+.ui-dialog .ui-dialog-titlebar .ui-dialog-title
+{
+	font-size:12px;
+}
+.ui-dialog .ui-dialog-titlebar .ui-dialog-titlebar-close
+{
+    height: 10px; 
+    width: 10px; 
+	text-decoration:none;
+	border:none;
+}
+html, body
+{
+	margin: 0px;
+	padding: 0px;
+}
+</style>
+END;
+
+head_section("CorEx Browser",$xtra);
 ?>
-<table width='100%' height='100%' cellpadding=0 cellspacing=0 
-		class="graybord" >
+<table width='100%' height='100%' cellpadding=0 cellspacing=0 class="graybord" >
 	<tr>
 		<td width='100%' height='20' align=left colspan=2>
 			<table  cellpadding=0 cellspacing=0 width=100% class="graybord" style="background-color:#f5f5f5;">
 				<tr>
-					<td align=left style="cursor:pointer" onclick="location.href='/'">
+					<td align=left style="cursor:pointer;width:200px" onclick="location.href='/'" >
 						<img src="/logo.png">
 					</td>
-					<td style="padding-left:20px" align=left>
+					<td style="padding-left:40px" align=left>
 						<table cellspacing=0 cellpadding=0>
 							<tr>
 								<td align="left">
 						Dataset: <?php print run_sel("crid",$CRID) ?>
 								</td>
-							</tr>
-							<tr>
-								<td align="right">  
+								<td style="padding-left:30px" align=left>
+									Add Window: <?php print frame_sel(1,1) ?> 
+								</td>
+								<td align="left" style="padding-left:30px">  
 						<a href="/index.html?opt=dset&crid=<?php echo $CRID; ?>" 
 							style="font-size:.9em" target="_blank">
 								dataset overview</a>
@@ -36,89 +77,68 @@ head_section("CorEx Browser");
 							</tr>
 						</table>
 					</td>
-					<td style="padding-right:50px" align=right>
-						Frame1: <?php print frame_sel(1,1) ?> <b>&nbsp;&nbsp;</b>
-						Frame2: <?php print frame_sel(2,2) ?> <b>&nbsp;&nbsp;</b>
-						Frame3: <?php print frame_sel(3,4) ?>
-					</td>
 				</tr>
 			</table>
 		</td>
 	</tr>
 	<tr>
-		<td rowspan=2 width='60%' >
-<iframe id="frame1" width='100%' height='100%' 
-		src='/frame.php?ft=graph&fn=1&crid=<?php echo $CRID ?>&cid=<?php echo $CID ?>' 
-			class='graybord'></iframe>
-		</td>
-		<td width='40%'>
-<iframe id="frame2" width='100%' height='100%' 
-		src='/frame.php?ft=heatmap&fn=2&crid=<?php echo $CRID ?>&cid=<?php echo $CID ?>'
-				class='graybord'></iframe>
-		</td>
-	</tr>
-	<tr>
-		<td width='40%'>
-<iframe id="frame3" width='100%' height='100%' 
-		src='/frame.php?ft=survival&fn=3&crid=<?php echo $CRID ?>&cid=<?php echo $CID ?>'
-				class='graybord'></iframe>
+		<td width='100%' height='100%' id='viewport' style="border:1px solid white">
+<div id="dialogL" title="Factor Graph" style="overflow:hidden;padding:0px" >
+<iframe  width='100%' height='100%' 
+		src='/frame.php?ft=graph&fn=1&crid=<?php echo $CRID ?>&cid=<?php echo $CID ?>'
+		 style='border:none;overflow:hidden' ></iframe>
+</div>
+<div id="dialogRT" title="Survival (cluster:<?php echo $bestCLbl ?> pval:<?php echo $bestPval ?>)" style="overflow:hidden;padding:0px" >
+<iframe  width='100%' height='100%' 
+		src='/frame.php?ft=survival&fn=1&crid=<?php echo $CRID ?>&cid=<?php echo $defaultCID ?>'
+		 style='border:none;overflow:hidden' ></iframe>
+</div>
+<div id="dialogRB" title="Annotation (cluster:<?php echo $bestCLbl ?>)" style="overflow:hidden;padding:0px" >
+<iframe  width='100%' height='100%' 
+		src='/frame.php?ft=annotation&fn=1&crid=<?php echo $CRID ?>&cid=<?php echo $defaultCID ?>'
+		 style='border:none;overflow:hidden' ></iframe>
+</div>
 		</td>
 	</tr>
 </table>
 <script>
+var vp_height = $('#viewport').height();
+var vp_width = $('#viewport').width();
+var left_width = Math.floor(.6*vp_width);
+var rt_width = vp_width - left_width;
+var rt_top_height = Math.floor(.5*vp_height);
+var rt_bot_height = vp_height - rt_top_height;
+$( function() {
+    dlg1 = $( "#dialogL" ).dialog({height:vp_height, width:left_width, 
+			position:{my:"left top",at:"left top",of:"#viewport"}});
+    dlg2 = $( "#dialogRT" ).dialog({height:rt_top_height, width:rt_width, 
+			position:{my:"right top",at:"right top",of:"#viewport"}});
+    dlg3 = $( "#dialogRB" ).dialog({height:rt_bot_height, width:rt_width, 
+			position:{my:"right bottom",at:"right bottom",of:"#viewport"}});
+  } );
+</script>
+<script>
 <?php 
 	print_js_cluster_array();
 ?>
-window.addEventListener("message", receiveMessage, false);
-function receiveMessage(event)
-{
-	var lbl = event.data;
-	var cid = lbl2cid[lbl];
-	$('#frame2').contents().find('#sel_cid').val(cid);
-	$('#frame2').contents().find('#sel_cid').closest('form').submit();;
-	$('#frame3').contents().find('#sel_cid').val(cid);
-	$('#frame3').contents().find('#sel_cid').closest('form').submit();;
-}
-function change_iframe(fnum,val) 
-{
-    var $iframe = $("#frame" + fnum );
-	var cid = $iframe.contents().find('#sel_cid').val();
-	//alert("keep cid=" +  cid);
-	var url = "/frame.php?ft=" + val + "&crid=<?php echo $CRID ?>";
-	if (cid != 0)
-	{
-		url += "&cid=" + cid;
-	}
-    if ( $iframe.length ) 
-	{
-        $iframe.attr("src",url);   
-        return false;
-    }
-    return true;
-}
 var ftypes = ["","graph","heatmap","ppi","survival","annotation","genelist"];
-$('#frame_sel1').change(function() 
-{
-	var newval = this.value;
-	change_iframe(1,ftypes[newval]);	
-});
-$('#frame_sel2').change(function() 
-{
-	var newval = this.value;
-	change_iframe(2,ftypes[newval]);	
-});
-$('#frame_sel3').change(function() 
-{
-	var newval = this.value;
-	var lbl = ftypes[newval];	
-	//alert("change frame 3 to " + lbl);
-	change_iframe(3,lbl);	
-});
 $('#sel_crid').change(function() 
 {
 	var new_crid = this.value;
 	location.href = "/explorer.html?crid=" + new_crid;
 });
+function add_window(sel_id)
+{
+	frametypenum = $("#" + sel_id).val();	
+	frametype = ftypes[frametypenum];
+	var url = "/frame.php?ft=" + frametype + "&crid=<?php echo $CRID ?>";
+	var html = ' <div id="dialog" title="' + frametype + '" style="overflow:hidden;padding:0px" > ' +
+			' <iframe  width="100%" height="100%" ' + 
+			' src="/frame.php?ft=' + frametype + '&fn=1&crid=<?php echo $CRID ?>&cid=<?php echo $CID ?>"' +
+		 	' style="border:none;overflow:hidden" ></iframe> ' +
+			' </div> ';
+    $(html).dialog({height:700, width:700, position:{my:"center",at:"center",of:"#viewport"}});
+}
 </script>
 
 <?php
@@ -154,7 +174,32 @@ function frame_sel($fnum, $defnum)
 		$opts[] = "<option $selected value='$val'>$lbl</option>";
 	}
 	$id = "frame_sel$fnum";
-	return "<select id='$id' autocomplete='off'>\n".implode("\n",$opts)."</select>\n";
+	$html = "<select id='$id' autocomplete='off'>\n".implode("\n",$opts)."</select>\n";
+	$html .= "<button onclick='add_window(\"$id\")'>Add</button>";
+	return $html;
+}
 
+###########################################################################
+
+function get_best_cluster(&$bestCID,&$bestCLbl,&$bestPval)
+{
+	global $CRID, $DB;
+
+	$st = $DB->prepare("select ID, lbl, survp from clst ".
+		" where clst.CRID=? and clst.lvl=0  ".
+		" order by clst.survp asc limit 1 ");
+	$st->bind_param("i",$CRID);
+	$st->bind_result($ID,$lbl,$pval);
+	$st->execute();
+	$bestCID = 0;
+	$bestPval = 1;
+	$bestCLbl = "";
+	if ($st->fetch())
+	{
+		$bestCID = $ID;
+		$bestPval = sprintf("%1.0E",$pval);
+		$bestCLbl = $lbl;
+	}
+	$st->close();
 }
 ?>
