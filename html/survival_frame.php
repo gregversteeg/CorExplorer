@@ -101,7 +101,7 @@ rect
 </head>
  <body >
 
-<form method="get">
+<form id="selform" method="get">
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
 <input type="hidden" name="fromform" value="1">
@@ -110,7 +110,7 @@ rect
 		<td><b>Survival:</b></td>
 		<td>Single Factor: <?php print clst_sel_surv("cid",$CID,$CID2) ?> </td>
 		<td>
-		Sort by p-val:	<input name="pvalsort" id="chk_pvalsort" type="checkbox" <?php checked($Pvalsort,1) ?>>
+		Sort by p-val:	<input name="pvalsort" id="chk_pvalsort" type="checkbox" <?php checked($Pvalsort) ?>>
 		</td>
 	</tr>
 	<tr>
@@ -135,6 +135,7 @@ $('#sel_pair').change(function()
 });
 $('#chk_pvalsort').change(function() 
 {
+	//setTimeout(function(){ $('#selform').submit(); }, 100);
 	$(this).closest('form').submit();	
 });
 $('#param_btn').click(function()

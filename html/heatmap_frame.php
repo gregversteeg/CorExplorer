@@ -7,7 +7,8 @@ $CID_sel = getint("cid",0);
 $numGenes = getint("ng",1000);
 $numSamps = getint("ns",5000);
 $maxZ = getval("maxz",2);
-$Use_hugo = checkbox_val("use_hugo",1,1);
+$FromForm = getint("fromform",0); # tell us if it's initial page load or form submit
+$Use_hugo = checkbox_val("use_hugo",1,$FromForm);
 
 if (!read_access($CRID))
 {
@@ -35,6 +36,7 @@ if (!read_access($CRID))
 <form method="get">
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
+<input type="hidden" name="fromform" value="1">
 <table cellpadding=5>
 	<tr>
 		<td><b>Heatmap:</b></td>
@@ -59,7 +61,7 @@ if (!read_access($CRID))
 		<td title="Ceiling on expression Z-value (Z = log(expr) normalized by std dev)">Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>" > 
 		</td>
 		<td title="<?php print tip_text('hugo_names') ?>">HUGO names:
-			 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo,1) ?>>
+			 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo) ?>>
 		</td>
 		<td width=10>&nbsp;</td>
 		<td><input type="submit" value="Apply"></td>

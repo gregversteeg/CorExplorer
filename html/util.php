@@ -100,17 +100,17 @@ function getw($lbl,$default,$required=0)
 	}
 	return $val;
 }
-function checked($val,$def)
+function checked($val)
 {
-	if ($val || $def)
+	if ($val)
 	{
 		print " checked='true' ";
 	}
 }
-#
+# NEEDED IF TRYING TO MAKE A CHECKBOX DEFAULT TO CHECKED
 # fromForm tells us if the form was actually submitted or the page was called
-# with empty query. This only matters if we're trying to make a checkbox
-# default to checked. The problem is that when a checkbox is not checked, it
+# with empty query. 
+# The problem is that when a checkbox is not checked, it
 # often puts nothing in the query string, so you can't tell the difference
 # between submitted with uncheck, and initial page load with empty query. 
 #

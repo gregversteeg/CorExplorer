@@ -71,7 +71,7 @@ if ($CID != 0)
 	<tr>
 		<td >Label genes by: <?php echo node_lbl_sel("node_lbl_type",$Node_lbl_type) ?> </td>
 		<td title="<?php print tip_text('multimap') ?>" >Show all proteins 
-					<input type="checkbox" name="mm" <?php checked($Multi_map,0) ?>  >
+					<input type="checkbox" name="mm" <?php checked($Multi_map) ?>  >
 		<td><input type="submit" value="Apply" ></td>
 	</tr>
 </table>
@@ -140,6 +140,9 @@ if (count($ppi_links) == 0)
 
 }
 
+$prots = array();
+$unlinked = 0;
+ppi_script($script_code, $ppi_nodes, $ppi_links,$ppi_hugo,$ens_desc,$unlinked);
 ?>
 
 <table width="90%" height="90%">
@@ -148,6 +151,18 @@ if (count($ppi_links) == 0)
 			<div id="cy">Drawing...</div>
 		</td>
 	</tr>
+<?php 
+	if ($unlinked > 0)
+	{
+		echo <<<END
+	<tr>
+		<td>($unlinked un-linked proteins not shown) </td>
+	</tr>
+
+END;
+		
+	}
+?>
 	<tr>
 		<td> <?php print stringdb_link($ppi_nodes); ?>
 		</td>
@@ -155,8 +170,6 @@ if (count($ppi_links) == 0)
 </table>
 <script>
 <?php
-$prots = array();
-ppi_script($script_code, $ppi_nodes, $ppi_links,$ppi_hugo,$ens_desc);
 print "$script_code\n";
 ?>
 cy.on('mouseover', 'node', function(evt)
@@ -192,7 +205,7 @@ function build_ppi(&$ppi_nodes,&$ppi_links,&$ppi_hugo,&$ens_desc,$CID)
 				" from g2c join g2e on g2c.GID=g2e.GID join glist on glist.ID=g2c.GID ".
 				" right join eprot on eprot.term=g2e.term ".
 				" where g2c.CID=? and g2c.wt >= ? and g2c.CRID=? ".
-				" order by g2c.wt desc ");
+				" order by g2c.wt desc ",1);
 	$st->bind_param("idi",$CID,$Min_corex_score,$CRID);
 	$st->bind_result($GID,$EID,$gname,$hname,$edesc);
 	$st->execute();
@@ -258,7 +271,7 @@ function build_ppi(&$ppi_nodes,&$ppi_links,&$ppi_hugo,&$ens_desc,$CID)
 		$ppi_nodes[$EID] = ensp_name($EID); # no gene name so this will be the label
 	}
 }
-function ppi_script(&$script_code, &$ppi_nodes, &$ppi_links,&$ppi_hugo,&$ens_desc)
+function ppi_script(&$script_code, &$ppi_nodes, &$ppi_links,&$ppi_hugo,&$ens_desc,&$unlinked)
 {
 	global $Node_lbl_type;
 
@@ -271,6 +284,7 @@ function ppi_script(&$script_code, &$ppi_nodes, &$ppi_links,&$ppi_hugo,&$ens_des
 		$linked_EID[$targ] = 1;
 	}
 	$elements = array();
+	$unlinked = 0;
 	foreach ($ppi_nodes as $EID => $gname)
 	{
 		if (isset($linked_EID[$EID]))
@@ -288,6 +302,7 @@ function ppi_script(&$script_code, &$ppi_nodes, &$ppi_links,&$ppi_hugo,&$ens_des
 			}
 			$elements[] = "{data: {id: '$EID', size:'25px', gene:'$gname',hugo:'$hugo', ensp:'$ensp', msg:'$msg'}}";
 		}
+		$unlinked++;
 	}
 	foreach ($ppi_links as $data)
 	{

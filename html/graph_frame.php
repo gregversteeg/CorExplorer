@@ -86,14 +86,14 @@ $kegg2clst = array();
 						 <input name="maxlvl" type="text" size="4" value="<?php print $MaxClstLvl ?>">
 					</td>
 					<td>Best inclusion only:
-						 <input name="bestinc" type="checkbox" <?php checked($Bestinc,0) ?>>
+						 <input name="bestinc" type="checkbox" <?php checked($Bestinc) ?>>
 					</td>
 				</tr>
 			</table>
 			<table cellspacing=10>
 				<tr>
 					<td title="<?php print tip_text('hugo_names') ?>">HUGO names:
-						 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo,0) ?>>
+						 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo) ?>>
 					</td>
 					<td >Kegg enriched (0.005):<?php print kegg_enrich_sel("keggterm",$Keggterm,$kegg2clst) ?>
 					<td colspan=2 align=left><input type="submit" value="Apply"></td>
