@@ -318,7 +318,14 @@ if ($Goterm == 0)
 				cynode = all[j];
 				cynode.removeClass('nodehide');
 			}
-			hide_nodes_by_cluster(kegg_cids_to_keep);	
+			if (keggterm > 0) 
+			{
+				hide_nodes_by_cluster(kegg_cids_to_keep);	
+			}
+			else
+			{
+				show_all_nodes();
+			}
 			return;
 		} 
 		if (!go2clst[term]) 
@@ -379,7 +386,14 @@ if ($Keggterm == 0)
 				cynode = all[j];
 				cynode.removeClass('nodehide');
 			}
-			hide_nodes_by_cluster(go_cids_to_keep);
+			if (goterm > 0)
+			{
+				hide_nodes_by_cluster(go_cids_to_keep);
+			}
+			else
+			{
+				show_all_nodes();
+			}
 			return;
 		} 
 		if (!kegg2clst[term]) 
@@ -511,6 +525,21 @@ function hide_nodes_by_cluster(cids_to_keep)
 					alert("err:cid=" + cid + " has no content");
 				}
 			}
+		}
+	} 
+}
+
+function show_all_nodes()
+{
+	var all = cy.elements("node");
+	for (j = 0; j < all.length; j++) 
+	{
+		cynode = all[j];
+		if (cynode.data('cid'))
+		{
+			lvl = cynode.data('lvl');	
+			cid = cynode.data('cid');
+			cynode.removeClass('nodehide');
 		}
 	} 
 }
