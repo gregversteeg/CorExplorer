@@ -82,8 +82,8 @@ $kegg2clst = array();
 					<td>Link weight:
 						 <input name="mw" type="text" size="4" value="<?php print $MinWt ?>">
 					</td>
-					<td>Max level:
-						 <input name="maxlvl" type="text" size="4" value="<?php print $MaxClstLvl ?>">
+					<td><!-- Max level:
+						 <input name="maxlvl" type="text" size="4" value="<?php print $MaxClstLvl ?>"> -->
 					</td>
 					<td>Best inclusion only:
 						 <input name="bestinc" type="checkbox" <?php checked($Bestinc) ?>>
@@ -120,10 +120,6 @@ $kegg2clst = array();
 	</tr>
 </table>
 <script>
-$('#sel_cid').change(function() 
-{
-	$(this).closest('form').submit();	
-});
 $('#param_btn').click(function()
 {
 	$('#params').toggle();
@@ -156,23 +152,6 @@ if ($numNodes == 0)
 	dump_go2clst($go2clst);
 	dump_kegg2clst($kegg2clst);
 	dump_clst_content($clstContent);
-#
-# If the graph is in the first frame, then we capture clicks on level one clusters
-# and propagate them to the parent window.
-#
-if ($FN == 1)
-{
-	echo <<<END
-cy.on('click', 'node', function(evt)
-{
-	var lbl = this.data("lbl");
-	if (lbl.indexOf("L1_") == 0) 
-	{
-		parent.postMessage(this.data("lbl"),"*");
-	}
-});
-END;
-}
 ?>
 cy.on('mouseover', 'node', function(evt)
 {
@@ -272,6 +251,7 @@ if ($CID_sel == 0)
 		sel.data("prev",cur);
 		node_highlight(prev,"C" + prev,0);
 		node_highlight(cur,"C" + cur,1);
+		node_zoom(cur,"C" + cur);
 		//$("#sel_gid").val("0");  // clst changed, unselect gene
 	});
 	node_highlight(sel_cid.val(), "C" + sel_cid.val(), 1);
@@ -449,6 +429,18 @@ function node_highlight(idnum,idstr,onoff)
 		cynode.removeClass('nodehlt');
 	}	
 }
+function node_zoom(idnum,idstr)
+{
+	if (idnum == 0) {return; }
+	var filter = 'node[cid = "' + idnum + '"]';
+	var zoom_node = cy.nodes().filter(function( ele ){
+  		return ele.data('id') == idstr;
+	});
+	// this is the best I could figure out so far for zoom to subgraph
+	// successors() didn't work
+	cy.fit(zoom_node.neighborhood()); 
+	cy.center(zoom_node);
+}
 function node_highlight2(idnum,idstr,onoff)
 {
 	if (idnum == 0) {return; }
@@ -562,8 +554,11 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 
 	$numNodes = 0;
 
+	$cids2show = array();  # level one clusters for which we will show nodes
+
 	if ($CID_sel > 0)
 	{
+		$cids2show[$CID_sel] = 1;
 		$limit_cids = array();
 		get_connected_clst($limit_cids,$CID_sel,$minWt);
 		$limit_cids_where = " and CID in (".implode(",",$limit_cids).")";
@@ -585,6 +580,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		foreach ($gene_cids as $cid)
 		{
 			$unique_cids[$cid] = 1;
+			$cids2show[$cid] = 1;
 		}
 		foreach ($gene_cids as $cid)
 		{
@@ -614,6 +610,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		while ($st->fetch())
 		{
 			$go_cids[] = $cid;
+			$cids2show[$cid] = 1;
 		}
 		$st->close();
 		if (count($go_cids) > 0)
@@ -645,6 +642,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		while ($st->fetch())
 		{
 			$kegg_cids[] = $cid;
+			$cids2show[$cid] = 1;
 		}
 		$st->close();
 		if (count($kegg_cids) > 0)
@@ -660,6 +658,39 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 
 	$nodes = array();
 	$links = array();
+	$elements = array();
+	$CIDlist = array(); # for building the next-level query
+
+	# First build the level 1 cluster nodes. The complication is that, due to max gene limit, some
+	# will not have any genes, hence will not be found in the gene search below. However,
+	# we also have to be careful not to show ALL clusters, since user can specify a cluster, go term, etc
+
+	$color = $level_colors["1"];
+
+	$sql = "select ID, lbl from clst where CRID=? and lvl=0";
+	$st = $DB->prepare($sql);	
+	$st->bind_param("i",$CRID);
+	$st->bind_result($CID,$cnum);
+	$st->execute();
+	while ($st->fetch())
+	{
+		if (count($cids2show) > 0)
+		{
+			if (!isset($cids2show[$CID]))
+			{
+		#		continue;
+			}
+		}
+		$CIDtag = "C$CID";
+		$CIDlbl = "L1_$cnum";
+		$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', lvl: '1',
+							hugo:'$CIDlbl', msg:'cluster:$CIDlbl', 
+				link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'}}";
+				#link:'/ppi/run1/".($CID-1).".stringNetwork.png'}}";
+		$nodes[$CIDtag] = 1;
+		$CIDlist[] = $CID;
+	}
+	$st->close();
 
 	$sql = "select GID, CID, glist.lbl as lbl,glist.hugo as hugo, glist.descr as descr, mi,wt,clst.lbl as cnum ".
 		" from g2c join glist on glist.ID=g2c.GID ";
@@ -670,15 +701,12 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 	$st->bind_param("id",$CRID,$minWt);
 	$st->bind_result($GID,$CID,$gene_name,$hugo_name,$gene_desc,$mi,$wt,$cnum);
 	$st->execute();
-	$elements = array();
-	$CIDlist = array(); # for building the next-level query
 	$gene_node_data = array();
 	$gid2names = array();
 	$gid2hugo = array();
 	$gid2desc = array();
-	$minwt = $minWt;  # FIXME
+	$minwt = $minWt;  # these will be the actual minwt/maxwt of the data
 	$maxwt = -1;
-	$color = $level_colors["1"];
 	$gid_seen = array();    
 	while ($st->fetch())
 	{
@@ -703,7 +731,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 
 		if (!isset($nodes[$CIDtag]))
 		{
-			# We have enough info to create the cluster node element right now. 
+			error_log("Getting additional CIDs in graph! CID=$CID");
 			$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', lvl: '1',
 								hugo:'$CIDlbl', msg:'cluster:$CIDlbl', 
 					link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'}}";
