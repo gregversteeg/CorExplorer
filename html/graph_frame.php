@@ -33,10 +33,10 @@ $kegg2clst = array();
 <head>
 <style>
     #cy {
-        width: 95%;
-        height: 95%;
+        width: 100%;
+        height: 100%;
         position: relative;
-		border:1px solid #d5d5d5;
+		/*border:1px solid #d5d5d5;*/
     }
 	#foot {
         width: 80%;
@@ -55,68 +55,95 @@ $kegg2clst = array();
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="fn" value="<?php echo $FN ?>">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
-<table >
+<table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
-		<td><b>Graph:</b></td>
-		<td> Factor: <?php print clst_sel("cid",$CID_sel,-1,"--all--") ?> </td>
-		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
-			<span id="param_btn" title="Edit parameters" style="cursor:pointer">&nbsp;&#x270e;&nbsp;</span>
-			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
-		</td>
-	</tr>
-</table>
-<table id="params" >
-	<tr>
-		<td>
-			<table cellspacing=10>
-				<tr>
-					<td  title="<?php print tip_text('genechoose') ?>" >
+		<td valign="top" align="left">
+		<table cellspacing=0 cellpadding=0 >
+			<tr>
+				<td align="left"> Factor: <?php print clst_sel("cid",$CID_sel,-1,"--all--") ?> </td>
+				<td align="left"  title="<?php print tip_text('genechoose') ?>" style="padding-left:25px">
 						Gene: <?php print gene_sel("gid",$GID_sel,$MinWt,$gids_shown) ?> 
-					<td >GO enriched (0.005):<?php print go_enrich_sel("goterm",$Goterm,$go2clst) ?>
-				</tr>
-			</table>
-			<table cellspacing=10>
-				<tr>
-					<td>Num genes: <input name="ng" type="text" size="4" value="<?php print $NumGenes ?>"> 
-					</td>
-					<td>Link weight:
-						 <input name="mw" type="text" size="4" value="<?php print $MinWt ?>">
-					</td>
-					<td><!-- Max level:
-						 <input name="maxlvl" type="text" size="4" value="<?php print $MaxClstLvl ?>"> -->
-					</td>
-					<td>Best inclusion only:
-						 <input name="bestinc" type="checkbox" <?php checked($Bestinc) ?>>
-					</td>
-				</tr>
-			</table>
-			<table cellspacing=10>
-				<tr>
-					<td title="<?php print tip_text('hugo_names') ?>">HUGO names:
-						 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo) ?>>
-					</td>
-					<td >Kegg enriched (0.005):<?php print kegg_enrich_sel("keggterm",$Keggterm,$kegg2clst) ?>
-					<td colspan=2 align=left><input type="submit" value="Apply"></td>
-					<td colspan=2 align=left><input type="submit" 
-						onclick="window.location.href='<?php echo $Frame_reset_url ?>';return false"
-						value="Reset"></td>
-				</tr>
-			</table>
+				</td>
+				<td>&nbsp;
+				</td>
+			</tr>
+			<tr >
+				<td align="left" valign="top" style="padding-top:3px">
+					<table cellspacing=0 cellpadding=0>
+						<tr>
+							<td >Kegg enriched (0.005):</td>
+						</tr>
+						<tr>
+							<td><?php print kegg_enrich_sel("keggterm",$Keggterm,$kegg2clst) ?></td>
+						</tr>
+					</table>
+				</td>
+				<td align="left"  valign="top" style="padding-left:25px;padding-top:3px;">
+					<table cellspacing=0 cellpadding=0>
+						<tr>
+							<td >GO enriched (0.005):</td>
+						</tr>
+						<tr>
+							<td ><?php print go_enrich_sel("goterm",$Goterm,$go2clst) ?>
+						</tr>
+					</table>
+				</td>
+				<td>&nbsp;
+				</td>
+			</tr>
+			<tr>
+				<td colspan=3 align="left" style="padding-top:6px;">
+					<table cellspacing=0 cellpadding=0 width="100%">
+						<tr>
+							<td>Num genes: <input name="ng" type="text" size="4" value="<?php print $NumGenes ?>"> 
+							</td>
+							<td style="padding-left:10px">Link weight:
+								 <input name="mw" type="text" size="4" value="<?php print $MinWt ?>">
+							</td>
+							<td style="padding-left:10px;" title="<?php print tip_text('hugo_names') ?>">HUGO names:
+								 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo) ?>>
+							</td>
+							<td><!-- Max level:
+								 <input name="maxlvl" type="text" size="4" value="<?php print $MaxClstLvl ?>"> -->
+							</td>
+							<td style="padding-left:10px;" >Best inclusion only:
+								 <input name="bestinc" type="checkbox" <?php checked($Bestinc) ?>>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+			<tr>
+				<td colspan=3 align="right" valign="top" style="padding-top:6px" >
+					<table cellspacing=0 cellpadding=0 >
+						<tr>
+							<td ><input type="submit" value="Apply"></td>
+							<td style="padding-left:10px" ><input type="submit" 
+								onclick="window.location.href='<?php echo $Frame_reset_url ?>';return false"
+								value="Reset">
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+		</td>
+		<td valign="top" align="right" style="font-size:1.4em; padding-right:50px;color:#333333" >
+			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
+			<!--span id="param_btn" title="Edit parameters" style="cursor:pointer">&nbsp;&#x270e;&nbsp;</span-->
 		</td>
 	</tr>
 </table>
 </form>
-<div id="loading" style="font-size:17px">
-      Graph is loading...
-    </div>
-<table width="100%" height="90%">
+<table width="100%" height="100%" cellspacing= 0 cellpadding=0>
 	<tr>
-		<td height="90%">
+		<td height="93%" valign="top" style="border:1px solid #d5d5d5;">
+			<span id="loading" style="font-size:17px">Graph is loading...  </span>
 			<div id="cy"></div>
 		</td>
 	</tr>
 	<tr>
-		<td align=left  height="10%">&nbsp; <span id="msg"></span> </td>
+		<td align=left  valign="top" height="7%" style="padding-top:5px">&nbsp; <span id="msg"></span> </td>
 	</tr>
 </table>
 <script>
@@ -431,7 +458,7 @@ function node_highlight(idnum,idstr,onoff)
 }
 function node_zoom(idnum,idstr)
 {
-	if (idnum == 0) {return; }
+	if (idnum == 0) {cy.fit(); }
 	var filter = 'node[cid = "' + idnum + '"]';
 	var zoom_node = cy.nodes().filter(function( ele ){
   		return ele.data('id') == idstr;

@@ -18,14 +18,17 @@ if (!read_access($CRID))
 <form method="get">
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
-<table cellpadding=5>
+<table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
-		<td><b>Gene List:</b></td>
-		<td> Factor: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
-		<td>
-			Sort by: <?php sort_sel($Sort) ?>
+		<td valign="top" align="left">
+			<table cellspacing=0 cellpadding=0 >
+				<tr>
+					<td> Factor: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
+					<td style="padding-left:25px"> Sort by: <?php sort_sel($Sort) ?> </td>
+				</tr>
+			</table>
 		</td>
-		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
+		<td valign="top" align="right" style="font-size:1.4em; padding-right:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
 		</td>
 	</tr>
@@ -72,7 +75,6 @@ if ($CID_sel != 0)
 		$sortby = "g2c.mi desc";
 	}
 
-	print "<h4>Factor $cname:</h4>\n";
 	print "<table rules=all border=true cellpadding=3>\n";
 	print "<tr><td><b>Gene</b></td><td><b>Weight/MI</b></td>".
 				"<td><b>HUGO</b></td><td><b>description</b></td><td><b>Gene Type</b></td></tr>\n";	

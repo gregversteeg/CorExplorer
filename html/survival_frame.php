@@ -105,18 +105,45 @@ rect
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
 <input type="hidden" name="fromform" value="1">
-<table cellpadding=5>
+<table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
-		<td><b>Survival:</b></td>
-		<td>Single Factor: <?php print clst_sel_surv("cid",$CID,$CID2) ?> </td>
-		<td>
-		Sort by p-val:	<input name="pvalsort" id="chk_pvalsort" type="checkbox" <?php checked($Pvalsort) ?>>
+		<td valign="top" align="left">
+			<table cellspacing=0 cellpadding=0 >
+				<tr>
+					<td align="left" valign="top">
+						<table cellspacing=1 cellpadding=0>
+						<tr>
+							<td>Single Factor: <td>
+						</tr>
+						<tr>
+							<td><?php print clst_sel_surv("cid",$CID,$CID2) ?> </td>
+						</tr>
+						</table>
+					</td>
+					<td align="left" valign="top" style="padding-left:10px">
+						<table cellspacing=1 cellpadding=0>
+						<tr>
+							<td>Paired Factors:</td>
+						</tr>
+						<tr>
+							<td><?php print clst_sel_pair("pair",$CID,$CID2) ?> </td>
+						</tr>
+						</table>
+					</td>
+					<td align="left" valign="top" style="padding-left:10px">
+						<table cellspacing=1 cellpadding=0>
+						<tr>
+							<td>Sort by p-val:</td>
+						</tr>
+						<tr>
+							<td><input name="pvalsort" id="chk_pvalsort" type="checkbox" <?php checked($Pvalsort) ?>></td>
+						</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
 		</td>
-	</tr>
-	<tr>
-		<td>&nbsp;</td>
-		<td>Paired Factors: <?php print clst_sel_pair("pair",$CID,$CID2) ?> </td>
-		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
+		<td valign="top" align="right" style="font-size:1.4em; padding-right:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
 		</td>
 	</tr>

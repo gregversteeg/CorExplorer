@@ -4,7 +4,7 @@ require_once("util.php");
 $minWt = getnum("mw",0.05);
 $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
-$numGenes = getint("ng",1000);
+$numGenes = getint("ng",100);
 $numSamps = getint("ns",5000);
 $maxZ = getval("maxz",2);
 $FromForm = getint("fromform",0); # tell us if it's initial page load or form submit
@@ -37,34 +37,38 @@ if (!read_access($CRID))
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
 <input type="hidden" name="fromform" value="1">
-<table cellpadding=5>
+<table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
-		<td><b>Heatmap:</b></td>
-		<td> Factor: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
-		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
-			<span id="param_btn" title="Edit parameters" style="cursor:pointer">&nbsp;&#x270e;&nbsp;</span>
+		<td valign="top" align="left">
+		<table>
+			<tr>
+				<td valign="top" align="left"> Factor: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
+			</tr>
+			<tr>
+				<td align="left" valign="top" style="padding-top:6px">
+					<table cellspacing=0 cellpadding=0>
+						<tr>
+							<td align="left" >Min weight:
+								 <input name="mw" type="text" size="4" value="<?php print $minWt ?>">
+							</td>
+							<!--td>Num genes: <input name="ng" type="text" size="4" value="<?php print $numGenes ?>"> 
+							</td>
+							<td align="left" style="padding-left:20px">Num samples: <input name="ns" type="text" size="4" value="<?php print $numSamps ?>"> 
+							</td-->
+							<td align="left" style="padding-left:20px" title="Ceiling on expression Z-value (Z = log(expr) normalized by std dev)">Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>" > 
+							</td>
+							<td align="left" style="padding-left:20px" title="<?php print tip_text('hugo_names') ?>">HUGO names:
+								 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo) ?>>
+							</td>
+							<td align="left" style="padding-left:20px" ><input type="submit" value="Apply"></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+		<td valign="top" align="right" style="font-size:1.4em; padding-right:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
 		</td>
-	</tr>
-</table>
-<table id="params" >
-	<tr>
-		<td>Min weight:
-			 <input name="mw" type="text" size="4" value="<?php print $minWt ?>">
-		</td>
-		<td width=10>&nbsp;</td>
-		<!--td>Num genes: <input name="ng" type="text" size="4" value="<?php print $numGenes ?>"> 
-		</td-->
-		<!--td>Num samples: <input name="ns" type="text" size="4" value="<?php print $numSamps ?>"> 
-		</td-->
-		<td width=10>&nbsp;</td>
-		<td title="Ceiling on expression Z-value (Z = log(expr) normalized by std dev)">Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>" > 
-		</td>
-		<td title="<?php print tip_text('hugo_names') ?>">HUGO names:
-			 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo) ?>>
-		</td>
-		<td width=10>&nbsp;</td>
-		<td><input type="submit" value="Apply"></td>
 	</tr>
 </table>
 </form>
@@ -117,8 +121,10 @@ if ($CID_sel != 0)
 	$heat_expr = "";
 	$heat_wts = "";
 	$samp_strata = "";
+	$maxGenes = 0;
 	get_heat_data($heat_genes,$heat_samps,$heat_expr,$heat_wts,$samp_strata,
-				$CRID,$CID_sel,$minWt,$numGenes,$numSamps,$maxZ);
+				$CRID,$CID_sel,$minWt,$numGenes,$numSamps,$maxZ,$maxGenes);
+
 	echo <<<END
 
 
@@ -274,7 +280,16 @@ function resetted() {
 
 
 </script>
-<p>Number of genes shown: $numGenes
+<p>Number of genes shown: $numGenes 
+END;
+if ($maxGenes > $numGenes)
+{
+	$maxGenesURL = $_SERVER['REQUEST_URI']."&ng=$maxGenes";
+	echo <<<END
+(<a href="$maxGenesURL">Show all $maxGenes genes</a> meeting weight threshold)
+END;
+}
+echo <<<END
 <p>
 <table cellspacing=0 cellpadding=0>
 	<tr>
@@ -291,7 +306,7 @@ END;
 <?php
 
 function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_strata,
-				$crid, $cid,$minwt,&$numGenes,$maxsamps,$maxZ)
+				$crid, $cid,$minwt,&$numGenes,$maxsamps,$maxZ,&$maxGenes)
 {
 	global $DB, $Use_hugo;
 	$st = $DB->prepare("select dsid,glid from clr where id=?");
@@ -335,12 +350,21 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_s
 	}
 	$st->close();
 	$numSamps = count($samps);
+
+	# get the max number of genes (before numGenes limit)
+	$st = $DB->prepare("select count(*) from g2c join glist on glist.id=g2c.gid ".
+				" where g2c.cid=? and g2c.wt >= ? ");
+	$st->bind_param("id",$cid,$minwt);
+	$st->bind_result($maxGenes);
+	$st->execute();
+	$st->fetch();
+	$st->close();
 	
 	# get the genes in the cluster
 	$genestrs[] = "{lbl:\"risk_strat\",i:0}";
 	$st = $DB->prepare("select gid,lbl,hugo,wt from g2c join glist on glist.id=g2c.gid ".
 				" where g2c.cid=? and g2c.wt >= ? ".
-				" order by g2c.mi desc"); # limit $numGenes ");
+				" order by g2c.mi desc limit $numGenes ");
 	$st->bind_param("id",$cid,$minwt);
 	$st->bind_result($gid,$gname,$hugo,$wt);
 	$st->execute();

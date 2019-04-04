@@ -22,14 +22,19 @@ if (!read_access($CRID))
 <form method="get">
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
-<table cellpadding=5>
+<table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
-		<td><b>Annotation:</b></td>
-		<td> Factor: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
-		<td> <?php print_type_sel($type_sel) ?> </td>
-		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
-			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
+		<td valign="top" align="center">
+			<table cellspacing=0 cellpadding=0 >
+				<tr>
+					<td> Factor: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
+					<td style="padding-left:15px"> <?php print_type_sel($type_sel) ?> </td>
+				</tr>
+			</table>
 		</td>
+		<!--td valign="top" align="right" style="font-size:1.4em; padding-right:50px;color:#333333" >
+			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
+		</td-->
 	</tr>
 </table>
 </form>
@@ -54,7 +59,6 @@ if ($CID_sel != 0)
 {  
 	if ($type_sel == "go" || $type_sel == "both")
 	{
-		print "<h4>Enriched GO terms:</h4>\n";
 		print "<table rules=all border=true cellpadding=3>\n";
 		print "<tr><td><b>GO</b></td><td><b>p-value</b></td><td><b>description</b></td></tr>\n";	
 		$st = dbps("select clst2go.term, clst2go.pval, gos.descr ".
@@ -75,7 +79,6 @@ if ($CID_sel != 0)
 
 	if ($type_sel == "kegg" || $type_sel == "both")
 	{
-		print "<h4>Enriched Kegg terms:</h4>\n";
 		print "<table rules=all border=true cellpadding=3>\n";
 		print "<tr><td><b>Kegg</b></td><td><b>p-value</b></td><td><b>description</b></td></tr>\n";	
 		$st = dbps("select clst2kegg.term, clst2kegg.pval, kegg.descr ".

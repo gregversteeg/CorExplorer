@@ -36,7 +36,7 @@ if ($CID != 0)
         width: 90%; 
         height: 90%;
         position: relative;
-		border:2px solid gray;
+		border:1px solid #d5d5d5;
     }
 		
 </style>
@@ -48,31 +48,43 @@ if ($CID != 0)
 <form method="get">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
-<table cellpadding=5>
+<table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
-		<td><b>PPI:</b></td>
-		<td> Factor: <?php print clst_sel("cid",$CID,0,"--choose--") ?> </td>
-		<td align="right" style="font-size:1.4em; padding-left:50px;color:#333333" >
-			<span id="param_btn" title="Edit parameters" style="cursor:pointer">&nbsp;&#x270e;&nbsp;</span>
+		<td valign="top" align="left">
+		<table>
+			<tr>
+				<td> Factor: <?php print clst_sel("cid",$CID,0,"--choose--") ?> </td>
+			</tr>
+			<tr>
+				<td align="left" valign="top" style="padding-top:6px">
+					<table cellspacing=0 cellpadding=0>
+						<tr>
+							<td>Minimum CorEx link weight <input name="corex_score" type="text" size="4" 
+										value="<?php print $Min_corex_score ?>">
+							</td>
+							<td align=left style="padding-left:20px">Minimum StringDB link score <input name="ppi_score" type="text" size="4" 
+										value="<?php print $Min_ppi_score ?>">
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+			<tr>
+				<td align="left" valign="top" style="padding-top:6px">
+					<table cellspacing=0 cellpadding=0>
+						<tr>
+							<td >Label genes by: <?php echo node_lbl_sel("node_lbl_type",$Node_lbl_type) ?> </td>
+							<td  style="padding-left:20px" title="<?php print tip_text('multimap') ?>" >Show all proteins 
+										<input type="checkbox" name="mm" <?php checked($Multi_map) ?>  >
+							<td style="padding-left:20px" ><input type="submit" value="Apply" ></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+		<td valign="top" align="right" style="font-size:1.4em; padding-right:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
 		</td>
-	</tr>
-</table>
-
-<table id="params" >
-	<tr>
-		<td>Minimum CorEx link weight <input name="corex_score" type="text" size="4" 
-					value="<?php print $Min_corex_score ?>">
-		</td>
-		<td colspan=2 align=left>Minimum StringDB link score <input name="ppi_score" type="text" size="4" 
-					value="<?php print $Min_ppi_score ?>">
-		</td>
-	</tr>
-	<tr>
-		<td >Label genes by: <?php echo node_lbl_sel("node_lbl_type",$Node_lbl_type) ?> </td>
-		<td title="<?php print tip_text('multimap') ?>" >Show all proteins 
-					<input type="checkbox" name="mm" <?php checked($Multi_map) ?>  >
-		<td><input type="submit" value="Apply" ></td>
 	</tr>
 </table>
 </form>
@@ -145,7 +157,7 @@ $unlinked = 0;
 ppi_script($script_code, $ppi_nodes, $ppi_links,$ppi_hugo,$ens_desc,$unlinked);
 ?>
 
-<table width="90%" height="90%">
+<table width="100%" height="90%" cellpadding=0 cellspacing=0>
 	<tr>
 		<td width="100%" height="95%">
 			<div id="cy">Drawing...</div>
