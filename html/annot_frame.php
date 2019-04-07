@@ -4,6 +4,7 @@ require_once("util.php");
 $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
 $type_sel = getval("type","both");
+$fdr_thresh = 0.005;
 
 if (!read_access($CRID))
 {
@@ -60,10 +61,10 @@ if ($CID_sel != 0)
 	if ($type_sel == "go" || $type_sel == "both")
 	{
 		print "<table rules=all border=true cellpadding=3>\n";
-		print "<tr><td><b>GO</b></td><td><b>p-value</b></td><td><b>description</b></td></tr>\n";	
+		print "<tr><td><b>GO</b></td><td><b>FDR</b></td><td><b>Description</b></td></tr>\n";	
 		$st = dbps("select clst2go.term, clst2go.pval, gos.descr ".
 				" from clst2go join gos on gos.term=clst2go.term ".
-				" where clst2go.cid=? and gos.CRID=? order by pval asc");
+				" where clst2go.cid=? and gos.CRID=? and pval <= $fdr_thresh order by pval asc");
 		$st->bind_param("ii",$CID_sel,$CRID);
 		$st->bind_result($term,$pval,$descr);
 		$st->execute();
@@ -80,10 +81,10 @@ if ($CID_sel != 0)
 	if ($type_sel == "kegg" || $type_sel == "both")
 	{
 		print "<table rules=all border=true cellpadding=3>\n";
-		print "<tr><td><b>Kegg</b></td><td><b>p-value</b></td><td><b>description</b></td></tr>\n";	
+		print "<tr><td><b>Kegg</b></td><td><b>FDR</b></td><td><b>Description</b></td></tr>\n";	
 		$st = dbps("select clst2kegg.term, clst2kegg.pval, kegg.descr ".
 				" from clst2kegg join kegg on kegg.term=clst2kegg.term ".
-				" where clst2kegg.cid=? and kegg.CRID=? order by pval asc");
+				" where clst2kegg.cid=? and kegg.CRID=? and pval <= $fdr_thresh order by pval asc");
 		$st->bind_param("ii",$CID_sel,$CRID);
 		$st->bind_result($term,$pval,$descr);
 		$st->execute();

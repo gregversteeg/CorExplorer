@@ -380,7 +380,7 @@ if (!table_exists("kegg")) { schema_add($sql);}
 $sql = "create table clst2go (
 	CID int, 
 	term int not null, 			
-	pval float not null, 			
+	pval float not null,  # these are FDR values from stringDB
 	index (CID),
 	index(term)
 );";
@@ -394,7 +394,7 @@ if (!table_exists("clst2go")) { schema_add($sql);}
 $sql = "create table clst2kegg (
 	CID int, 
 	term int not null, 			
-	pval float not null, 			
+	pval float not null,  # these are FDR values from stringDB
 	index (CID),
 	index(term)
 );";

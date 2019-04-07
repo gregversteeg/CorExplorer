@@ -71,7 +71,7 @@ $kegg2clst = array();
 				<td align="left" valign="top" style="padding-top:3px">
 					<table cellspacing=0 cellpadding=0>
 						<tr>
-							<td >Kegg enriched (0.005):</td>
+							<td >Kegg enriched:</td>
 						</tr>
 						<tr>
 							<td><?php print kegg_enrich_sel("keggterm",$Keggterm,$kegg2clst) ?></td>
@@ -81,7 +81,7 @@ $kegg2clst = array();
 				<td align="left"  valign="top" style="padding-left:25px;padding-top:3px;">
 					<table cellspacing=0 cellpadding=0>
 						<tr>
-							<td >GO enriched (0.005):</td>
+							<td >GO enriched:</td>
 						</tr>
 						<tr>
 							<td ><?php print go_enrich_sel("goterm",$Goterm,$go2clst) ?>
