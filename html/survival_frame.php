@@ -89,6 +89,10 @@ if ($CID_pair != "" or $CID != 0)
 {
 	font-size:12px;
 }
+.coordbox
+{
+	font-size:12px;
+}
 rect
 {
 	stroke-width:1;
@@ -179,6 +183,7 @@ $('#popout_btn').click(function()
 <?php if ($CID == 0) { exit(0); } ?>
 
 
+<div id="coords"></div>
 <div  id="graph" ></div>
 <?php 
 $survp_disp = sprintf("%1.2E",$this_survp);
@@ -237,15 +242,44 @@ var margin = {top: 20, right: 20, bottom: 100, left: 50},
 
 // create the svg with params making it auto-size to the window size
 var vis = d3.select("#graph")
-			.append("div")
-			.classed("svg-container",true)
-            .append("svg")
-.attr("preserveAspectRatio", "xMinYMin meet")
-   .attr("viewBox", "0 0 600 400")
+	.append("div")
+	.classed("svg-container",true)
+	.append("svg")
+	.on("mousemove", mousemove)
+	.on("mouseout", mouseout)
+	.attr("preserveAspectRatio", "xMinYMin meet")
+	.attr("viewBox", "0 0 600 400")
 	.classed("svg-content-responsive",true)
 	.append("g")
-    .attr("transform",
-          "translate(" + margin.left + "," + margin.top + ")");
+	.attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+	;
+
+var coordbox = vis.selectAll('.coordbox')
+  .data([0])
+  .enter()
+  .append('g')
+  .attr('class', 'coordbox')
+  .attr('transform',  'translate(300,100)');
+coordbox.append('text')
+  .attr('x', 0)
+  .attr('y', 0)
+  .attr('id','coordbox')
+  .text("");
+
+
+function mousemove() {
+    var time = Math.round(xscale.invert(d3.mouse(this)[0] - margin.left));
+    var surv = Math.round(100*yscale.invert(d3.mouse(this)[1] - margin.top))/100;
+	var str = time + "," + surv;
+	if (time < 0 || surv < 0 || surv > 1)
+	{
+		str = "";
+	}
+	$("#coordbox").text(str);
+}
+function mouseout() {
+	$("#coordbox").text("");
+}
 
 var xscale = d3.scaleLinear().range([0,width]);
 var yscale = d3.scaleLinear().range([height,0]);
@@ -255,14 +289,14 @@ yscale.domain([0, d3.max(nodes2, function(d) { return d.y; })]);
 
 
 vis.selectAll(".line")
-   .data(links)
-   .enter()
-   .append("line")
-   .attr("x1", function(d) { return xscale(d.source.x )})
-   .attr("y1", function(d) { return yscale(d.source.y )})
-   .attr("x2", function(d) { return xscale(d.target.x )})
-   .attr("y2", function(d) { return yscale(d.target.y )})
-   .style("stroke", function(d) { return d.clr});
+	.data(links)
+	.enter()
+	.append("line")
+	.attr("x1", function(d) { return xscale(d.source.x )})
+	.attr("y1", function(d) { return yscale(d.source.y )})
+	.attr("x2", function(d) { return xscale(d.target.x )})
+	.attr("y2", function(d) { return yscale(d.target.y )})
+	.style("stroke", function(d) { return d.clr});
 
 var xAxis = d3.axisBottom()
     .scale(xscale)
@@ -272,20 +306,19 @@ vis.append("g")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis);
 
-//ticks.unshift(0);
-//atrisk[0] = "At Risk";
+// Add another axis with same tick vector but substituting different text, for At-Risk
 var xAxis2 = d3.axisBottom()
     .scale(xscale)
 	.tickValues(ticks)
 	.tickFormat(function(n) { return atrisk[n]})
 
 vis.append("g")
-      .attr("transform", "translate(0," + (height + 60) + ")")
+    .attr("transform", "translate(0," + (height + 60) + ")")
 	.attr("class", "hiddenline")
-      .call(xAxis2);
+    .call(xAxis2);
 
 vis.append("g")
-      .call(d3.axisLeft(yscale));
+    .call(d3.axisLeft(yscale));
 
 vis.append("text")             
       .attr("transform", "translate(" + (width/2) + " ," + (height + margin.top + 20) + ")")
@@ -313,9 +346,9 @@ var legend = vis.selectAll('.legend')
   });
 legend.append("rect")
 	.attr('width', legendRectSize)
-  .attr('height', legendRectSize)
-  .style('fill', function(d){return d.c})
-  .style('stroke', function(d){return d.c});
+	.attr('height', legendRectSize)
+	.style('fill', function(d){return d.c})
+	.style('stroke', function(d){return d.c});
 legend.append('text')
   .attr('x', legendRectSize + legendSpacing)
   .attr('y', legendRectSize)
