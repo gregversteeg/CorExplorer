@@ -183,26 +183,25 @@ if ($numNodes == 0)
 cy.on('mouseover', 'node', function(evt)
 {
 	$("#msg").html(this.data('msg'))
+	$("body").css( "cursor", "pointer" );
 
-	var lbl = this.data("lbl");
+	/*var lbl = this.data("lbl");
 	if (lbl.indexOf("L1_") != 0) 
 	{ 
 		return; 
-	}
+	}*/
 	
-	<?php if ($FN==1) { print '$("body").css( "cursor", "pointer" );';print("\n"); } ?>
 });
 cy.on('mouseout', 'node', function(evt)
 {
 	$("#msg").html("")
+	$("body").css( "cursor", "default" );
 
-	var lbl = this.data("lbl");
+/*	var lbl = this.data("lbl");
 	if (lbl.indexOf("L1_") != 0) 
 	{ 
 		return; 
-	}
-
-	<?php if ($FN==1) { print '$("body").css( "cursor", "default" );';print("\n"); } ?>
+	} */
 });
 cy.on('mouseover', 'edge', function(evt)
 {
@@ -256,15 +255,17 @@ else
 }); 
 $(document).ready(function() 
 {
-	// First set of functions highlights selected cluster or gene node
+	// 
+	// These functions highlight and zoom to selected clusters. In the case of GO or Kegg,
+	// they blank out the clusters that don't have those annotations. 
+	// 
 	var sel_cid = $("#sel_cid");
 	var sel_gid = $("#sel_gid");
 	var sel_goterm = $("#sel_goterm");
 	var sel_keggterm = $("#sel_keggterm");
 
 <?php
-# But we don't want to highlight the cluster if only one cluster
-# is being shown anyway!
+# We don't zoom to the clusters if it's the only one being shown...
 if ($CID_sel == 0)
 {
 	echo <<<END
@@ -440,7 +441,10 @@ END;
 		$("#sel_gid").val("0");
 	});
 	node_highlight(sel_gid.val(), "G" + sel_gid.val(), 1);
-});
+
+	add_drag_listeners();
+
+});  // end of document.ready
 function node_highlight(idnum,idstr,onoff)
 {
 	if (idnum == 0) {return; }
@@ -463,8 +467,8 @@ function node_zoom(idnum,idstr)
 	var zoom_node = cy.nodes().filter(function( ele ){
   		return ele.data('id') == idstr;
 	});
-	// this is the best I could figure out so far for zoom to subgraph
-	// successors() didn't work
+	// Neighborhood actually does a better zoom than successors
+	//cy.fit(zoom_node.successors()); 
 	cy.fit(zoom_node.neighborhood()); 
 	cy.center(zoom_node);
 }
@@ -562,6 +566,56 @@ function show_all_nodes()
 		}
 	} 
 }
+function add_drag_listeners()
+{
+	var all = cy.elements("node");
+	for (j = 0; j < all.length; j++) 
+	{
+		cynode = all[j];
+		if (cynode.data('cid'))
+		{
+			cynode.on("grab",handle_grab);
+			cynode.on("drag",handle_drag);
+		}
+	}
+}
+var grab_x = 0;
+var grab_y = 0;
+var drag_subgraph = [];
+function handle_grab(evt)
+{
+	grab_x = this.position().x ;	
+	grab_y = this.position().y ;	
+	var succ = this.successors();
+	drag_subgraph = [];
+	var succstr = "";
+	for (i = 0; i < succ.length; i++)
+	{
+		if (succ[i].isNode())
+		{
+			var old_x = succ[i].position().x;
+			var old_y = succ[i].position().y;
+			succstr += " " + succ[i].data("id");
+			drag_subgraph.push({old_x:old_x, old_y:old_y, obj:succ[i]});	
+		}
+	}
+}
+function handle_drag(evt)
+{
+	var new_x = this.position().x;
+	var new_y = this.position().y;
+	var delta_x = new_x - grab_x;
+	var delta_y = new_y - grab_y;
+	for (i = 0; i < drag_subgraph.length; i++)
+	{
+		var obj = drag_subgraph[i].obj;
+		var old_x = drag_subgraph[i].old_x;
+		var old_y = drag_subgraph[i].old_y;
+		var new_x = old_x + delta_x;
+		var new_y = old_y + delta_y;
+		obj.position({x:new_x, y:new_y});
+	}
+}
 </script>
 </body>
 
@@ -569,6 +623,9 @@ function show_all_nodes()
 <?php
 
 ##############################################################
+#
+# Gets the graph structure from the DB, then writes out the cytoscape.js data elements
+#
 
 function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 {
@@ -581,7 +638,14 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 
 	$numNodes = 0;
 
-	$cids2show = array();  # level one clusters for which we will show nodes
+
+	# Is our CID list restricted by parameter settings? 
+	$restricted_CIDs = (($CID_sel > 0 || $GID_sel > 0 || $Goterm != 0 || $Keggterm != 0) ? 1 : 0);
+
+	# This will hold the CIDs that we're going to show.
+	# Note that a level-one cluster may not have any genes attached to it, due to the gene limit. 
+	# However, we will show it anyway in the global view, within its level-2 cluster.
+	$cids2show = array(); 
 
 	if ($CID_sel > 0)
 	{
@@ -591,6 +655,10 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		$limit_cids_where = " and CID in (".implode(",",$limit_cids).")";
 		$limit_cids_where2 = " and CID1 in (".implode(",",$limit_cids).")";
 		$limit_cids_where2 .= " and CID2 in (".implode(",",$limit_cids).")";
+		foreach ($limit_cids as $cid)
+		{
+			$cids2show[$limit_cids] = 1;
+		}
 	}
 	$gene_cids_where = "";
 	$gene_cids_where2 = "";
@@ -701,11 +769,11 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 	$st->execute();
 	while ($st->fetch())
 	{
-		if (count($cids2show) > 0)
+		if ($restricted_CIDs)
 		{
 			if (!isset($cids2show[$CID]))
 			{
-		#		continue;
+				continue;
 			}
 		}
 		$CIDtag = "C$CID";
@@ -777,7 +845,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		$mi = sprintf("%.3f",$mi);
 		$gene_node_data[$GID][] = array("cnum" => $cnum, "cid" => $CID, "wt" => $wt, "mi" => $mi);
 
-		$links[] = array("src" => "$GIDtag", "targ" => "$CIDtag", "wt" => $wt, "mi" => $mi);
+		$links[] = array("targ" => "$GIDtag", "src" => "$CIDtag", "wt" => $wt, "mi" => $mi);
 	}
 	$st->close();
 	foreach ($gene_node_data as $GID => $darray)
@@ -893,7 +961,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 				$nodes[$CID2tag] = 1;
 				$CIDlist[] = $CID2; 
 			}
-			$links[] = array("src" => "$CID1tag", "targ" => "$CID2tag", "wt" => "$wt", "mi" => "$mi");
+			$links[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", "mi" => "$mi");
 
 			# Here we are tracking the lower clusters contained in higher ones.
 			# Ultimately this is written to javascript and used for the GO/Kegg show/hide function.
@@ -939,6 +1007,7 @@ var cy = cytoscape({
   container: document.getElementById('cy'),
 //autoungrabify: 'true',
  wheelSensitivity: .1,
+
 END;
 	$html .= "elements: [".implode(",\n",$elements)."],\n";
 	$lbltype = ($Use_hugo == 0 ? "lbl" : "hugo");
