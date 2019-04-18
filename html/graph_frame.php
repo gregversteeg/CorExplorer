@@ -14,6 +14,9 @@ $Keggterm = getint("keggterm",0);
 $Bestinc = checkbox_val("bestinc",1,$FromForm);
 $Use_hugo = checkbox_val("use_hugo",1,$FromForm);
 
+$pdata = array();
+load_proj_data($pdata,$CRID);
+
 if (!read_access($CRID))
 {
 	die("access denied");
@@ -185,23 +188,12 @@ cy.on('mouseover', 'node', function(evt)
 	$("#msg").html(this.data('msg'))
 	$("body").css( "cursor", "pointer" );
 
-	/*var lbl = this.data("lbl");
-	if (lbl.indexOf("L1_") != 0) 
-	{ 
-		return; 
-	}*/
-	
 });
 cy.on('mouseout', 'node', function(evt)
 {
 	$("#msg").html("")
 	$("body").css( "cursor", "default" );
 
-/*	var lbl = this.data("lbl");
-	if (lbl.indexOf("L1_") != 0) 
-	{ 
-		return; 
-	} */
 });
 cy.on('mouseover', 'edge', function(evt)
 {
@@ -253,6 +245,8 @@ else
 		}
    	}
 }); 
+var go2gene = []; // map GOs to genes, can be augmented through ajax
+
 $(document).ready(function() 
 {
 	// 
@@ -295,6 +289,19 @@ if ($Goterm == 0)
 	{
 		var term = $(this).val();
 
+		clear_gene_highlight();
+		if (term != 0)
+		{
+			if (!go2gene[term])
+			{
+				ajax_get_gos(term);
+			}
+			else
+			{
+				highlight_go_genes(term);
+			}	
+		}
+
 		// first get the kegg enriched cids, if any, so we
 		// can do intersection
 		var keggterm = sel_keggterm.val();
@@ -309,12 +316,11 @@ if ($Goterm == 0)
 		}
 
 		var all = cy.elements("node");
-		// First we have to clear the old cluster highlights, then add these
+		// First we have to clear the old cluster and gene highlights, then add new
 		for (i = 0; i < all.length; i++) 
 		{
 			cynode = all[i];
-			lbl = cynode.data('lbl');
-			if (lbl.startsWith("L1_"))
+			if (cynode.data('lbl').startsWith("L1_"))
 			{
 				cynode.removeClass('nodehlt');
 			}
@@ -353,6 +359,29 @@ if ($Goterm == 0)
 		}
 		hide_nodes_by_cluster(cids_to_keep);
 
+	});
+
+END;
+}
+else # GO term was specified -- but we can still respond to selection change by highlighting genes
+{
+	echo <<<END
+
+	sel_goterm.change(function(data)
+	{
+		var term = $(this).val();
+		clear_gene_highlight();
+		if (term != 0)
+		{
+			if (!go2gene[term])
+			{
+				ajax_get_gos(term);
+			}
+			else
+			{
+				highlight_go_genes(term);
+			}	
+		}
 	});
 END;
 }
@@ -445,6 +474,53 @@ END;
 	add_drag_listeners();
 
 });  // end of document.ready
+function do_go_gene_ajax_highlighting()
+{
+	var term = sel_goterm.val();
+	if (!go2gene[term])
+	{
+		ajax_get_gos(term);
+	}
+	clear_gene_highlight();
+	highlight_go_genes(term);
+}
+function highlight_go_genes(term)
+{
+	for (var i = 0; i < go2gene[term].length; i++)
+	{
+		var gid = go2gene[term][i];
+		node_highlight(1,"G" + gid,1);
+	}
+}
+function clear_gene_highlight()
+{
+	var all = cy.elements("node");
+	for (i = 0; i < all.length; i++) 
+	{
+		cynode = all[i];
+		if (cynode.data('id').startsWith("G"))
+		{
+			cynode.removeClass('nodehlt');
+		}
+	}
+}
+function ajax_get_gos(term)
+{
+	$.ajax({
+	   type: 'GET',
+	   url: 'ajax_go_mapping.php', 
+	   data: {"crid" : <?php echo $CRID ?>, "gonum" : term},
+	   async: true, 
+	   success: function(data){
+			go2gene[term] = data["gids"];
+			clear_gene_highlight();
+			highlight_go_genes(term);
+	   },
+	   error: function() {
+		  alert("ERROR!");
+	   }
+	});
+}
 function node_highlight(idnum,idstr,onoff)
 {
 	if (idnum == 0) {return; }
@@ -496,6 +572,13 @@ function node_highlight2(idnum,idstr,onoff)
 }
 function hide_nodes_by_cluster(cids_to_keep)
 {
+<?php
+	# This is a kludjy way to prevent hiding of clusters when only one cluster was
+	# selected to show to begin with. The logic of the showing/hiding ought to 
+	# be revisited and code clarified...but not urgent so far 
+	if ($CID_sel == 0)
+	{
+		echo <<<END
 	// Hide the nodes that aren't in one of the given clusters. 
 	// We don't have to worry about the edges as cytoscape.js automatically
 	// hides edges when one end is hidden...not sure how it does that. 
@@ -550,6 +633,9 @@ function hide_nodes_by_cluster(cids_to_keep)
 			}
 		}
 	} 
+END;
+	}
+?>
 }
 
 function show_all_nodes()
@@ -629,7 +715,7 @@ function handle_drag(evt)
 
 function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 {
-	global $DB, $CRID, $CID_sel, $GID_sel, $Goterm;
+	global $DB, $CRID, $CID_sel, $GID_sel, $Goterm,$pdata;
 	global $Keggterm, $go_enrich_pval, $kegg_enrich_pval, $numSizeBins;
 	global $level_colors, $MaxClstLvl, $Bestinc, $Use_hugo;
 
@@ -657,7 +743,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		$limit_cids_where2 .= " and CID2 in (".implode(",",$limit_cids).")";
 		foreach ($limit_cids as $cid)
 		{
-			$cids2show[$limit_cids] = 1;
+			$cids2show[$cid] = 1;
 		}
 	}
 	$gene_cids_where = "";
@@ -697,6 +783,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 	if ($Goterm != 0)
 	{
 		# get the clusters enriched for this go, and also the genes which have it
+		
 		$st = $DB->prepare("select CID from clst2go join clst on clst.ID=clst2go.CID ".
 			" where term=? and pval <= ? and CRID=?");
 		$st->bind_param("idi",$Goterm,$go_enrich_pval,$CRID);
@@ -704,6 +791,11 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		$st->execute();
 		while ($st->fetch())
 		{
+			if ($CID_sel > 0 && $cid != $CID_sel)
+			{
+				# If they also specified a cluster then we only show that cluster
+				continue;
+			}
 			$go_cids[] = $cid;
 			$cids2show[$cid] = 1;
 		}
@@ -712,9 +804,9 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		{
 			$go_where = " and CID in (".implode(",",$go_cids).")";
 		}
-		$st = $DB->prepare("select g2g.gid from g2g join g2c on g2c.gid=g2g.gid ".
-			" where g2g.term=? and g2c.crid=?");
-		$st->bind_param("ii",$Goterm,$CRID);
+		$st = dbps("select g2e.GID from g2e join e2go on e2go.eterm=g2e.term ".
+					"join glist on glist.ID=g2e.GID where e2go.gterm=? and glist.GLID=?");
+		$st->bind_param("ii",$Goterm,$pdata["GLID"]);
 		$st->bind_result($gid);
 		$st->execute();
 		while ($st->fetch())
@@ -736,6 +828,11 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		$st->execute();
 		while ($st->fetch())
 		{
+			if ($CID_sel > 0 && $cid != $CID_sel)
+			{
+				# If they also specified a cluster then we only show that cluster
+				continue;
+			}
 			$kegg_cids[] = $cid;
 			$cids2show[$cid] = 1;
 		}
@@ -870,9 +967,6 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		}
 		$nclst = count($info);
 		$msg .= "<br>contained in $nclst clusters: ".implode("; ",$info);
-		#$lbl = ($Use_hugo == 0 ? $gname : $hugo);
-		#$lbl2 = ($Use_hugo == 1 ? $gname : $hugo);
-		#$clr = (isset($go_genes[$GID]) ? "yellow" : "red");
 		$classes = (isset($go_genes[$GID]) ? "nodehlt" : "");
 		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', lvl:'0',
 						hugo:'$hugo', msg:'$msg', color:'red'}, classes:'$classes'}";
@@ -1056,6 +1150,7 @@ style:[
 	
   ],
 layout:{ name: 'cose',
+		nodeRepulsion: 4000000,
 		stop:function(){
 			$('#loading').hide();
 		}
