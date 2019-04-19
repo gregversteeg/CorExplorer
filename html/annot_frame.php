@@ -53,6 +53,10 @@ $('#popout_btn').click(function()
  	var win = window.open(window.location.href, '_blank');
   	win.focus();
 });
+function go_click(term)
+{
+	parent.postMessage(term,"*");
+}
 </script>
 
 <?php
@@ -72,7 +76,8 @@ if ($CID_sel != 0)
 		{
 			$goname = go_name($term);
 			$pval = sprintf("%1.0E",$pval);
-			print "<tr><td>$goname</td><td>$pval</td><td>$descr</td></tr>\n";	
+			print "<tr><td><a href='javascript:void(0)' onclick='go_click($term)'>$goname</a></td>";
+			print "<td>$pval</td><td>$descr</td></tr>\n";	
 		}
 		$st->close();
 		print "</table>\n";

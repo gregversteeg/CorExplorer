@@ -84,7 +84,7 @@ head_section("CorEx Browser",$xtra);
 	<tr>
 		<td width='100%' height='100%' id='viewport' style="border:1px solid white">
 <div id="dialogL" title="Factor Graph" style="overflow:hidden;padding:0px" >
-<iframe  width='100%' height='100%' 
+<iframe id="graph_frame" width='100%' height='100%' 
 		src='/frame.php?ft=graph&fn=1&crid=<?php echo $CRID ?>&cid=<?php echo $CID ?>'
 		 style='border:none;overflow:hidden' ></iframe>
 </div>
@@ -140,6 +140,17 @@ function add_window(sel_id)
 		 	' style="border:none;overflow:hidden" ></iframe> ' +
 			' </div> ';
     $(html).dialog({height:700, width:700, position:{my:"center",at:"center",of:"#viewport"}});
+}
+window.addEventListener("message", receiveMessage, false);
+function receiveMessage(event)
+{
+	var gonum = event.data;
+	var graph_frame = $('#graph_frame');
+	var go_sel = graph_frame.contents().find('#sel_goterm');
+	go_sel.val(gonum);
+	var ev = graph_frame[0].contentWindow.document.createEvent('UIEvents');
+	ev.initUIEvent('change', true, true, window, 1);
+	go_sel[0].dispatchEvent(ev);
 }
 </script>
 
