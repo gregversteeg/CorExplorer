@@ -55,12 +55,14 @@ if (!table_has_column("glist","GLID"))
 ##########################################################################
 #
 # Gene mapping to ENSP proteins - needed to build PPI graph
+# and to map genes to GOs 
 #
 
 $sql = "create table g2e (
 	GID int not null, 
 	term int not null,			# ref eprot
-	unique index (GID,term)
+	unique index (GID,term),
+	index (term)
 );";
 if (!table_exists("g2e")) { schema_add($sql);}
 
@@ -71,20 +73,19 @@ $sql = "create table eprot (
 if (!table_exists("eprot")) { schema_add($sql);}
 
 
-
-
-
 ##########################################################################
 #
-# Gene mapping to GO
+# ENSP mapping to GO
 #
 
-$sql = "create table g2g (
-	GID int not null unique, 
-	term int not null, 		# ref gos
-	unique index (GID,term)
+$sql = "create table e2go (
+	eterm int not null,  	# ref eprot
+	gterm int not null, 		# ref gos
+	unique index (gterm,eterm),
+	index (eterm)
 );";
-if (!table_exists("g2g")) { schema_add($sql);}
+if (!table_exists("e2g")) { schema_add($sql);}
+
 
 
 ##########################################################################
