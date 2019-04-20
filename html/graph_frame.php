@@ -3,8 +3,8 @@ require_once("util.php");
 
 # convention: inital caps for the page parameters
 $FromForm = getint("fromform",0); # tell us if it's initial page load or form submit
-$NumGenes = getint("ng",1000);
-$MinWt = getnum("mw",0.05);
+$NumGenes = 10000; #getint("ng",1000);
+$MinWt = getnum("mw",0.1);
 $MaxClstLvl = getint("maxlvl",2);
 $CRID = getint("crid",1);
 $CID_sel = getint("cid",0);
@@ -34,6 +34,7 @@ $kegg2clst = array();
 ?>
 
 <head>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
 <style>
     #cy {
         width: 100%;
@@ -50,6 +51,7 @@ $kegg2clst = array();
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.1.2/cytoscape.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 </head>
 <body>
 
@@ -98,10 +100,10 @@ $kegg2clst = array();
 				<td colspan=3 align="left" style="padding-top:6px;">
 					<table cellspacing=0 cellpadding=0 width="100%">
 						<tr>
-							<td>Num genes: <input name="ng" type="text" size="4" value="<?php print $NumGenes ?>"> 
-							</td>
-							<td style="padding-left:10px">Link weight:
-								 <input name="mw" type="text" size="4" value="<?php print $MinWt ?>">
+							<td>Link Weight: </td>
+							<td style="width:150px;padding-left:10px" ><div id="mw_slider"></div> </td>
+							<td style="padding-left:3px">
+								 <input name="mw" id="txt_mw" type="text" size="3" value="<?php print $MinWt ?>">
 							</td>
 							<td style="padding-left:10px;" title="<?php print tip_text('hugo_names') ?>">HUGO names:
 								 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo) ?>>
@@ -165,7 +167,9 @@ $('#popout_btn').click(function()
 $numNodes=0;
 $gids_shown = array();
 $clstContent = array();
-$graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown,$clstContent);
+$actualMinWt = $MinWt;
+$actualMaxWt = 1;
+$graph_html = build_graph($numNodes,$NumGenes,$MinWt,$gids_shown,$clstContent,$actualMinWt,$actualMaxWt);
 
 #$numNodes=0;
 #$graph_html = build_graph($numNodes,$NumGenes,$MinWt);
@@ -257,7 +261,47 @@ $(document).ready(function()
 	var sel_gid = $("#sel_gid");
 	var sel_goterm = $("#sel_goterm");
 	var sel_keggterm = $("#sel_keggterm");
+	var all_nodes = cy.elements("node");
 
+	$( "#mw_slider" ).slider({
+		min:<?php echo $MinWt ?>, 
+		max:<?php echo $actualMaxWt ?>, 
+		step:0.001, 
+		value:<?php echo $MinWt ?>,
+		slide: function( event, ui ) {
+			$("#txt_mw").val(ui.value);
+			hide_nodes_by_weight(ui.value);			
+	   }
+	});
+	function hide_nodes_by_weight(target_wt)
+	{
+		for (j = 0; j < all_nodes.length; j++) 
+		{
+			var cynode = all_nodes[j];
+			if (cynode.data('id').startsWith("G"))
+			{
+				var wt = cynode.data("wt");
+				if (wt > target_wt)
+				{
+					cynode.removeClass('nodehide');
+				}
+				else
+				{
+					cynode.addClass('nodehide');
+				}
+			}
+		}
+	}
+	$("#txt_mw").change(function(data)
+	{
+		var txtval = $(this).val();
+		var sliderval = $("#mw_slider").slider("option","value");
+		if (sliderval != txtval)
+		{
+			$("#mw_slider").slider("value", txtval);
+			hide_nodes_by_weight(txtval);
+		}
+	}); 
 <?php
 # We don't zoom to the clusters if it's the only one being shown...
 if ($CID_sel == 0)
@@ -713,7 +757,7 @@ function handle_drag(evt)
 # Gets the graph structure from the DB, then writes out the cytoscape.js data elements
 #
 
-function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
+function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$maxwt)
 {
 	global $DB, $CRID, $CID_sel, $GID_sel, $Goterm,$pdata;
 	global $Keggterm, $go_enrich_pval, $kegg_enrich_pval, $numSizeBins;
@@ -888,7 +932,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		" from g2c join glist on glist.ID=g2c.GID ";
 	$sql .= " join clst on clst.ID = g2c.CID ";
 	$sql .= " where g2c.CRID=? and wt >= ? $go_where $kegg_where $limit_cids_where $gene_cids_where ";
-	$sql .=	" order by wt desc limit $N"; 
+	$sql .=	" order by wt desc "; #limit $N"; 
 	$st = $DB->prepare($sql);
 	$st->bind_param("id",$CRID,$minWt);
 	$st->bind_result($GID,$CID,$gene_name,$hugo_name,$gene_desc,$mi,$wt,$cnum);
@@ -897,8 +941,6 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 	$gid2names = array();
 	$gid2hugo = array();
 	$gid2desc = array();
-	$minwt = $minWt;  # these will be the actual minwt/maxwt of the data
-	$maxwt = -1;
 	$gid_seen = array();    
 	while ($st->fetch())
 	{
@@ -968,7 +1010,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent)
 		$nclst = count($info);
 		$msg .= "<br>contained in $nclst clusters: ".implode("; ",$info);
 		$classes = (isset($go_genes[$GID]) ? "nodehlt" : "");
-		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', lvl:'0',
+		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', lvl:'0', wt:$wt,
 						hugo:'$hugo', msg:'$msg', color:'red'}, classes:'$classes'}";
 		$nodes[$GIDtag] = 1;
 		$gids_shown[$GID] = 1;
@@ -1113,7 +1155,7 @@ style:[
       style: {
         'background-color': 'data(color)',
         'label': 'data($lbltype)',
-		'font-size' : '25px',
+		'font-size' : '50px',
 		'width' : 'data(size)',
 		'height' : 'data(size)'
       }
