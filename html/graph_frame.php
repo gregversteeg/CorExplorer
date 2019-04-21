@@ -4,7 +4,6 @@ require_once("util.php");
 # convention: inital caps for the page parameters
 $FromForm = getint("fromform",0); # tell us if it's initial page load or form submit
 $NumGenes = 10000; #getint("ng",1000);
-$MinWt = getnum("mw",0.1);
 $MaxClstLvl = getint("maxlvl",2);
 $CRID = getint("crid",1);
 $CID_sel = getint("cid",0);
@@ -16,6 +15,8 @@ $Use_hugo = checkbox_val("use_hugo",1,$FromForm);
 
 $pdata = array();
 load_proj_data($pdata,$CRID);
+
+$MinWt = getnum("mw",$pdata["def_wt"]);
 
 if (!read_access($CRID))
 {
@@ -133,6 +134,32 @@ $kegg2clst = array();
 			</tr>
 		</table>
 		</td>
+<?php
+$graph_disabled = ""; #($CID_sel==0 ? "" : " disabled='true' ");
+if (write_access($CRID))
+{
+	echo <<<END
+		<td valign="top">
+			<table>
+				<tr>
+					<td><button type="button" id="save_graph_btn" onclick="save_graph();return false" $graph_disabled>
+							Save Graph</button>
+					</td>
+				</tr>
+				<tr>
+					<td><button type="button" id="clear_graph_btn" onclick="clear_graph();return false" $graph_disabled>
+							Clear Graph</button>
+					</td>
+				</tr>
+				<tr>
+					<td><button type="button" onclick="save_wt();return false">Save Link Weight</button></td>
+				</tr>
+			</table>
+		</td>
+END;
+}
+
+?>
 		<td valign="top" align="right" style="font-size:1.4em; padding-right:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
 			<!--span id="param_btn" title="Edit parameters" style="cursor:pointer">&nbsp;&#x270e;&nbsp;</span-->
@@ -264,7 +291,7 @@ $(document).ready(function()
 	var all_nodes = cy.elements("node");
 
 	$( "#mw_slider" ).slider({
-		min:<?php echo $MinWt ?>, 
+		min:0, 
 		max:<?php echo $actualMaxWt ?>, 
 		step:0.001, 
 		value:<?php echo $MinWt ?>,
@@ -273,6 +300,7 @@ $(document).ready(function()
 			hide_nodes_by_weight(ui.value);			
 	   }
 	});
+	hide_nodes_by_weight(<?php echo $MinWt ?>);
 	function hide_nodes_by_weight(target_wt)
 	{
 		for (j = 0; j < all_nodes.length; j++) 
@@ -746,6 +774,86 @@ function handle_drag(evt)
 		obj.position({x:new_x, y:new_y});
 	}
 }
+function save_wt()
+{
+	var wt = $("#txt_mw").val();
+	alert(wt);
+	$.ajax({
+	   type: 'POST',
+	   url: 'ajax_save_weight.php', 
+	   data: {"crid" : <?php echo $CRID ?>, "wt":wt},
+	   async: true, 
+	   success: function(data){
+			if (data.status == "success")
+			{
+				alert(data.msg);
+			}
+	   },
+	   error: function(data) {
+		  alert(data.msg);
+	   }
+	});
+}
+function clear_graph()
+{
+	$.ajax({
+	   type: 'POST',
+	   url: 'ajax_clear_graph.php', 
+	   data: {"crid" : <?php echo $CRID ?>},
+	   async: true, 
+	   success: function(data){
+			if (data.status == "success")
+			{
+				alert(data.msg);
+			}
+			$("#save_graph_btn").prop("disabled",false);
+			$("#clear_graph_btn").prop("disabled",false);
+	   },
+	   error: function(data) {
+		  alert(data.msg);
+			$("#save_graph_bth").prop("disabled",false);
+			$("#clear_graph_btn").prop("disabled",false);
+	   }
+	});
+}
+function save_graph()
+{
+	var all = cy.elements("node");
+	var data = [];
+	for (j = 0; j < all.length; j++) 
+	{
+		var cynode = all[j];
+		var id = cynode.data("id");
+		if (id.startsWith("G") || id.startsWith("C"))
+		{
+			var x = cynode.position().x;
+			var y = cynode.position().y;
+			data.push({"id":id,"x":x,"y":y});
+		}
+	}
+	var json = JSON.stringify(data);
+	$("#save_graph_btn").prop("disabled",true);
+	$("#clear_graph_btn").prop("disabled",true);
+	$.ajax({
+	   type: 'POST',
+	   url: 'ajax_save_graph.php', 
+	   data: {"crid" : <?php echo $CRID ?>, "json" : json},
+	   async: true, 
+	   success: function(data){
+			if (data.status == "success")
+			{
+				alert(data.msg);
+			}
+			$("#save_graph_btn").prop("disabled",false);
+			$("#clear_graph_btn").prop("disabled",false);
+	   },
+	   error: function(data) {
+		  	alert(data.msg);
+			$("#save_graph_bth").prop("disabled",false);
+			$("#clear_graph_btn").prop("disabled",false);
+	   }
+	});
+}
 </script>
 </body>
 
@@ -767,6 +875,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 	$limit_cids_where2 = "";
 
 	$numNodes = 0;
+	$minWt = 0; #XXX clean up this code
 
 
 	# Is our CID list restricted by parameter settings? 
@@ -903,10 +1012,10 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 
 	$color = $level_colors["1"];
 
-	$sql = "select ID, lbl from clst where CRID=? and lvl=0";
+	$sql = "select ID, lbl,pos_x,pos_y from clst where CRID=? and lvl=0";
 	$st = $DB->prepare($sql);	
 	$st->bind_param("i",$CRID);
-	$st->bind_result($CID,$cnum);
+	$st->bind_result($CID,$cnum,$cx,$cy);
 	$st->execute();
 	while ($st->fetch())
 	{
@@ -919,23 +1028,25 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		}
 		$CIDtag = "C$CID";
 		$CIDlbl = "L1_$cnum";
-		$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', lvl: '1',
-							hugo:'$CIDlbl', msg:'cluster:$CIDlbl', 
-				link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'}}";
+		$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', lvl: '1',".
+							"hugo:'$CIDlbl', msg:'cluster:$CIDlbl', ".
+				"link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'}, ".
+					"position:{x:$cx,y:$cy}}";
 				#link:'/ppi/run1/".($CID-1).".stringNetwork.png'}}";
 		$nodes[$CIDtag] = 1;
 		$CIDlist[] = $CID;
 	}
 	$st->close();
 
-	$sql = "select GID, CID, glist.lbl as lbl,glist.hugo as hugo, glist.descr as descr, mi,wt,clst.lbl as cnum ".
-		" from g2c join glist on glist.ID=g2c.GID ";
+	$sql = "select GID, CID, glist.lbl as lbl,glist.hugo as hugo, glist.descr as descr, mi,wt,clst.lbl as cnum, ".
+		" glist.pos_x as gx, glist.pos_y as gy, clst.pos_x as cx, clst.pos_y as cy ".
+			" from g2c join glist on glist.ID=g2c.GID ";
 	$sql .= " join clst on clst.ID = g2c.CID ";
 	$sql .= " where g2c.CRID=? and wt >= ? $go_where $kegg_where $limit_cids_where $gene_cids_where ";
 	$sql .=	" order by wt desc "; #limit $N"; 
 	$st = $DB->prepare($sql);
 	$st->bind_param("id",$CRID,$minWt);
-	$st->bind_result($GID,$CID,$gene_name,$hugo_name,$gene_desc,$mi,$wt,$cnum);
+	$st->bind_result($GID,$CID,$gene_name,$hugo_name,$gene_desc,$mi,$wt,$cnum,$gx,$gy,$cx,$cy);
 	$st->execute();
 	$gene_node_data = array();
 	$gid2names = array();
@@ -966,9 +1077,10 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		if (!isset($nodes[$CIDtag]))
 		{
 			error_log("Getting additional CIDs in graph! CID=$CID");
-			$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', lvl: '1',
-								hugo:'$CIDlbl', msg:'cluster:$CIDlbl', 
-					link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'}}";
+			$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', lvl: '1',".
+								"hugo:'$CIDlbl', msg:'cluster:$CIDlbl', ".
+					"link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'},".
+					"position:{x:$cx,y:$cy}}";
 					#link:'/ppi/run1/".($CID-1).".stringNetwork.png'}}";
 			$nodes[$CIDtag] = 1;
 			$CIDlist[] = $CID;
@@ -982,7 +1094,8 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		$gid2desc[$GID] = $gene_desc;
 		$wt = sprintf("%.3f",$wt);
 		$mi = sprintf("%.3f",$mi);
-		$gene_node_data[$GID][] = array("cnum" => $cnum, "cid" => $CID, "wt" => $wt, "mi" => $mi);
+		$gene_node_data[$GID][] = array("cnum" => $cnum, "cid" => $CID, "wt" => $wt, "mi" => $mi, 
+				"x" => $gx, "y" => $gy);
 
 		$links[] = array("targ" => "$GIDtag", "src" => "$CIDtag", "wt" => $wt, "mi" => $mi);
 	}
@@ -999,6 +1112,8 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 			$cid 	= $data["cid"];	 
 			$wt 	= $data["wt"];	
 			$mi 	= $data["mi"];	
+			$x		= $data["x"];	
+			$y		= $data["y"];	
 			$info[] = "$cnum (Wt=$wt, MI=$mi)";
 		}
 		$GIDtag = "G$GID";
@@ -1010,8 +1125,10 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		$nclst = count($info);
 		$msg .= "<br>contained in $nclst clusters: ".implode("; ",$info);
 		$classes = (isset($go_genes[$GID]) ? "nodehlt" : "");
-		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', lvl:'0', wt:$wt,
-						hugo:'$hugo', msg:'$msg', color:'red'}, classes:'$classes'}";
+		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', lvl:'0', wt:$wt,".
+						"hugo:'$hugo', msg:'$msg', color:'red'}, ".
+						"position:{x:$x,y:$y},".
+						"classes:'$classes'}";
 		$nodes[$GIDtag] = 1;
 		$gids_shown[$GID] = 1;
 	}
@@ -1031,13 +1148,16 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 	$maxLvl = min($maxlvl + 1, $MaxClstLvl);	
 
 	$cid2num = array();
-	$st = $DB->prepare("select ID, lbl from clst where CRID=?");
+	$cid2x = array(); $cid2y = array();
+	$st = $DB->prepare("select ID, lbl, pos_x, pos_y from clst where CRID=?");
 	$st->bind_param("i",$CRID);
-	$st->bind_result($id,$lbl);
+	$st->bind_result($id,$lbl,$cx,$cy);
 	$st->execute();
 	while ($st->fetch())
 	{
-		$cid2num[$id] = $lbl;
+		$cid2num[$id] 	= $lbl;
+		$cid2x[$id] 	= $cx;
+		$cid2y[$id] 	= $cy;
 	}	
 	$st->close();
 	
@@ -1092,8 +1212,11 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 			{
 				# We're putting a "hugo" name in here as one way (maybe not the best)
 				# to make the gene name switching not mess up the cluster names
-				$elements[] = "{data: {id: '$CID2tag', size:'$size', lbl:'$CID2lbl', hugo:'$CID2lbl', cid:'$CID2',lvl:'$lvl',
-					link:'', msg:'cluster:$CID2lbl', color:'$color'}}";
+				$x = $cid2x[$CID2];
+				$y = $cid2y[$CID2];
+				$elements[] = "{data: {id: '$CID2tag', size:'$size', lbl:'$CID2lbl', hugo:'$CID2lbl', cid:'$CID2',".
+					"lvl:'$lvl',link:'', msg:'cluster:$CID2lbl', color:'$color'},".
+					"position:{x:$x,y:$y}}";
 				$nodes[$CID2tag] = 1;
 				$CIDlist[] = $CID2; 
 			}
@@ -1191,6 +1314,22 @@ style:[
 	}		
 	
   ],
+END;
+	if ($pdata["pos_saved"]==1 && $CID_sel==0 && $GID_sel==0 && $Goterm==0 && $Keggterm==0)
+	{
+		$html .= <<<END
+layout:{ name: 'preset',
+		stop:function(){
+			$('#loading').hide();
+		}
+	}
+});
+END;
+
+	}
+	else
+	{
+		$html .= <<<END
 layout:{ name: 'cose',
 		nodeRepulsion: 4000000,
 		stop:function(){
@@ -1199,6 +1338,7 @@ layout:{ name: 'cose',
 	}
 });
 END;
+	}
 	return $html;
 }
 
