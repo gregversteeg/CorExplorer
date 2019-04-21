@@ -777,7 +777,6 @@ function handle_drag(evt)
 function save_wt()
 {
 	var wt = $("#txt_mw").val();
-	alert(wt);
 	$.ajax({
 	   type: 'POST',
 	   url: 'ajax_save_weight.php', 
