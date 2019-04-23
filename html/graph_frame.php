@@ -218,13 +218,13 @@ cy.on('mouseover', 'node', function(evt)
 {
 	$("#msg").html(this.data('msg'))
 	$("body").css( "cursor", "pointer" );
-
+	this.addClass('nodeshowtext');
 });
 cy.on('mouseout', 'node', function(evt)
 {
 	$("#msg").html("")
 	$("body").css( "cursor", "default" );
-
+	this.removeClass('nodeshowtext');
 });
 cy.on('mouseover', 'edge', function(evt)
 {
@@ -303,12 +303,43 @@ $(document).ready(function()
 	hide_nodes_by_weight(<?php echo $MinWt ?>);
 	function hide_nodes_by_weight(target_wt)
 	{
+		// If there's a go and/or kegg term selected then we need to make
+		// sure to NOT un-hide genes that are not in those clusters
+		var keggterm = sel_keggterm.val();
+		var goterm = sel_goterm.val();
+		go_cids_to_keep = new Array();
+		kegg_cids_to_keep = new Array();
+		if (goterm > 0)
+		{
+			for (i = 0; i < go2clst[goterm].length; i++)
+			{
+				cid = go2clst[goterm][i];
+				go_cids_to_keep[cid] = 1;
+			}
+		}
+		if (keggterm > 0)
+		{
+			for (i = 0; i < kegg2clst[keggterm].length; i++)
+			{
+				cid = kegg2clst[keggterm][i];
+				kegg_cids_to_keep[cid] = 1;
+			}
+		}
 		for (j = 0; j < all_nodes.length; j++) 
 		{
 			var cynode = all_nodes[j];
 			if (cynode.data('id').startsWith("G"))
 			{
 				var wt = cynode.data("wt");
+				var cid = cynode.data("cid");
+				if (goterm > 0 && !go_cids_to_keep[cid])
+				{
+					continue;
+				}
+				if (keggterm > 0 && !kegg_cids_to_keep[cid])
+				{
+					continue;
+				}
 				if (wt > target_wt)
 				{
 					cynode.removeClass('nodehide');
@@ -360,6 +391,11 @@ if ($Goterm == 0)
 	sel_goterm.change(function(data)
 	{
 		var term = $(this).val();
+		if (term > 0 && !go2clst[term]) 
+		{
+			alert("err:bad GO term " + term);
+			return;
+		}
 
 		clear_gene_highlight();
 		if (term != 0)
@@ -374,6 +410,7 @@ if ($Goterm == 0)
 			}	
 		}
 
+		// Now do the show/hide of clusters
 		// first get the kegg enriched cids, if any, so we
 		// can do intersection
 		var keggterm = sel_keggterm.val();
@@ -397,39 +434,28 @@ if ($Goterm == 0)
 				cynode.removeClass('nodehlt');
 			}
 		}
+		show_all_nodes();
 		if (term == 0)
 		{
-			for (j = 0; j < all.length; j++) 
-			{
-				cynode = all[j];
-				cynode.removeClass('nodehide');
-			}
 			if (keggterm > 0) 
 			{
 				hide_nodes_by_cluster(kegg_cids_to_keep);	
 			}
-			else
-			{
-				show_all_nodes();
-			}
-			return;
 		} 
-		if (!go2clst[term]) 
+		else
 		{
-			alert("err:bad GO term " + term);
-			return;
-		}
-		cids_to_keep = new Array();
-		for (var i = 0; i < go2clst[term].length; i++)
-		{
-			var cid = go2clst[term][i];
-			node_highlight(1,"C" + cid,1);
-			if (keggterm == 0 || kegg_cids_to_keep[cid])
+			cids_to_keep = new Array();
+			for (var i = 0; i < go2clst[term].length; i++)
 			{
-				cids_to_keep[cid] = 1;
+				var cid = go2clst[term][i];
+				node_highlight(1,"C" + cid,1);
+				if (keggterm == 0 || kegg_cids_to_keep[cid])
+				{
+					cids_to_keep[cid] = 1;
+				}
 			}
+			hide_nodes_by_cluster(cids_to_keep);
 		}
-		hide_nodes_by_cluster(cids_to_keep);
 
 	});
 
@@ -465,6 +491,11 @@ if ($Keggterm == 0)
 	sel_keggterm.change(function(data)
 	{
 		var term = $(this).val();
+		if (term > 0 && !kegg2clst[term]) 
+		{
+			alert("err:bad Kegg term " + term);
+			return;
+		}
 
 		var goterm = sel_goterm.val();
 		go_cids_to_keep = new Array();
@@ -488,39 +519,28 @@ if ($Keggterm == 0)
 				cynode.removeClass('nodehlt');
 			}
 		}
+		show_all_nodes();
 		if (term == 0)
 		{
-			for (j = 0; j < all.length; j++) 
-			{
-				cynode = all[j];
-				cynode.removeClass('nodehide');
-			}
 			if (goterm > 0)
 			{
 				hide_nodes_by_cluster(go_cids_to_keep);
 			}
-			else
-			{
-				show_all_nodes();
-			}
-			return;
 		} 
-		if (!kegg2clst[term]) 
+		else
 		{
-			alert("err:bad Kegg term " + term);
-			return;
-		}
-		cids_to_keep = new Array();
-		for (var i = 0; i < kegg2clst[term].length; i++)
-		{
-			var cid = kegg2clst[term][i];
-			node_highlight(1,"C" + cid,1);
-			if (goterm == 0 || go_cids_to_keep[cid])
+			cids_to_keep = new Array();
+			for (var i = 0; i < kegg2clst[term].length; i++)
 			{
-				cids_to_keep[cid] = 1;
+				var cid = kegg2clst[term][i];
+				node_highlight(1,"C" + cid,1);
+				if (goterm == 0 || go_cids_to_keep[cid])
+				{
+					cids_to_keep[cid] = 1;
+				}
 			}
+			hide_nodes_by_cluster(cids_to_keep);
 		}
-		hide_nodes_by_cluster(cids_to_keep);
 	});
 END;
 }
@@ -610,7 +630,11 @@ function node_highlight(idnum,idstr,onoff)
 }
 function node_zoom(idnum,idstr)
 {
-	if (idnum == 0) {cy.fit(); }
+	if (idnum == 0) 
+	{ 
+		cy.fit(); 
+		return;
+	}
 	var filter = 'node[cid = "' + idnum + '"]';
 	var zoom_node = cy.nodes().filter(function( ele ){
   		return ele.data('id') == idstr;
@@ -668,10 +692,6 @@ function hide_nodes_by_cluster(cids_to_keep)
 				{
 					cynode.addClass('nodehide');
 				} 
-				else
-				{
-					cynode.removeClass('nodehide');
-				}
 			}
 			else
 			{
@@ -692,10 +712,6 @@ function hide_nodes_by_cluster(cids_to_keep)
 					{
 						cynode.addClass('nodehide');
 					} 
-					else
-					{
-						cynode.removeClass('nodehide');
-					}
 				
 				}
 				else
@@ -712,14 +728,20 @@ END;
 
 function show_all_nodes()
 {
+	var minwt = $("#txt_mw").val();
 	var all = cy.elements("node");
 	for (j = 0; j < all.length; j++) 
 	{
 		cynode = all[j];
-		if (cynode.data('cid'))
+		if (cynode.data('id').startsWith('G'))
 		{
-			lvl = cynode.data('lvl');	
-			cid = cynode.data('cid');
+			if (cynode.data('wt') >= minwt)
+			{
+				cynode.removeClass('nodehide');
+			}
+		}
+		else
+		{
 			cynode.removeClass('nodehide');
 		}
 	} 
@@ -1303,6 +1325,15 @@ style:[
 		style: {
 			'text-background-color' : 'yellow',
 			'text-background-opacity' : '0.5'
+		}
+	},
+	{
+		selector: '.nodeshowtext',
+		style: {
+			'text-background-color' : 'white',
+			'text-background-opacity' : '1.0',
+			'font-weight' : 'bold',
+			'z-index' : 10
 		}
 	},
 	{
