@@ -1,5 +1,6 @@
 <?php
 require_once("util.php");
+ini_set('memory_limit', '1G');
 
 # convention: inital caps for the page parameters
 $FromForm = getint("fromform",0); # tell us if it's initial page load or form submit
@@ -56,11 +57,11 @@ $kegg2clst = array();
 </head>
 <body>
 
-<form method="get">
+<!--form method="get">
 <input type="hidden" name="fromform" value="1">
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="fn" value="<?php echo $FN ?>">
-<input type="hidden" name="crid" value="<?php print $CRID ?>">
+<input type="hidden" name="crid" value="<?php print $CRID ?>"-->
 <table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
 		<td valign="top" align="left">
@@ -101,25 +102,23 @@ $kegg2clst = array();
 				<td colspan=3 align="left" style="padding-top:6px;">
 					<table cellspacing=0 cellpadding=0 width="100%">
 						<tr>
-							<td>Link Weight: </td>
-							<td style="width:150px;padding-left:10px" ><div id="mw_slider"></div> </td>
-							<td style="padding-left:3px">
+							<td valign="bottom" >Link Weight: </td>
+							<td  valign="bottom" style="width:150px;padding-left:10px" ><div id="mw_slider"></div> </td>
+							<td valign="bottom"  style="padding-left:3px">
 								 <input name="mw" id="txt_mw" type="text" size="3" value="<?php print $MinWt ?>">
 							</td>
-							<td style="padding-left:10px;" title="<?php print tip_text('hugo_names') ?>">HUGO names:
+							<td valign="bottom"  style="padding-left:10px;" title="<?php print tip_text('hugo_names') ?>">HUGO names:
 								 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo) ?>>
 							</td>
-							<td><!-- Max level:
-								 <input name="maxlvl" type="text" size="4" value="<?php print $MaxClstLvl ?>"> -->
+							<td  valign="bottom" style="padding-left:10px;" >Best inclusion only:
+								 <input name="bestinc" id="chk_bestinc" type="checkbox" <?php checked($Bestinc) ?>>
 							</td>
-							<td style="padding-left:10px;" >Best inclusion only:
-								 <input name="bestinc" type="checkbox" <?php checked($Bestinc) ?>>
-							</td>
+							<td  valign="bottom" style="padding-left:10px"><a href="" onclick="do_reset();return false;">reset</a></td>
 						</tr>
 					</table>
 				</td>
 			</tr>
-			<tr>
+			<!--tr>
 				<td colspan=3 align="right" valign="top" style="padding-top:6px" >
 					<table cellspacing=0 cellpadding=0 >
 						<tr>
@@ -131,7 +130,7 @@ $kegg2clst = array();
 						</tr>
 					</table>
 				</td>
-			</tr>
+			</tr-->
 		</table>
 		</td>
 <?php
@@ -166,8 +165,8 @@ END;
 		</td>
 	</tr>
 </table>
-</form>
-<table width="100%" height="100%" cellspacing= 0 cellpadding=0>
+<!--/form-->
+<table width="100%" height="100%" cellspacing= 0 cellpadding=0 style="margin-top:10px">
 	<tr>
 		<td height="93%" valign="top" style="border:1px solid #d5d5d5;">
 			<span id="loading" style="font-size:17px">Graph is loading...  </span>
@@ -238,7 +237,10 @@ $('#sel_crid').change(function()
 {
 	var crid = this.value;
 	location.href="/?crid=" + crid;
-   	//$('#sel_cid').empty().load( "ajax_fill_cid_sel.php?crid="+crid);
+});
+$('#chk_bestinc').change(function() 
+{
+	show_hide_nodes_edges();
 });
 $('#use_hugo_chk').change(function() 
 {
@@ -276,8 +278,19 @@ else
 		}
    	}
 }); 
-var go2gene = []; // map GOs to genes, can be augmented through ajax
+var go2gene = []; // map GOs to genes, done through ajax
 
+var slider_offset = .001;
+function slider_from_log(log)
+{
+	return (Math.pow(10,log) - slider_offset);	
+}
+function slider_to_log(val)
+{
+	return Math.log10(slider_offset + val);
+}
+var min_wt_init = <?php echo $MinWt ?>;
+var slider_init = slider_to_log(min_wt_init);
 $(document).ready(function() 
 {
 	// 
@@ -288,84 +301,22 @@ $(document).ready(function()
 	var sel_gid = $("#sel_gid");
 	var sel_goterm = $("#sel_goterm");
 	var sel_keggterm = $("#sel_keggterm");
-	var all_nodes = cy.elements("node");
 
+	var slider_min = slider_to_log(0);
+	var slider_max = slider_to_log(<?php echo $actualMaxWt ?>);
+	var slider_step = .01*(slider_max - slider_min);
+	
 	$( "#mw_slider" ).slider({
-		min:0, 
-		max:<?php echo $actualMaxWt ?>, 
-		step:0.001, 
-		value:<?php echo $MinWt ?>,
+		min:slider_min, 
+		max:slider_max, 
+		step:slider_step, 
+		value:slider_init,
 		slide: function( event, ui ) {
-			$("#txt_mw").val(ui.value);
-			hide_nodes_by_weight(ui.value);			
+			var val = slider_from_log(ui.value);
+			$("#txt_mw").val(val.toFixed(4));
+			show_hide_nodes_edges();
 	   }
 	});
-	hide_nodes_by_weight(<?php echo $MinWt ?>);
-	function hide_nodes_by_weight(target_wt)
-	{
-		// If there's a go and/or kegg term selected then we need to make
-		// sure to NOT un-hide genes that are not in those clusters
-		var keggterm = sel_keggterm.val();
-		var goterm = sel_goterm.val();
-		go_cids_to_keep = new Array();
-		kegg_cids_to_keep = new Array();
-		if (goterm > 0)
-		{
-			for (i = 0; i < go2clst[goterm].length; i++)
-			{
-				cid = go2clst[goterm][i];
-				go_cids_to_keep[cid] = 1;
-			}
-		}
-		if (keggterm > 0)
-		{
-			for (i = 0; i < kegg2clst[keggterm].length; i++)
-			{
-				cid = kegg2clst[keggterm][i];
-				kegg_cids_to_keep[cid] = 1;
-			}
-		}
-		for (j = 0; j < all_nodes.length; j++) 
-		{
-			var cynode = all_nodes[j];
-			if (cynode.data('id').startsWith("G"))
-			{
-				var wt = cynode.data("wt");
-				var cid = cynode.data("cid");
-				if (goterm > 0 && !go_cids_to_keep[cid])
-				{
-					continue;
-				}
-				if (keggterm > 0 && !kegg_cids_to_keep[cid])
-				{
-					continue;
-				}
-				if (wt > target_wt)
-				{
-					cynode.removeClass('nodehide');
-				}
-				else
-				{
-					cynode.addClass('nodehide');
-				}
-			}
-		}
-	}
-	$("#txt_mw").change(function(data)
-	{
-		var txtval = $(this).val();
-		var sliderval = $("#mw_slider").slider("option","value");
-		if (sliderval != txtval)
-		{
-			$("#mw_slider").slider("value", txtval);
-			hide_nodes_by_weight(txtval);
-		}
-	}); 
-<?php
-# We don't zoom to the clusters if it's the only one being shown...
-if ($CID_sel == 0)
-{
-	echo <<<END
 
 	sel_cid.data("prev",sel_cid.val());
 	sel_cid.change(function(data)
@@ -379,9 +330,8 @@ if ($CID_sel == 0)
 		node_zoom(cur,"C" + cur);
 		//$("#sel_gid").val("0");  // clst changed, unselect gene
 	});
-	node_highlight(sel_cid.val(), "C" + sel_cid.val(), 1);
-END;
-}
+
+<?php 
 # Likewise no need to highlight the clusters with GOs if that's all
 # we are showing!
 if ($Goterm == 0)
@@ -545,16 +495,27 @@ if ($Keggterm == 0)
 END;
 }
 ?>
+	$("#txt_mw").change(function(data)
+	{
+		var txtval = slider_to_log($(this).val());
+		var sliderval = $("#mw_slider").slider("option","value");
+		if (sliderval != txtval)
+		{
+			$("#mw_slider").slider("value", txtval);
+			show_hide_nodes_edges(txtval);
+		}
+	}); 
 	sel_gid.data("prev",sel_gid.val());
 	sel_gid.change(function(data)
 	{
 		var sel = $(this);
 		var prev = sel.data("prev");
 		var cur = sel.val();
+		var cur_idstr = "G" + cur;
 		sel.data("prev",cur);
 		node_highlight(prev,"G" + prev,0);
 		node_highlight(cur,"G" + cur,1);
-		//$("#sel_cid").val("0");
+		gene_zoom(cur,cur_idstr);
 	});
 	$("#sel_crid").change(function(data)
 	{
@@ -566,6 +527,356 @@ END;
 	add_drag_listeners();
 
 });  // end of document.ready
+
+function do_reset()
+{
+	$("#txt_mw").val(min_wt_init);
+	$("#mw_slider").slider("value",slider_init);
+	$("#chk_bestinc").prop("checked",true);
+	$("#sel_cid").val("0");
+	$("#sel_keggterm").val("0");
+	$("#sel_goterm").val("0");
+	$("#sel_gid").val("0");
+	show_hide_nodes_edges();
+	cy.fit(); 
+}
+function set_min_wt(wt)
+{
+	wt_round = wt.toFixed(4);
+	$("#txt_mw").val(wt_round);
+	$("#mw_slider").slider("value",slider_to_log(wt_round));
+}
+function show_hide_nodes_edges()
+{
+	//
+	// First collect the selector settings 
+	//
+	var bestinc = $('#chk_bestinc').prop("checked"); 
+	var keggterm = $("#sel_keggterm").val();
+	var goterm = $("#sel_goterm").val();
+	var minwt = $("#txt_mw").val();
+
+	//
+	// If there is a GO or Kegg selected, then we need the
+	// relevant set of clusters.
+	//
+	go_cids_to_keep = new Array();
+	kegg_cids_to_keep = new Array();
+	if (goterm > 0)
+	{
+		for (i = 0; i < go2clst[goterm].length; i++)
+		{
+			cid = go2clst[goterm][i];
+			go_cids_to_keep[cid] = 1;
+		}
+	}
+	if (keggterm > 0)
+	{
+		for (i = 0; i < kegg2clst[keggterm].length; i++)
+		{
+			cid = kegg2clst[keggterm][i];
+			kegg_cids_to_keep[cid] = 1;
+		}
+	}
+	//
+	// Go through the edges first because Cytoscape automatically hides edges where
+	// a node is hidden...so we won't have nodeless edges becoming visible temporarily.
+	// For the same reason, we only have to use weight and linknum to decide the edges;
+	// we don't have to worry whether their cluster is being shown. 
+	//
+	var all_edges = cy.edges();
+   	for (i = 0; i < all_edges.length; i++) 
+	{
+       	var edge = all_edges[i];
+		var lnum = edge.data("lnum");
+		var wt = parseFloat(edge.data("wt"));
+		if (lnum > 1)
+		{
+			if (bestinc)
+			{
+				edge.addClass("nodehide");
+			}
+			else
+			{
+				if (wt >= minwt)
+				{	
+					edge.removeClass("nodehide");
+				}
+				else
+				{	
+					edge.addClass("nodehide");
+				}
+			}
+		}
+		else
+		{
+			if (wt >= minwt)
+			{	
+				edge.removeClass("nodehide");
+			}
+			else
+			{	
+				edge.addClass("nodehide");
+			}
+		}
+	}
+	//
+	// Now do the nodes, where we do need to consider the GO/Kegg clusters.
+	//
+	var all_nodes = cy.nodes();
+	for (j = 0; j < all_nodes.length; j++) 
+	{
+		var node = all_nodes[j];
+		if (node.data('id').startsWith("G"))
+		{
+			// Gene node
+			var wt = node.data("wt");
+			var cid = node.data("cid");
+			if (goterm > 0 && !go_cids_to_keep[cid])
+			{
+				node.addClass('nodehide');
+				continue;
+			}
+			if (keggterm > 0 && !kegg_cids_to_keep[cid])
+			{
+				node.addClass('nodehide');
+				continue;
+			}
+			if (wt >= minwt)
+			{
+				node.removeClass('nodehide');
+			}
+			else
+			{
+				node.addClass('nodehide');
+			}
+		}
+		else if (node.data('id').startsWith("C"))
+		{
+			// Cluster node
+			lvl = node.data('lvl');	
+			cid = node.data('cid');
+			if (lvl <= 1)
+			{
+				keep = 1;
+				if (goterm > 0 && !go_cids_to_keep[cid])
+				{
+					keep = 0;
+				} 
+				if (keggterm > 0 && !kegg_cids_to_keep[cid])
+				{
+					keep = 0;
+				} 
+				if (keep)
+				{
+					node.removeClass('nodehide');
+				}	
+				else	
+				{
+					node.addClass('nodehide');
+				}	
+			}
+			else
+			{
+				// higher level node; see if it contains any non-hidden node
+				if (clst_cont[cid])
+				{
+					keep = 0;
+					for (k = 0; k < clst_cont[cid].length; k++)
+					{
+						cid2 = clst_cont[cid][k];
+						keep2 = 1;
+						if (goterm > 0 && !go_cids_to_keep[cid2])
+						{
+							keep2 = 0;
+						} 
+						if (keggterm > 0 && !kegg_cids_to_keep[cid2])
+						{
+							keep2 = 0;
+						} 
+						if (keep2)
+						{
+							keep = 1;
+							break;
+						}	
+					}
+					if (keep)
+					{
+						cynode.removeClass('nodehide');
+					} 
+					else	
+					{
+						cynode.addClass('nodehide');
+					} 
+				
+				}
+				else
+				{
+					console.log("err:cid=" + cid + " has no content");
+				}
+			}
+		}
+		else
+		{
+			console.log("Extra node");
+			console.log(JSON.stringify(node.data));
+		}
+	}
+}
+function show_hide_edges(minwt)
+{
+	var bestinc = $('#chk_bestinc').prop("checked"); 
+	var all_edges = cy.edges();
+   	for (i = 0; i < all_edges.length; i++) 
+	{
+       	var edge = all_edges[i];
+		var lnum = edge.data("lnum");
+		var wt = edge.data("wt");
+		if (lnum > 1)
+		{
+			if (bestinc)
+			{
+				edge.addClass("nodehide");
+			}
+			else
+			{
+				if (wt >= minwt)
+				{	
+					edge.removeClass("nodehide");
+				}
+				else
+				{	
+					edge.addClass("nodehide");
+				}
+			}
+		}
+		else
+		{
+			if (wt >= minwt)
+			{	
+				edge.removeClass("nodehide");
+			}
+			else
+			{	
+				edge.addClass("nodehide");
+			}
+		}
+	}
+	
+}
+function hide_nodes_by_cluster(cids_to_keep)
+{
+<?php
+	# This is a kludjy way to prevent hiding of clusters when only one cluster was
+	# selected to show to begin with. The logic of the showing/hiding ought to 
+	# be revisited and code clarified...but not urgent so far 
+	if ($CID_sel == 0)
+	{
+		echo <<<END
+	// Hide the nodes that aren't in one of the given clusters. 
+	// We don't have to worry about the edges as cytoscape.js automatically
+	// hides edges when one end is hidden...not sure how it does that. 
+	var all = cy.elements("node");
+	for (j = 0; j < all.length; j++) 
+	{
+		cynode = all[j];
+		if (cynode.data('cid'))
+		{
+			lvl = cynode.data('lvl');	
+			cid = cynode.data('cid');
+			if (lvl <= 1)
+			{
+				if (!cids_to_keep[cid])
+				{
+					cynode.addClass('nodehide');
+				} 
+			}
+			else
+			{
+				// higher level node; see if it contains any non-hidden node
+				if (clst_cont[cid])
+				{
+					keep = 0;
+					for (k = 0; k < clst_cont[cid].length; k++)
+					{
+						cid2 = clst_cont[cid][k];
+						if (cids_to_keep[cid2])
+						{
+							keep = 1;
+							break;
+						}	
+					}
+					if (keep == 0)
+					{
+						cynode.addClass('nodehide');
+					} 
+				
+				}
+				else
+				{
+					alert("err:cid=" + cid + " has no content");
+				}
+			}
+		}
+	} 
+END;
+	}
+?>
+}
+
+function hide_nodes_by_weight(target_wt)
+{
+	var sel_goterm = $("#sel_goterm");
+	var sel_keggterm = $("#sel_keggterm");
+	// If there's a go and/or kegg term selected then we need to make
+	// sure to NOT un-hide genes that are not in those clusters
+	var keggterm = sel_keggterm.val();
+	var goterm = sel_goterm.val();
+	go_cids_to_keep = new Array();
+	kegg_cids_to_keep = new Array();
+	if (goterm > 0)
+	{
+		for (i = 0; i < go2clst[goterm].length; i++)
+		{
+			cid = go2clst[goterm][i];
+			go_cids_to_keep[cid] = 1;
+		}
+	}
+	if (keggterm > 0)
+	{
+		for (i = 0; i < kegg2clst[keggterm].length; i++)
+		{
+			cid = kegg2clst[keggterm][i];
+			kegg_cids_to_keep[cid] = 1;
+		}
+	}
+	var all_nodes = cy.nodes();
+	for (j = 0; j < all_nodes.length; j++) 
+	{
+		var cynode = all_nodes[j];
+		if (cynode.data('id').startsWith("G"))
+		{
+			var wt = cynode.data("wt");
+			var cid = cynode.data("cid");
+			if (goterm > 0 && !go_cids_to_keep[cid])
+			{
+				continue;
+			}
+			if (keggterm > 0 && !kegg_cids_to_keep[cid])
+			{
+				continue;
+			}
+			if (wt > target_wt)
+			{
+				cynode.removeClass('nodehide');
+			}
+			else
+			{
+				cynode.addClass('nodehide');
+			}
+		}
+	}
+}
 function do_go_gene_ajax_highlighting()
 {
 	var term = sel_goterm.val();
@@ -628,6 +939,30 @@ function node_highlight(idnum,idstr,onoff)
 		cynode.removeClass('nodehlt');
 	}	
 }
+function gene_zoom(idnum,idstr)
+{
+	if (idnum == 0) 
+	{ 
+		cy.fit(); 
+		return;
+	}
+	var center_node = cy.getElementById(idstr);
+	var cid = center_node.data('cid');
+	var gene_wt = parseFloat(center_node.data('wt'));
+	var cur_wt = parseFloat($("#txt_mw").val());
+	if (gene_wt < cur_wt)
+	{
+		set_min_wt(gene_wt);
+		show_hide_nodes_edges();
+	}
+	var clst_node = cy.getElementById("C" + cid);
+	var fit_set = center_node.union(clst_node);
+	var edges = center_node.incomers(function( ele ){
+			return ele.data('lnum') == '1';
+		});
+	cy.fit(fit_set); 
+	cy.center(center_node);
+}
 function node_zoom(idnum,idstr)
 {
 	if (idnum == 0) 
@@ -635,14 +970,12 @@ function node_zoom(idnum,idstr)
 		cy.fit(); 
 		return;
 	}
-	var filter = 'node[cid = "' + idnum + '"]';
-	var zoom_node = cy.nodes().filter(function( ele ){
-  		return ele.data('id') == idstr;
-	});
-	// Neighborhood actually does a better zoom than successors
-	//cy.fit(zoom_node.successors()); 
-	cy.fit(zoom_node.neighborhood()); 
-	cy.center(zoom_node);
+	var center_node = cy.getElementById(idstr);
+	var edges = center_node.outgoers(function( ele ){
+			return ele.data('lnum') == '1';
+		});
+	cy.fit(edges); 
+	cy.center(center_node);
 }
 function node_highlight2(idnum,idstr,onoff)
 {
@@ -666,66 +999,6 @@ function node_highlight2(idnum,idstr,onoff)
 		comp.nodes().addClass('nodehlt');	
 	}*/
 }
-function hide_nodes_by_cluster(cids_to_keep)
-{
-<?php
-	# This is a kludjy way to prevent hiding of clusters when only one cluster was
-	# selected to show to begin with. The logic of the showing/hiding ought to 
-	# be revisited and code clarified...but not urgent so far 
-	if ($CID_sel == 0)
-	{
-		echo <<<END
-	// Hide the nodes that aren't in one of the given clusters. 
-	// We don't have to worry about the edges as cytoscape.js automatically
-	// hides edges when one end is hidden...not sure how it does that. 
-	var all = cy.elements("node");
-	for (j = 0; j < all.length; j++) 
-	{
-		cynode = all[j];
-		if (cynode.data('cid'))
-		{
-			lvl = cynode.data('lvl');	
-			cid = cynode.data('cid');
-			if (lvl <= 1)
-			{
-				if (!cids_to_keep[cid])
-				{
-					cynode.addClass('nodehide');
-				} 
-			}
-			else
-			{
-				// higher level node; see if it contains any non-hidden node
-				if (clst_cont[cid])
-				{
-					keep = 0;
-					for (k = 0; k < clst_cont[cid].length; k++)
-					{
-						cid2 = clst_cont[cid][k];
-						if (cids_to_keep[cid2])
-						{
-							keep = 1;
-							break;
-						}	
-					}
-					if (keep == 0)
-					{
-						cynode.addClass('nodehide');
-					} 
-				
-				}
-				else
-				{
-					alert("err:cid=" + cid + " has no content");
-				}
-			}
-		}
-	} 
-END;
-	}
-?>
-}
-
 function show_all_nodes()
 {
 	var minwt = $("#txt_mw").val();
@@ -769,14 +1042,18 @@ function handle_grab(evt)
 	var succ = this.successors();
 	drag_subgraph = [];
 	var succstr = "";
+	var cid = this.data('cid');
 	for (i = 0; i < succ.length; i++)
 	{
 		if (succ[i].isNode())
 		{
-			var old_x = succ[i].position().x;
-			var old_y = succ[i].position().y;
-			succstr += " " + succ[i].data("id");
-			drag_subgraph.push({old_x:old_x, old_y:old_y, obj:succ[i]});	
+			if (succ[i].data('cid') == cid)
+			{	
+				var old_x = succ[i].position().x;
+				var old_y = succ[i].position().y;
+				succstr += " " + succ[i].data("id");
+				drag_subgraph.push({old_x:old_x, old_y:old_y, obj:succ[i]});	
+			}
 		}
 	}
 }
@@ -888,7 +1165,7 @@ function save_graph()
 
 function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$maxwt)
 {
-	global $DB, $CRID, $CID_sel, $GID_sel, $Goterm,$pdata;
+	global $DB, $CRID, $CID_sel, $GID_sel, $Goterm,$pdata,$MinWt;
 	global $Keggterm, $go_enrich_pval, $kegg_enrich_pval, $numSizeBins;
 	global $level_colors, $MaxClstLvl, $Bestinc, $Use_hugo;
 
@@ -1059,12 +1336,17 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 	}
 	$st->close();
 
-	$sql = "select GID, CID, glist.lbl as lbl,glist.hugo as hugo, glist.descr as descr, mi,wt,clst.lbl as cnum, ".
+	$sql = "select GID, CID, glist.lbl as lbl,glist.hugo as hugo, glist.descr as descr, ".
+		" mi,wt,clst.lbl as cnum, ".
 		" glist.pos_x as gx, glist.pos_y as gy, clst.pos_x as cx, clst.pos_y as cy ".
 			" from g2c join glist on glist.ID=g2c.GID ";
 	$sql .= " join clst on clst.ID = g2c.CID ";
 	$sql .= " where g2c.CRID=? and wt >= ? $go_where $kegg_where $limit_cids_where $gene_cids_where ";
-	$sql .=	" order by wt desc "; #limit $N"; 
+	$sql .=	" order by wt desc ";  # DO NOT CHANGE ORDER
+	if ($Bestinc == 0)
+	{
+		#$sql .= "limit 2000";
+	} 
 	$st = $DB->prepare($sql);
 	$st->bind_param("id",$CRID,$minWt);
 	$st->bind_result($GID,$CID,$gene_name,$hugo_name,$gene_desc,$mi,$wt,$cnum,$gx,$gy,$cx,$cy);
@@ -1073,14 +1355,22 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 	$gid2names = array();
 	$gid2hugo = array();
 	$gid2desc = array();
+	$gid2cid = array();
 	$gid_seen = array();    
+	$max_gid_wt = array();
 	while ($st->fetch())
 	{
-		if ($Bestinc && isset($gid_seen[$GID]))
+		if (!isset($gid_seen[$GID]))
+		{
+			$gid_seen[$GID] = 0;
+			$max_gid_wt[$GID] = $wt;
+			$gid2cid[$GID] = $CID;
+		}
+		if ($wt < .1*$max_gid_wt[$GID])
 		{
 			continue;
 		}
-		$gid_seen[$GID] = 1;
+		$gid_seen[$GID]++;
 
 		$CIDtag = "C$CID";
 		$CIDlbl = "L1_$cnum";
@@ -1118,7 +1408,8 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		$gene_node_data[$GID][] = array("cnum" => $cnum, "cid" => $CID, "wt" => $wt, "mi" => $mi, 
 				"x" => $gx, "y" => $gy);
 
-		$links[] = array("targ" => "$GIDtag", "src" => "$CIDtag", "wt" => $wt, "mi" => $mi);
+		$links[] = array("targ" => "$GIDtag", "src" => "$CIDtag", 
+				"wt" => $wt, "mi" => $mi, "lnum" => $gid_seen[$GID]);
 	}
 	$st->close();
 	foreach ($gene_node_data as $GID => $darray)
@@ -1127,15 +1418,19 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		$hugo = $gid2hugo[$GID];
 		$desc = $gid2desc[$GID];
 		$info = array();
+		$maxWt = 0;
 		foreach ($darray as $data)
 		{
 			$cnum 	= $data["cnum"];	
-			$cid 	= $data["cid"];	 
 			$wt 	= $data["wt"];	
 			$mi 	= $data["mi"];	
 			$x		= $data["x"];	
 			$y		= $data["y"];	
 			$info[] = "$cnum (Wt=$wt, MI=$mi)";
+			if ($wt > $maxWt)
+			{
+				$maxWt = $wt;
+			}
 		}
 		$GIDtag = "G$GID";
 		$msg = ($gname == $hugo ? "gene:$gname" : "gene:$gname ($hugo)");
@@ -1145,8 +1440,18 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		}
 		$nclst = count($info);
 		$msg .= "<br>contained in $nclst clusters: ".implode("; ",$info);
-		$classes = (isset($go_genes[$GID]) ? "nodehlt" : "");
-		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', lvl:'0', wt:$wt,".
+		$classes = array();
+		if ($maxWt < $MinWt)
+		{
+			$classes[] = "nodehide";
+		}	
+		if (isset($go_genes[$GID]))
+		{
+			$classes[] = "nodehlt";
+		}	
+		$classes = implode(",",$classes);
+		$cid 	= $gid2cid[$GID];	 
+		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', lvl:'0', wt:$maxWt,".
 						"hugo:'$hugo', msg:'$msg', color:'red'}, ".
 						"position:{x:$x,y:$y},".
 						"classes:'$classes'}";
@@ -1200,17 +1505,17 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		$cid1seen = array();
 
 		$st = $DB->prepare("select CID1, CID2,wt,mi from c2c where wt >= ? and CRID=? $cur_CID_where ".
-					" $limit_cids_where2 $gene_cids_where2 order by wt desc");
+					" $limit_cids_where2 $gene_cids_where2 order by wt desc");  # DON'T CHANGE SORT!!
 		$st->bind_param("di",$minWt,$CRID);
 		$st->bind_result($CID1,$CID2,$wt,$mi);
 		$st->execute();
 		while ($st->fetch())
 		{
-			if ($Bestinc && isset($cid1seen[$CID1]))
+			if (!isset($cid1seen[$CID1]))
 			{
-				continue;
+				$cid1seen[$CID1] = 0;
 			}
-			$cid1seen[$CID1] = 1;
+			$cid1seen[$CID1]++;
 
 			$cnum1 = $cid2num[$CID1];
 			$cnum2 = $cid2num[$CID2];
@@ -1235,13 +1540,15 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 				# to make the gene name switching not mess up the cluster names
 				$x = $cid2x[$CID2];
 				$y = $cid2y[$CID2];
-				$elements[] = "{data: {id: '$CID2tag', size:'$size', lbl:'$CID2lbl', hugo:'$CID2lbl', cid:'$CID2',".
+				$elements[] = "{data: {id: '$CID2tag', size:'$size', lbl:'$CID2lbl', ".
+					"hugo:'$CID2lbl', cid:'$CID2',".
 					"lvl:'$lvl',link:'', msg:'cluster:$CID2lbl', color:'$color'},".
 					"position:{x:$x,y:$y}}";
 				$nodes[$CID2tag] = 1;
 				$CIDlist[] = $CID2; 
 			}
-			$links[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", "mi" => "$mi");
+			$links[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", 
+					"mi" => "$mi", lnum => $cid1seen[$CID1]);
 
 			# Here we are tracking the lower clusters contained in higher ones.
 			# Ultimately this is written to javascript and used for the GO/Kegg show/hide function.
@@ -1271,6 +1578,7 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		$targ =  $data["targ"];
 		$wt =  $data["wt"];
 		$mi =  $data["mi"];
+		$lnum =  $data["lnum"];
 		$id = $src."_".$targ;
 
 		#$diffwt = log($wt/$minwt); 
@@ -1278,8 +1586,14 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		$sizebin = min($numSizeBins,1 + floor($numSizeBins*$diffwt/$wt_range));
 		$opacity = 0.2 + (0.8/$numSizeBins)*$sizebin;
 		$width = (2*$sizebin)."px";
-		$elements[] = "{data: { id:'$id', source: '$src', target: '$targ', ".
-					" msg: 'weight:$wt,MI:$mi', width: '$width', opacity: '$opacity'}}";
+		$classes = "";
+		if ($wt < $MinWt || ($Bestinc && ($lnum > 1)))
+		{
+			$classes = "nodehide";
+		}	
+		$elements[] = "{data: { id:'$id', source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',".
+					" msg: 'weight:$wt,MI:$mi', width: '$width', opacity: '$opacity'},".
+						"classes:'$classes'}";
 	}
 	$numNodes = count($nodes);
 	$html = <<<END
@@ -1345,7 +1659,7 @@ style:[
 	
   ],
 END;
-	if ($pdata["pos_saved"]==1 && $CID_sel==0 && $GID_sel==0 && $Goterm==0 && $Keggterm==0)
+	if ($pdata["pos_saved"]==1 && $CID_sel==0 && $GID_sel==0 && $Goterm==0 && $Keggterm==0 )
 	{
 		$html .= <<<END
 layout:{ name: 'preset',
@@ -1526,7 +1840,8 @@ function gene_sel($name,$sel_GID,$minwt,&$gids_shown)
 		$selected = ($sel_GID == $GID ? " selected " : "");
 		#$starred = (isset($gids_shown[$GID]) ? "" : "*");
 		$optstyle = (isset($gids_shown[$GID]) ? " style='background-color:yellow' " : "");
-		$opts[] = "<option value='$GID' $selected $optstyle>$gname ($cnumstr)</option>";
+		#$opts[] = "<option value='$GID' $selected $optstyle>$gname ($cnumstr)</option>";
+		$opts[] = "<option value='$GID' $selected $optstyle>$gname</option>";
 	}	
 	$html = "<select name='$name' id='sel_$name'>\n";
 	$html .= implode("\n",$opts)."\n";

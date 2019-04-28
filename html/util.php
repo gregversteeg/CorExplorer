@@ -62,9 +62,9 @@ function getval($lbl,$default,$required=0)
 	{
 		return trim($_GET[$lbl]);
 	}
-	else if (isset($_PUT[$lbl]))
+	else if (isset($_POST[$lbl]))
 	{
-		return trim($_PUT[$lbl]);
+		return trim($_POST[$lbl]);
 	}
 	else if ($required == 1)
 	{
@@ -225,7 +225,7 @@ function clst_sel($name,$CID,$singlelvl=-1,$defstr="all")
 		$lvl++;
 		$size++;
 		$selected = ($ID == $CID ? " selected " : "");
-		$opts[] = "<option value=$ID $selected>Layer$lvl : $lbl ($size genes)</option>";
+		$opts[] = "<option value=$ID $selected>Layer$lvl : $lbl </option>";
 	}
 	$st->close();
 	# due to the g2c join, the previous only got layer 1
