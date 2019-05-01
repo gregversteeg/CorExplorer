@@ -1326,9 +1326,9 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		}
 		$CIDtag = "C$CID";
 		$CIDlbl = "L1_$cnum";
-		$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', lvl: '1',".
+		$elements[] = "{data: {id: '$CIDtag', lbl:'$CIDlbl', cid:'$CID', lvl: '1',".
 							"hugo:'$CIDlbl', msg:'cluster:$CIDlbl', ".
-				"link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'}, ".
+				"link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt'}, ".
 					"position:{x:$cx,y:$cy}}";
 				#link:'/ppi/run1/".($CID-1).".stringNetwork.png'}}";
 		$nodes[$CIDtag] = 1;
@@ -1388,9 +1388,9 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		if (!isset($nodes[$CIDtag]))
 		{
 			error_log("Getting additional CIDs in graph! CID=$CID");
-			$elements[] = "{data: {id: '$CIDtag', size:'25px', lbl:'$CIDlbl', cid:'$CID', lvl: '1',".
+			$elements[] = "{data: {id: '$CIDtag', lbl:'$CIDlbl', cid:'$CID', lvl: '1',".
 								"hugo:'$CIDlbl', msg:'cluster:$CIDlbl', ".
-					"link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt', color:'$color'},".
+					"link:'/ppi.php?CRID=$CRID&CID=$CID&corex_score=$minWt'},".
 					"position:{x:$cx,y:$cy}}";
 					#link:'/ppi/run1/".($CID-1).".stringNetwork.png'}}";
 			$nodes[$CIDtag] = 1;
@@ -1451,8 +1451,8 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 		}	
 		$classes = implode(",",$classes);
 		$cid 	= $gid2cid[$GID];	 
-		$elements[] = "{data: {id: '$GIDtag', size:'15px', lbl:'$gname', cid:'$cid', lvl:'0', wt:$maxWt,".
-						"hugo:'$hugo', msg:'$msg', color:'red'}, ".
+		$elements[] = "{data: {id: '$GIDtag',  lbl:'$gname', cid:'$cid', lvl:'0', wt:$maxWt,".
+						"hugo:'$hugo', msg:'$msg'}, ".
 						"position:{x:$x,y:$y},".
 						"classes:'$classes'}";
 		$nodes[$GIDtag] = 1;
@@ -1540,9 +1540,9 @@ function build_graph(&$numNodes,$N,$minWt,&$gids_shown,&$clstContent,&$minwt,&$m
 				# to make the gene name switching not mess up the cluster names
 				$x = $cid2x[$CID2];
 				$y = $cid2y[$CID2];
-				$elements[] = "{data: {id: '$CID2tag', size:'$size', lbl:'$CID2lbl', ".
+				$elements[] = "{data: {id: '$CID2tag', lbl:'$CID2lbl', ".
 					"hugo:'$CID2lbl', cid:'$CID2',".
-					"lvl:'$lvl',link:'', msg:'cluster:$CID2lbl', color:'$color'},".
+					"lvl:'$lvl',link:'', msg:'cluster:$CID2lbl'},".
 					"position:{x:$x,y:$y}}";
 				$nodes[$CID2tag] = 1;
 				$CIDlist[] = $CID2; 
@@ -1611,11 +1611,25 @@ style:[
     {
       selector: 'node',
       style: {
-        'background-color': 'data(color)',
         'label': 'data($lbltype)',
-		'font-size' : '50px',
-		'width' : 'data(size)',
-		'height' : 'data(size)'
+		'font-size' : function(ele){return (ele.data('id').startsWith('C') ? '100px' : '50px');},
+		'background-color' : function(ele){
+			var lvl = parseInt(ele.data('lvl'));
+			if (lvl >= 2)
+			{
+				return 'blue';
+			}
+			else if (lvl == 1)
+			{
+				return 'black';
+			}
+			else
+			{
+				return 'red';
+			}
+		},
+		'width' : function(ele){return (ele.data('id').startsWith('C') ? '50px' : '15px');},
+		'height' : function(ele){return (ele.data('id').startsWith('C') ? '50px' : '15px');}
       }
     },
 	{
