@@ -12,6 +12,8 @@ $LOGIN_MSG = login_init();
 
 $head_xtra = "";
 
+$MaxClstLvl = 2;
+
 # Check crid access here and in the future always use the lowercase parameter
 if (isset($_GET["CRID"]))
 {
@@ -198,7 +200,7 @@ function run_sel($name,$CRID,$def="")
 }
 function clst_sel($name,$CID,$singlelvl=-1,$defstr="all")
 {
-	global $CRID;
+	global $CRID, $MaxClstLvl;
 
 	$selected = ($CID == 0 ? " selected " : "");
 	$opts[] = "<option value='0' $selected>$defstr</option>";
@@ -230,7 +232,7 @@ function clst_sel($name,$CID,$singlelvl=-1,$defstr="all")
 	$st->close();
 	# due to the g2c join, the previous only got layer 1
 	$st = dbps("select ID, lbl, lvl  from clst ".
-		" where clst.CRID=? and lvl > 0 $lvlwhere ".
+		" where clst.CRID=? and lvl > 0 $lvlwhere and clst.lvl <= $MaxClstLvl ".
 		" group by clst.ID ");
 	$st->bind_param("i",$CRID);
 	$st->bind_result($ID,$lbl,$lvl);
