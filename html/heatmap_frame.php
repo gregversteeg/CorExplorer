@@ -157,17 +157,6 @@ var svg = d3.select("#heatmap")
     .attr("transform",
           "translate(" + margin.left + "," + margin.top + ")");
 
-/*var svg = d3.select("#heatmap")
-			.append("div")
-			.classed("svg-container",true)
-            .append("svg")
-.attr("preserveAspectRatio", "xMinYMin meet")
-   .attr("viewBox", "0 0 " + width + " " +  height)
-	.classed("svg-content-responsive",true)
-	.append("g")
-    .attr("transform",
-          "translate(" + margin.left + "," + margin.top + ")");
-*/
 
 var geneLabels = svg.append("g")
       .selectAll(".rowLabelg")
@@ -181,7 +170,7 @@ var geneLabels = svg.append("g")
       .attr("transform", "translate(-2,0)")
       .attr("class", "axisLabel" )
       ;
-var heatMap = svg.append("g").attr("class","g3")
+var heatMap = svg.append("g")
         .selectAll(".cellg")
         .data(vals,function(d){return d.g+":"+d.s;})
         .enter()
