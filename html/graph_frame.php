@@ -53,15 +53,17 @@ $kegg2clst = array();
 		<td valign="top" align="left">
 		<table cellspacing=0 cellpadding=0 >
 			<tr>
-				<td align="left"> Factor: <?php print clst_sel("cid",0,-1,"--all--") ?> </td>
-				<td align="left"  title="<?php print tip_text('genechoose') ?>" style="padding-left:25px">
-						Gene: <?php print gene_sel("gid",0,$MinWt,$gids_shown) ?> 
+				<td align="left" title="<?php print tip_text('clst_sel') ?>"> 
+						Factor: <?php print clst_sel("cid",0,-1,"--all--") ?> </td>
+				<td align="left"  title="<?php print tip_text('gene_sel') ?>" style="padding-left:25px">
+						Gene: <?php print gene_sel("gid",0,0,$gids_shown) ?> 
 				</td>
 				<td>&nbsp;
 				</td>
 			</tr>
 			<tr >
-				<td align="left" valign="top" style="padding-top:3px">
+				<td align="left" valign="top" style="padding-top:3px" 
+										title="<?php print tip_text('kegg_sel')?>">
 					<table cellspacing=0 cellpadding=0>
 						<tr>
 							<td >Kegg enriched:</td>
@@ -71,7 +73,8 @@ $kegg2clst = array();
 						</tr>
 					</table>
 				</td>
-				<td align="left"  valign="top" style="padding-left:25px;padding-top:3px;">
+				<td align="left"  valign="top" style="padding-left:25px;padding-top:3px;" 
+										title="<?php print tip_text('go_sel')?>">
 					<table cellspacing=0 cellpadding=0>
 						<tr>
 							<td >GO enriched:</td>
@@ -88,15 +91,17 @@ $kegg2clst = array();
 				<td colspan=3 align="left" style="padding-top:6px;">
 					<table cellspacing=0 cellpadding=0 width="100%">
 						<tr>
-							<td valign="bottom" >Link Weight: </td>
-							<td  valign="bottom" style="width:150px;padding-left:10px" ><div id="mw_slider"></div> </td>
-							<td valign="bottom"  style="padding-left:3px">
+							<td valign="bottom" title="<?php print tip_text('wt_slider')?>" >Link Weight: </td>
+							<td  valign="bottom" style="width:150px;padding-left:10px" 
+									 title="<?php print tip_text('wt_slider')?>"><div id="mw_slider"></div> </td>
+							<td valign="bottom"  style="padding-left:3px" title="<?php print tip_text('wt_slider')?>">
 								 <input name="mw" id="txt_mw" type="text" size="3" value="<?php print $MinWt ?>">
 							</td>
 							<td valign="bottom"  style="padding-left:10px;" title="<?php print tip_text('hugo_names') ?>">HUGO names:
 								 <input name="use_hugo" id="use_hugo_chk" type="checkbox" checked>
 							</td>
-							<td  valign="bottom" style="padding-left:10px;" >Best inclusion only:
+							<td  valign="bottom" style="padding-left:10px;" 
+									title="<?php print tip_text('best_inc')?>" >Best inclusion only:
 								 <input name="bestinc" id="chk_bestinc" type="checkbox" checked>
 							</td>
 							<td  valign="bottom" style="padding-left:10px"><a href="" onclick="do_reset();return false;">reset</a></td>

@@ -154,15 +154,29 @@ function tip_text($tag)
 	{
 		return "Whether to label node using gene name or Ensembl protein name";
 	}
-	if ($tag == "genechoose")
+	if ($tag == "clst_sel")
 	{
-		return "List shows genes and the clusters they are in based on the current setting ".
-			" for minimum link weight";
+		return "For layers 1 and 2, zoom in to the selected factor. Layer 3: show contained factors.";
 	}
-	if ($tag == "cidchoose")
+	if ($tag == "gene_sel")
 	{
-		return "Choose cluster to highlight. If 'redraw' is pressed, then only the parts of the ".
-			" graph below that cluster will be drawn";
+		return "Zoom in to the selected gene";
+	}
+	if ($tag == "go_sel")
+	{
+		return "Show only factors enriched for the selected GO term";
+	}
+	if ($tag == "kegg_sel")
+	{
+		return "Show only factors enriched for the selected Kegg term";
+	}
+	if ($tag == "wt_slider")
+	{
+		return "Set the minimum link weight to use. Genes with no links meeting this threshold will be hidden.";
+	}
+	if ($tag == "best_inc")
+	{
+		return "If checked, genes will only be linked to the factor for which their link weight is highest.";
 	}
 	if ($tag == "hugo_names")
 	{
