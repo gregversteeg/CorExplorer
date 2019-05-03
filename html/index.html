@@ -2,7 +2,45 @@
 require_once("db.php");
 require_once("util.php");
 
-head_section("CorEx Portal");
+$xtra = <<<END
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<style>
+.ui-button:focus { outline:none !important }
+.ui-dialog 
+{
+	padding:0px;
+}
+.ui-dialog .ui-dialog-content 
+{
+	padding:0px;
+}
+.ui-dialog .ui-dialog-titlebar 
+{
+    height: 20px;
+	padding:1px 0px 0px 10px;
+}
+.ui-dialog .ui-dialog-titlebar .ui-dialog-title
+{
+	font-size:12px;
+}
+.ui-dialog .ui-dialog-titlebar .ui-dialog-titlebar-close
+{
+    height: 10px; 
+    width: 10px; 
+	text-decoration:none;
+	border:none;
+}
+html, body
+{
+	margin: 0px;
+	padding: 0px;
+}
+</style>
+END;
+
+head_section("CorEx Portal",$xtra);
 
 ?>
 
@@ -24,7 +62,7 @@ $bkgstyle = (isset($_GET["opt"]) ? "" : "background-image:url('splashfade2.png')
 		</td>
 	</tr>
 	<tr>
-		<td style="width:675px;height:100%;border:1px solid #d5d5d5;<?php echo $bkgstyle ?>" valign="top">
+		<td id="viewport" style="width:675px;height:100%;border:1px solid #d5d5d5;<?php echo $bkgstyle ?>" valign="top">
 <div style="background-color:rgba(255,255,255,0.5);width:100%;height:100%"</div>
 <?php load_content_html() ?>
 		</td>
@@ -33,13 +71,28 @@ $bkgstyle = (isset($_GET["opt"]) ? "" : "background-image:url('splashfade2.png')
 	Quick Links
 </div>
 <div class="sidebar-inner">
-	<ul>
-	<li> <a href="/explorer.html?crid=63">Ovarian (TCGA-OV)</a>
-	<li> <a href="/explorer.html?crid=78">Lung (TCGA-LUAD)</a>
-	<li> <a href="/explorer.html?crid=79">Melanoma (TCGA-SKCM)</a>
-	<li> <a href="/explorer.html?crid=80">Colon (TCGA-COAD)</a>
-	<li> <a href="/explorer.html?crid=1">Ovarian (BMC Paper)</a>
-	</ul>
+	<table>
+		<tr>
+			<td style='cursor:pointer' onclick='info_graphic(77)' ><img src='expand2.png' width=13></td>
+			<td style='padding-left:5px'><a href="/explorer.html?crid=77">Ovarian (TCGA-OV)</a></td>
+		<tr>
+		<tr>
+			<td style='cursor:pointer' onclick='info_graphic(78)' ><img src='expand2.png' width=13></td>
+			<td style='padding-left:5px'><a href="/explorer.html?crid=78">Lung (TCGA-LUAD)</a></td>
+		<tr>
+		<tr>
+			<td style='cursor:pointer' onclick='info_graphic(79)' ><img src='expand2.png' width=13></td>
+			<td style='padding-left:5px'><a href="/explorer.html?crid=79">Melanoma (TCGA-SKCM)</a></td>
+		<tr>
+		<tr>
+			<td style='cursor:pointer' onclick='info_graphic(80)' ><img src='expand2.png' width=13></td>
+			<td style='padding-left:5px'><a href="/explorer.html?crid=80">Colon (TCGA-COAD)</a></td>
+		<tr>
+		<tr>
+			<td style='cursor:pointer' onclick='info_graphic(1)' ><img src='expand2.png' width=13></td>
+			<td style='padding-left:5px'><a href="/explorer.html?crid=1">Ovarian (BMC Paper)</a></td>
+		<tr>
+	</table>
 </div>
 <div class="side-header">
 	What's New
@@ -182,10 +235,200 @@ $("#eyed" ).click( function() {
 	}
   }
 );
+<?php
+dump_project_info();
+?>
+var ig_count = 0;
+function info_graphic(crid)
+{
+	var id = "infographic" + ig_count;
+	ig_count++;
+	var html = ' <div id="' + id + '"  style="width:500px;height:420px;background-color:#f3f3f3" ></div> ';
+    $(html).dialog({height:420, width:500, position:{my:"center",at:"center",of:"#viewport"}});
+	draw_infographic(crid, id);
+}
+function draw_infographic(crid, id)
+{
+numGenes = 12345;
+bluefill = "#3399ff";
+genes = [0,1,2,3,4];
+rectW = 100;
+rectSpace = 40;
+vSpace = 80;
+lineOffsetY = 15;
+lineOffsetX = 40;
+rectLeft = 300;
+rectTop = 650;
+circR = rectW/2;
+width = rectLeft + 5*(rectW + rectSpace);
+height = 800;
+squares = [{lvl:0, n:0},{lvl:0,n:1},{lvl:0,n:2},{lvl:0,n:3},{lvl:0,n:4}];
+circles = [{lvl:1, n:0},{lvl:1,n:1},{lvl:1,n:2},{lvl:1,n:3},
+			{lvl:2,n:0},{lvl:2,n:1},{lvl:2,n:2},
+			{lvl:3,n:0},{lvl:3,n:1}];
+arrows = [{lvl:1, n:0},{lvl:1,n:1},{lvl:1,n:2},{lvl:1,n:3},
+			{lvl:2,n:0},{lvl:2,n:1},{lvl:2,n:2},
+			{lvl:3,n:0},{lvl:3,n:1},
+			{lvl:4,n:0}];
+lines = [{lvl:1},{lvl:2},{lvl:3}];
+ltext = [];
+ltext.push({lvl:0,txt:proj_lvl_info[crid][0] + ' genes'});
+for (n = 1; n <= 3; n++)
+{
+	ltext.push({lvl:n,txt:proj_lvl_info[crid][n] + ' factors'});
+}
+svg = d3.select("#" + id)
+	.append("div")
+	.classed("svg-container",true)
+    .append("svg")
+   	.attr("viewBox", "0 0 " + width + " " +  height)
+	.append("g")
+	;
+svg.append("svg:defs").append("svg:marker")
+    .attr("id", "triangle")
+    .attr("refX", 0)
+    .attr("refY", 2)
+    .attr("markerWidth", 4)
+    .attr("markerHeight", 4)
+    .attr("orient", "auto")
+    .append("polygon")
+    .attr("points", "0 0, 4 2, 0 4")
+    .style("fill", "#222222");
+
+svg.append("g")
+	.selectAll(".mainrect")
+	.data([1])
+	.enter()
+	.append("rect")
+	.attr("x", 0)
+	.attr("y", 0)
+	.attr("width", width)
+	.attr("height", height)
+	.style("fill", "#f3f3f3")
+	;
+svg.append("g")
+	.selectAll(".squares")
+	.data(squares)
+	.enter()
+	.append("rect")
+	.attr("x", function(d) {return rectLeft + d.n*(rectW + rectSpace);})
+	.attr("y", rectTop)
+	.attr("width", rectW)
+	.attr("height", rectW)
+	.style("fill", bluefill)
+	
+svg.append("g")
+	.selectAll(".circles")
+	.data(circles)
+	.enter()
+	.append("circle")
+	.attr("cx", function(d) {return rectLeft + (1 + d.n)*rectW + 
+				+ (d.lvl-1)*(circR + .5*rectSpace)   + (.5 + d.n)*rectSpace;})
+	.attr("cy", function(d) {return rectTop - vSpace - circR - (d.lvl-1)*(2*circR + vSpace);})
+	.attr("r", circR)
+	.style("fill", bluefill)
+
+svg.append("g")
+	.selectAll(".lines")
+	.data(lines)
+	.enter()
+	.append("line")
+	.attr("x1",lineOffsetX)
+	.attr("x2",width - lineOffsetX)
+	.attr("y1", function(d) {return rectTop - vSpace - circR - (d.lvl-1)*(2*circR + vSpace) 
+						+ circR + lineOffsetY;})
+	.attr("y2", function(d) {return rectTop - vSpace - circR - (d.lvl-1)*(2*circR + vSpace) 
+						+ circR + lineOffsetY;})
+	.attr("stroke-width","5")
+	.attr("stroke","#d5d5d5")
+
+svg.append("g")
+	.selectAll(".arrowsR")
+	.data(arrows)
+	.enter()
+	.append("line")
+	.attr("x1", function(d) {return  rectLeft + .6*rectW + d.n*(rectW + rectSpace)
+						+ (d.lvl-1)*(circR + .5*rectSpace);})
+	.attr("x2", function(d) {return  rectLeft + .6*rectW + d.n*(rectW + rectSpace)
+						+ (d.lvl-1)*(circR + .5*rectSpace) + 18;})
+	.attr("y1", function(d) {return  rectTop - (d.lvl - 1)*(vSpace + 2*circR) - 5;})
+	.attr("y2", function(d) {return  rectTop - (d.lvl - 1)*(vSpace + 2*circR) - 5- 40;})
+	.attr("stroke-width", 4)
+	.attr("stroke", "#222222")
+	.attr("marker-end", "url(#triangle)")
+
+svg.append("g")
+	.selectAll(".arrowsL")
+	.data(arrows)
+	.enter()
+	.append("line")
+	.attr("x1", function(d) {return  rectLeft + .4*rectW + (d.n + 1)*(rectW + rectSpace)
+						+ (d.lvl-1)*(circR + .5*rectSpace);})
+	.attr("x2", function(d) {return  rectLeft + .4*rectW + (d.n + 1)*(rectW + rectSpace)
+						+ (d.lvl-1)*(circR + .5*rectSpace) - 18;})
+	.attr("y1", function(d) {return  rectTop - (d.lvl - 1)*(vSpace + 2*circR) - 5;})
+	.attr("y2", function(d) {return  rectTop - (d.lvl - 1)*(vSpace + 2*circR) - 5- 40;})
+	.attr("stroke-width", 4)
+	.attr("stroke", "#222222")
+	.attr("marker-end", "url(#triangle)")
+
+svg.append("g")
+	.selectAll(".text1")
+	.data(ltext)
+	.enter()
+	.append("text")
+	.attr("x",10)
+	.attr("y",function(d) {return rectTop + 40 - d.lvl*(vSpace + 2*circR);})
+	.style("font-family","sans-serif")
+	.style("font-size","40px")
+	.style("font-weight","bold")
+	.style("fill","222222")
+	.text(function(d) {return "L" + d.lvl + ":";})
+
+svg.append("g")
+	.selectAll(".text2")
+	.data(ltext)
+	.enter()
+	.append("text")
+	.attr("x",10)
+	.attr("y",function(d) {return rectTop + 85 - d.lvl*(vSpace + 2*circR);})
+	.style("font-family","sans-serif")
+	.style("font-size","40px")
+	.style("font-weight","bold")
+	.style("fill","222222")
+	.text(function(d) {return d.txt;})
+
+}
 </script>
 
 <?php
-
+function dump_project_info()
+{ 
+	print "var proj_lvl_info = [];\n";
+	$st = dbps("select crid, lvl, count(*) from clst group by crid, lvl");
+	$st->bind_result($crid,$lvl,$num);
+	$st->execute();
+	$seen = array();
+	while ($st->fetch())
+	{
+		if (!isset($seen[$crid]))
+		{
+			print "proj_lvl_info[$crid] = [];\n";
+		}
+		$seen[$crid] = 1;
+		$lvl++;
+		print "proj_lvl_info[$crid][$lvl] = $num;\n";
+	}
+	$st->close();
+	$st = dbps("select clr.id, count(*) from glist join clr on clr.glid=glist.glid group by clr.id ");
+	$st->bind_result($crid,$num);
+	$st->execute();
+	while ($st->fetch())
+	{
+		print "proj_lvl_info[$crid][0] = $num;\n";
+	}
+	$st->close();
+}
 function load_content_html()
 {
 	$opt = getval("opt","");
