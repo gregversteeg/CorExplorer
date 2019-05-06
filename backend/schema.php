@@ -11,11 +11,7 @@ include_once("db.php");
 #
 # These genes will be mapped onto the Ensembl proteins in order to 
 # get PPI data from StringDB.
-# Unlike the genes, the ENSP terms are taken as globally meaningful. 
-# The reason for this is that we will have to update them for ALL projects
-# whenever StringDB does an update. 
 #
-
 ##########################################################################
 #
 # Gene lists = collections of gene names used for particular experiments
@@ -110,7 +106,7 @@ $sql = "create table samp (
 	ID int primary key auto_increment,
 	lbl varchar(50),
 	DSID int not null,
-	unique index DSID, lbl
+	unique index (DSID, lbl)
 );";
 if (!table_exists("samp")) { schema_add($sql);}
 
@@ -164,7 +160,7 @@ $sql = "create table expr (
 	DSID int not null,		# this is redundant, not sure anything is using it
 	raw float not null,	  	# un-normalized
 	logz float not null, 	# log2 score, normalized by z
-	unique index 'idx' (DSID,GID,SID)
+	unique index (DSID,GID,SID)
 );";
 if (!table_exists("expr")) { schema_add($sql);}
 
