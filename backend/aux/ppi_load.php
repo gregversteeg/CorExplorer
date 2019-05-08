@@ -4,7 +4,7 @@
 #
 require_once("db.php");
 
-$linkfile = "/lfs1/stringdb_files/links.txt";
+$linkfile = "stringdb_files/links.txt";
 
 dbq("delete from ppi");
 $fh = fopen($linkfile,"r");
