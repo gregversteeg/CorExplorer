@@ -1,0 +1,111 @@
+<h4>System Setup Checks for CorExplorer Portal</h4>
+Below are checks implemented in PHP. If you do not see <p>
+the output from the checks, then your webserver is not processing <p>
+PHP within .html files. To correct this for a standard PHP install, add<p>
+<pre>
+RemoveHandler .html .htm
+AddType application/x-httpd-php .php .htm .html
+</pre>
+to your Apache config file. <p>
+If you are using PHP-FPM, then add to the www.conf file:<br>
+<pre>
+&lt;FilesMatch \.(html)$&gt;
+    SetHandler "proxy:unix:/run/php-fpm/www.sock|fcgi://localhost"
+&lt;/FilesMatch&gt;
+</pre>
+<p>
+<?php 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once("util.php");
+
+echo "#### Begin PHP checks #####<p>\n";
+echo "##########################################<p>Checking R packages:<p>";
+system("/usr/bin/Rscript r_pkg_check.R");
+echo <<<END
+<p>If R packages are shown as missing, but you have installed them to <br>
+a user account on the system, you can try the following (on Apache):<br>
+Identify the R library path which has the libraries, using R&gt;.libPaths() <br>
+Add the following to the Apache envvars file (may be at /etc/apache2/envvars>:<br>
+export R_LIBS_USER=&lt;library path&gt; <p>
+END;
+
+echo "########################################<p>Checking Unix commands:<p>";
+echo <<<END
+Attempting to execute wget and gunzip. You should see <p>
+END;
+if (`which wget`) 
+{
+	echo "Found wget<p>";
+}
+else
+{
+	echo "ERROR:Could not run wget!<p>";
+}
+if (`which gunzip`) 
+{
+	echo "Found gunzip<p>";
+}
+else
+{
+	echo "ERROR:Could not run gunzip!<p>";
+}
+echo "########################################<p>Checking Corex directories:<p>";
+echo <<<END
+The webserver must be able to read from the Corex scripts directory, and <br>
+write to the Corex datasets directory. <p>
+(These are specified by apache environment variables COREXSCRIPTDIR and COREXDATADIR)<p>
+END;
+
+if (!isset($_SERVER["COREXSCRIPTDIR"]))
+{
+	print "ERROR:COREXSCRIPTDIR is not set<p>";
+}
+else
+{
+	$scriptdir = $_SERVER["COREXSCRIPTDIR"];
+	if (!file_exists($scriptdir))
+	{
+		print "ERROR:Can't find the COREXSCRIPTDIR directory<p>";
+	}
+	else
+	{
+		if (!file_exists("$scriptdir/load_project.php"))
+		{
+			print "ERROR:The COREXSCRIPTDIR directory does not have the scripts in it<p>";
+		}
+		else
+		{
+			print "COREXSCRIPTDIR directory looks OK<p>";
+		}
+	}
+}
+if (!isset($_SERVER["COREXDATADIR"]))
+{
+	print "ERROR:COREXDATADIR is not set<p>";
+}
+else
+{
+	$dir = $_SERVER["COREXDATADIR"];
+	if (!file_exists($dir))
+	{
+		print "ERROR:Can't find the COREXDATADIR directory<p>";
+	}
+	else
+	{
+		system("touch $dir/foo.test");
+		if (!file_exists("$dir/foo.test"))
+		{
+			print "ERROR:The COREXDATADIR directory does not have write access<p>";
+		}
+		else
+		{
+			system("rm $dir/foo.test");
+			print "COREXDATADIR directory looks OK<p>";
+		}
+	}
+}
+
+?>
