@@ -17,7 +17,13 @@ function dbps($sql,$log=0)
 	{
 		error_log($sql);
 	}
-	return $DB->prepare($sql);
+	$st=$DB->prepare($sql);
+	if (!$st)
+	{
+		error_log($st->error);
+		die($st->error);
+	}	
+	return $st;
 }
 function table_exists($tbl)
 {

@@ -1,7 +1,7 @@
 <?php
 require_once("util.php");
 
-$Rscript_dir = "/lfs1/corex/Rscripts";
+$Rscript_dir = "$SCRIPTDIR/Rscripts";
 
 $rscript = "$Rscript_dir/biomart_map_hugo.R";
 

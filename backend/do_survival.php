@@ -1,7 +1,7 @@
 <?php
 require_once("util.php");
-$script_dir = "/lfs1/corex";
-$Rscript_dir = "/lfs1/corex/Rscripts";
+$script_dir = $SCRIPTDIR;
+$Rscript_dir = "$SCRIPTDIR/Rscripts";
 
 $projname = $argv[1];
 $rdatafile = $argv[2];

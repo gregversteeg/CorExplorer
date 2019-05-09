@@ -1,10 +1,11 @@
 <?php
+require_once("util.php");
 #
 # Careful changing the main program section as many of the
 # variables are used within the subroutines as well. 
 #
-$data_root = "/lfs1/datasets";
-$script_dir = "/lfs1/corex";
+$data_root = $DATADIR;
+$script_dir = $SCRIPTDIR;
 $php = "/usr/bin/php";
 
 $metadata_tbl_name 	= "metadata.tsv";  # also will look for GDC file metadata*.json 
@@ -12,7 +13,6 @@ $expr_file_name 	= "reduced_data.csv";
 $descr_file_name 	= "run_details.txt";
 $corex_datadir_name = "text_files";
 
-require_once("util.php");
 $time_start = time();
 
 $mode = (isset($argv[1]) ? $argv[1] : "");

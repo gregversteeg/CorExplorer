@@ -52,31 +52,49 @@ $CRID = 0;
 
 $s = dbps("insert into dset (lbl,expr_type) values(?,'fpkm')" );
 $s->bind_param("s",$Projname);
-$succeed_dsid = $s->execute();
+$succeed_dsid = ($s->execute() ? 1 : 0);
 $s->close();
-#$succeed_dsid = dbq("insert into dset (lbl,expr_type) values('$Projname','fpkm')" );
+if (!$succeed_dsid)
+{
+	error_log($s->error);
+}
 $DSID = dblastid("dset","ID");
 
 $s = dbps("insert into glists (descr) values(?)");
 $s->bind_param("s",$Projname);
-$succeed_glid = $s->execute();
+$succeed_glid = ($s->execute() ? 1 : 0);
 $s->close();
-#$succeed_glid = dbq("insert into glists (descr) values('$Projname')");
 $GLID = dblastid("glists","ID");
+if (!$succeed_glid)
+{
+	error_log($s->error);
+}
 
-$s = dbps("insert into clr (lbl,meth,GLID,DSID,projstat,dataurl,ownedby,projdir) values(?,'corex',?,?,'START',?,?,?)");
+$s = dbps("insert into clr (lbl,meth,GLID,DSID,projstat,dataurl,ownedby,projdir,load_dt) values(?,'corex',?,?,'START',?,?,?,NOW())");
 $s->bind_param("siisis",$Projname,$GLID,$DSID,$Datalink,$USERID,$dataset_dir);
-$succeed_crid = $s->execute();
+$succeed_crid = ($s->execute() ? 1 : 0);
 $s->close();
-#$succeed_crid = dbq("insert into clr (lbl,meth,GLID,DSID,projstat,dataurl,ownedby,projdir) ".
-#			" values('$Projname','corex','$GLID','$DSID','START','$Datalink',$USERID,'$dataset_dir')");
+if (!$succeed_crid)
+{
+	error_log($s->error);
+}
 $CRID = dblastid("clr","ID");
+#error_log("$succeed_dsid,$succeed_glid,$succeed_crid");
 
 if (!$succeed_crid || !$succeed_glid || !$succeed_dsid)
 {
-	dbq("delete from dset where id=$DSID");
-	dbq("delete from glists where id=$GLID");
-	dbq("delete from clr where id=$CRID");
+	if ($succeed_dsid)
+	{
+		dbq("delete from dset where id=$DSID");
+	}
+	if ($succeed_glid)
+	{
+		dbq("delete from glists where id=$GLID");
+	}
+	if ($succeed_crid)
+	{
+		dbq("delete from clr where id=$CRID");
+	}
 	system("rmdir $dataset_dir");
 	print "Project load failed\n";
 	die();

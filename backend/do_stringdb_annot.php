@@ -1,6 +1,6 @@
 <?php
 require_once("util.php");
-$Rscript_dir = "/lfs1/corex/Rscripts";
+$Rscript_dir = "$SCRIPTDIR/Rscripts";
 
 $enrich_thresh = 0.05;
 $minMI = .002;
