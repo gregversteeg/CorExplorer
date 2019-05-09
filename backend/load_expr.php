@@ -102,10 +102,10 @@ for ($r = 1; $r < $nRows; $r++)
 			{
 				die ("Bad value:'$val' for $samp,column=$c\n");
 			}
-			array_push($varray,"($SID,$GID,$dsid,$val)");
+			array_push($varray,"($SID,$GID,$dsid,$val,0)");
 		}
 	}
-	dbq("insert into expr (SID,GID,DSID,raw) values".implode(",",$varray));
+	dbq("insert into expr (SID,GID,DSID,raw,logz) values".implode(",",$varray));
 }
 
 print "Fill logz values\n";

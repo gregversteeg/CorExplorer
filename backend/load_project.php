@@ -808,10 +808,10 @@ function load_corex_labels()
 			$CID = $grp2ID[$g];
 			$lbl = $labels[$r][$g + 1];
 			$clbl = $clabels[$r][$g + 1];
-			$vals[] = "($SID,$CID,$lbl,$clbl)";
+			$vals[] = "($SID,$CID,$lbl,$clbl,0)";
 		}	
 		#print "$N\t\t$samp                             \r";
-		dbq("insert into lbls (SID,CID,lbl,clbl) values".implode(",",$vals));
+		dbq("insert into lbls (SID,CID,lbl,clbl,risk_strat) values".implode(",",$vals));
 		$N--;
 	}
 
