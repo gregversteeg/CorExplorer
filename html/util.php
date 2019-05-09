@@ -241,7 +241,8 @@ function clst_sel($name,$CID,$singlelvl=-1,$defstr="all")
 		$lvl++;
 		$size++;
 		$selected = ($ID == $CID ? " selected " : "");
-		$opts[] = "<option value=$ID $selected>Layer$lvl : $lbl </option>";
+		$ngenes = ($lvl == 1 ? "($size genes)" : "");
+		$opts[] = "<option value=$ID $selected>Layer$lvl : $lbl $ngenes</option>";
 	}
 	$st->close();
 	# due to the g2c join, the previous only got layer 1
