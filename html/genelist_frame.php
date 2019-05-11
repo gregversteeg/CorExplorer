@@ -28,6 +28,9 @@ if (!read_access($CRID))
 				</tr>
 			</table>
 		</td>
+		<td align="left" style="width:150px;padding-left:20px">
+				<a href="download_genelist.php?crid=<?php echo $CRID?>" target="_blank">download genelists</a>
+		</td>
 		<td valign="top" align="right" style="font-size:1.4em; padding-right:50px;color:#333333" >
 			<span id="popout_btn" title="Open in a new page" style="cursor:pointer">&nbsp;&#9654;&nbsp;</span>
 		</td>
