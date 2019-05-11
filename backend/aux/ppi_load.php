@@ -2,15 +2,15 @@
 # 
 # Load the ppi links that were downloaded from StringDB
 #
-require_once("db.php");
+require_once("../db.php");
 
-$linkfile = "stringdb_files/links.txt";
+$linkfile = $argv[1]; 
 
 dbq("delete from ppi");
 $fh = fopen($linkfile,"r");
 $line = fgets($fh);
 $seen = array();
-$st = $DB->prepare("insert into ppi (ID1,ID2,score) values(?,?,?)");
+$st = $DB->prepare("insert ignore into ppi (ID1,ID2,score) values(?,?,?)");
 $st->bind_param("iis",$ens1,$ens2,$score);	
 dbq("start transaction");
 $added = 0;
@@ -25,7 +25,7 @@ while (($line = fgets($fh)) != false)
 	$fields = preg_split('/\s+/',$line);
 	$ens1 = $fields[0];
 	$ens2 = $fields[1];
-	$score = $fields[9];
+	$score = $fields[2];   # NB they  used to have many more fields
 	$ens1 = preg_replace('/9606\.ENSP0*/','',$ens1);
 	$ens2 = preg_replace('/9606\.ENSP0*/','',$ens2);
 	if (!is_numeric($ens1) || !is_numeric($ens2) || !is_numeric($score) || $ens1==$ens2)
@@ -40,12 +40,12 @@ while (($line = fgets($fh)) != false)
 		$ens1 = $ens2;
 		$ens2 = $tmp;
 	}
-	if (isset($seen[$ens1][$ens2]))
-	{
-		#print "seen:$ens1,$ens2\n";
-		$Nseen++;
-	}
-	$seen[$ens1][$ens2] = 1;
+#	if (isset($seen[$ens1][$ens2]))
+#	{
+#		#print "seen:$ens1,$ens2\n";
+#		$Nseen++;
+#	}
+#	$seen[$ens1][$ens2] = 1;
 
 	$st->execute();
 	$added++;
