@@ -53,18 +53,19 @@ function make_group_files()
 		# Lists use hugo names because String doesn't process ENSG. 
 		# However, shrinkage2 used glist.lbl instead of glist.hugo
 		#
-		$res = dbq("select distinct hugo as name from glist join g2c on g2c.GID=glist.ID ".
-				" where g2c.CID=$cid and g2c.mi >= $minMI order by g2c.mi desc",1);
-		#$res = dbq("select distinct term from g2e join g2c on g2e.GID=g2c.GID ".
-		#		" where g2c.CID=$cid and g2c.mi >= $minMI order by g2c.mi desc",1);
-		$_names = array();
+		$res = dbq("select hugo as name from glist join g2c on g2c.GID=glist.ID ".
+				" where g2c.CID=$cid and g2c.mi >= $minMI order by g2c.mi desc");
+		$seen = array();
 		while ($r = $res->fetch_assoc())
 		{
 			$name = preg_replace("/\..*/","",$r["name"]); # String can't handle .N
-			$_names[$name] = 1;
-			#$_names[ensp_name($r["term"])] = 1;
+			if (isset($seen[$name]))
+			{
+				continue;
+			}
+			$seen[$name] = 1;
+			$names[] = $name;
 		}
-		$names = array_keys($_names); # ensures unique
 		if (count($names) > 0)
 		{
 			$numFiles++;
