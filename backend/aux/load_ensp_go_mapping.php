@@ -1,9 +1,9 @@
 <?php
-require_once("../util.php");
+require_once("../db.php");
 
-$stringdb_mapping_file = "human.GO_2_string.2018.tsv";
+$stringdb_mapping_file = "../stringdb_files/human.GO_2_string.2018.tsv";
 
-$st = dbps("insert into e2g (eterm,gterm) values(?,?)");
+$st = dbps("insert into e2go (eterm,gterm) values(?,?)");
 $st->bind_param("ii",$eterm,$gterm);
 $fh = fopen($stringdb_mapping_file,"r");
 fgets($fh);
