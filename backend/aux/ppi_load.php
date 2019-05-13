@@ -4,7 +4,7 @@
 #
 require_once("../db.php");
 
-$linkfile = $argv[1]; 
+$linkfile = "../stringdb_files/9606.protein.links.v11.0.txt";
 
 dbq("delete from ppi");
 $fh = fopen($linkfile,"r");
