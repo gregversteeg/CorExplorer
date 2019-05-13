@@ -23,10 +23,10 @@ require_once("util.php");
 
 echo "#### Begin PHP checks #####<p>\n";
 echo "##########################################<p>Checking R packages:<p>";
-system("/usr/bin/Rscript r_pkg_check.R");
+system("/usr/bin/Rscript pkg_check.R");
 echo <<<END
 <p>If R packages are shown as missing, but you have installed them to <br>
-a user account on the system, you can try the following (on Apache):<br>
+a user account on the system, then do the following (on Apache):<br>
 Identify the R library path which has the libraries, using R&gt;.libPaths() <br>
 Add the following to the Apache envvars file (may be at /etc/apache2/envvars>:<br>
 export R_LIBS_USER=&lt;library path&gt; <p>
