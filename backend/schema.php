@@ -1,4 +1,7 @@
 <?php
+#
+# OUT OF DATE: USE SCHEMA.SQL !!!
+#
 include_once("db.php");
 #
 # Handling of gene names:
