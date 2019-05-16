@@ -46,4 +46,55 @@ To be added: graph view, dataset comparisons, CorEx details, genelist, ppi, sear
         normalization. We did not see significant differences when comparing results.
         The settings for running CorEx are otherwise identical to those used in the original study.
     </p>
+
+	<h2>Backend Processing</h2>
+
+	Newly loaded datasets are processed with steps below. External services StringDB and BioMart
+	are used (through their R libraries) for essential steps. The main graph needs to be 
+	rendered once ab initio, and then can be manually adjusted and saved for faster rendering. 
+	<p>
+	<ol>
+		<li> Load gene names, sample names, and graph from CorEx files.
+		<p> Note that CorEx data
+		 is a weighted DAG (directed acyclic graph) in which nodes at one level join to one or more
+		nodes at the next level up, with each link carrying two measures of strength, 
+		weight and mutual information (MI)
+		(see <a href="http://papers.nips.cc/paper/5580-discovering-structure-in-high-dimensional-data-through-correlation-explanation.pdf">CorEx paper</a>) .
+		The lowest-level nodes are genes; higher level nodes are factors. 
+		<p> For each factor, CorEx classifies each sample into one of three categories ("discrete labels" 0,1,2)
+			where 0,2 correspond to positive and negative differential expression, while 1 corresponds
+			to no differential. (Note that for some samples 0,2 will correspond to positive/negative,
+			while in others it will be reversed.)
+			<p>
+			CorEx also evaluates probability that each sample is in each category, and a 
+			continuous label is assiged as log(p0) - log(p2). This is used in survival computation. 
+		</li>
+		<li> Load sample-to-gene expression matrix, which is the raw material from which CorEx 
+			calculated the factor graph. For each gene, normalized LogZ expression values are 
+			calculated as standard Z values of log(1 + raw), where raw=raw expression value.
+			These are displayed in heat maps. 
+			<p>
+		</li>
+		<li> Load sample metadata, either from a tabular format or from GDC-formatted json file. 
+		The metadata used by the system are: Status (whether alive at last contact); 
+			DTLC (days from trial start until last contact); DTD (days from trial start until death)
+			<p>
+		</li>
+		<li> Survival analysis (via R script). For each level-one factor, sample relative risk is calculated 
+			from survival data and 
+			CorEx continuous labels using coxph. Samples are stratified into three
+			quantiles (strata)  by relative risk. KM curves are calculated for each stratum. 
+			Survival differential p-values are calculated between highest/lowest stratum; these
+			measure the significance of the given factor for patient survival. 
+			<p>
+			The same analysis is also performed for pairs of factors having differential p-value at
+			least 0.1 in the single-factor analysis. The steps are the same except that
+			the initial coxph fit uses continuous labels for two factors. 
+			<p>
+		<li> GO and Kegg anotation via StringDB. For each level-one factor, the genes are collected
+			subject to MI &gt;= 0.002 .  The genesets are sent to StringDB for GO and Kegg annotation,
+			using the StringDB R library. Annotations meeting threshold FDR &gt;= 0.05 are loaded
+			to the database.
+		</li>
+	</ol>
 </div>
