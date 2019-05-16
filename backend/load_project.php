@@ -1,4 +1,5 @@
 <?php
+require_once("util.php");
 #
 # Careful changing the main program section as many of the
 # variables are used within the subroutines as well. 
@@ -12,7 +13,6 @@ $expr_file_name 	= "reduced_data.csv";
 $descr_file_name 	= "run_details.txt";
 $corex_datadir_name = "text_files";
 
-require_once("util.php");
 $time_start = time();
 
 $mode = (isset($argv[1]) ? $argv[1] : "");

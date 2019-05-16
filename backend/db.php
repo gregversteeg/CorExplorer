@@ -1,6 +1,13 @@
 <?php
-$DBUSER = (isset($_SERVER["DBUSER"]) ? $_SERVER["DBUSER"] : getenv("DBUSER"));
-$DBPASS = (isset($_SERVER["DBPASS"]) ? $_SERVER["DBPASS"] : getenv("DBPASS"));
+if (!isset($DBUSER))
+{
+	$DBUSER = (isset($_SERVER["DBUSER"]) ? $_SERVER["DBUSER"] : getenv("DBUSER"));
+}
+
+if (!isset($DBPASS))
+{
+	$DBPASS = (isset($_SERVER["DBPASS"]) ? $_SERVER["DBPASS"] : getenv("DBPASS"));
+}
 
 $DB = mysqli_connect("localhost",$DBUSER,$DBPASS,"corex");
 
