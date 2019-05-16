@@ -1,7 +1,7 @@
 <?php
 require_once("util.php");
 
-$Rscript_dir = "$SCRIPTDIR/Rscripts";
+$Rscript_dir =  "$SCRIPTDIR/Rscripts";
 
 $rscript = "$Rscript_dir/biomart_map_hugo.R";
 
@@ -15,7 +15,7 @@ $pdata = array();
 load_proj_data2($pdata,$proj);
 $glid = $pdata["GLID"];
 
-print("Map gene names via BioMart....\n");
+print("Map Ensembl gene names via BioMart....\n");
 
 $name2id = array();
 $s = dbps("select id,lbl from glist where glid=$glid");
