@@ -1,5 +1,4 @@
 <?php
-require_once("util.php");
 #
 # Careful changing the main program section as many of the
 # variables are used within the subroutines as well. 
@@ -13,6 +12,7 @@ $expr_file_name 	= "reduced_data.csv";
 $descr_file_name 	= "run_details.txt";
 $corex_datadir_name = "text_files";
 
+require_once("util.php");
 $time_start = time();
 
 $mode = (isset($argv[1]) ? $argv[1] : "");
@@ -275,6 +275,8 @@ $st->close();
 #
 # Make the gene and sample entries. 
 # Any duplicates will get just one entry.
+# If the gene name is not ENSG, we will assume hugo...
+# if it is ENSG, its hugo will be obtained from biomart later
 #
 print "Begin scan genes/samples\n";
 
@@ -282,9 +284,14 @@ $num_loaded = 0;
 foreach ($garray as $gene)
 {
 	$gene = trim($gene);	
+	$hugo = "";
+	if (substr($gene,0,4) != "ENSP")
+	{
+		$hugo = $gene;
+	}
 	if (!entry_exists2("glist","lbl",$gene,"GLID",$GLID))
 	{
-		dbq("insert into glist (GLID,lbl) values($GLID,'$gene')");
+		dbq("insert into glist (GLID,lbl,hugo) values($GLID,'$gene','$hugo')");
 		$num_loaded++;
 	}
 }
@@ -808,10 +815,10 @@ function load_corex_labels()
 			$CID = $grp2ID[$g];
 			$lbl = $labels[$r][$g + 1];
 			$clbl = $clabels[$r][$g + 1];
-			$vals[] = "($SID,$CID,$lbl,$clbl,0)";
+			$vals[] = "($SID,$CID,$lbl,$clbl)";
 		}	
 		#print "$N\t\t$samp                             \r";
-		dbq("insert into lbls (SID,CID,lbl,clbl,risk_strat) values".implode(",",$vals));
+		dbq("insert into lbls (SID,CID,lbl,clbl) values".implode(",",$vals));
 		$N--;
 	}
 
