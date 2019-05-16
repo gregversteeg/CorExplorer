@@ -169,7 +169,7 @@ Name:
 		<td>
 	</tr>
 	<tr>
-		<td>
+		<td title="Enter URL for download of .zip file containing project data">
 Data link: 
 		</td>
 		<td>
