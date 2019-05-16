@@ -102,10 +102,10 @@ for ($r = 1; $r < $nRows; $r++)
 			{
 				die ("Bad value:'$val' for $samp,column=$c\n");
 			}
-			array_push($varray,"($SID,$GID,$dsid,$val,0)");
+			array_push($varray,"($SID,$GID,$dsid,$glid,$val,0)");
 		}
 	}
-	dbq("insert into expr (SID,GID,DSID,raw,logz) values".implode(",",$varray));
+	dbq("insert into expr (SID,GID,DSID,GLID,raw,logz) values".implode(",",$varray));
 }
 
 print "Fill logz values\n";
@@ -141,8 +141,14 @@ foreach ($gname2ID as $name => $gid)
 		flush();
 	}
 
-	#print("update expr set logz=((log(1+raw) - $avg)/$std) where gid=$gid and dsid=$dsid"\n);
-	dbq("update expr set logz=((log(1+raw) - $avg)/$std) where gid=$gid and dsid=$dsid");
+	if ($var > 0 )
+	{
+		dbq("update expr set logz=((log(1+raw) - $avg)/$std) where gid=$gid and dsid=$dsid",1);
+	}
+	else
+	{
+		print "WARNING: bad variance $var for GID=$gid\n";
+	}
 	$remaining--;
 }	
 
