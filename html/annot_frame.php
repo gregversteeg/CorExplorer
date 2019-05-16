@@ -21,8 +21,8 @@ if (!read_access($CRID))
 </head>
  <body >
 <form method="get">
-<input type="hidden" name="ft" value="<?php echo $FT ?>">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
+<input type="hidden" name="ft" value="<?php echo $FT ?>">
 <table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
 		<td valign="top" align="center">
