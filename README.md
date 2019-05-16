@@ -127,9 +127,9 @@ load_ensp_go_mapping.php (takes about 30 mins)
 ## Loading your own projects
 
 You need a CorEx run output as well as several auxiliary files, as follows:
-    * metadata.tsv : sample, DTD, DTLC, Status
-    * Reduced_data.csv : (samples x genes) matrix of expression data
-    * run_details.txt: general info about the project, for display in "dataset overview" link
+  * metadata.tsv : sample, DTD, DTLC, Status
+  * Reduced_data.csv : (samples x genes) matrix of expression data
+  * run_details.txt: general info about the project, for display in "dataset overview" link
     
 To see the directory structure and details of these files, look at the example
 https://www.dropbox.com/s/fzfnkw930hugxrl/corex_test2.zip?dl=0
