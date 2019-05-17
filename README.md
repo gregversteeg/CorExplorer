@@ -94,4 +94,42 @@ cd /var/www/html
 sudo cp -R ~/CorExplorer/html/* .
 ```
 
-14. Using a browser, open the diagnostic web page check_system.html, and fix any reported problems
+14. Using a browser, open the diagnostic web page check_system.html, and fix any reported problems. 
+
+15. Load auxiliary data from StringDB (Ensembl protein info, GOs, protein links):
+```
+cd CorExplorer/backend/aux
+mkdir stringdb_files
+cd stringdb_files
+(note version numbers below will need to be updated!!)
+wget https://stringdb-static.org/download/protein.links.v11.0/9606.protein.links.v11.0.txt.gz
+wget https://string-db.org/mapping_files/geneontology/human.GO_2_string.2018.tsv.gz
+wget https://stringdb-static.org/download/protein.info.v11.0/9606.protein.info.v11.0.txt.gz
+gunzip *.gz
+cd ..
+edit file paths and then run the following scripts to load:
+ppi_load.php
+load_prot_names.php (takes about 30 mins)
+load_ensp_go_mapping.php (takes about 30 mins)
+```
+
+16. The site should now be working. Login as admin user (created in step 10) and upload a test dataset as follows:
+    * Browse to the top-level page. Login link is at lower right corner. 
+    * After logging in, the login link changes to a link with your username; click that.
+    * Now you are at your Manage Projects page. The first section is New Project. 
+    * Enter a test project name
+    * For data link use https://www.dropbox.com/s/fzfnkw930hugxrl/corex_test2.zip?dl=0
+    * Press "Submit"; the page will reload
+    * Now the "Current projects" table has your new project
+    * Click "view log" at the right side of the table to track the loading progress
+    * Loading should finish in about 30 mins and the status will change to READY
+    
+## Loading your own projects
+
+You need a CorEx run output as well as several auxiliary files, as follows:
+  * metadata.tsv : sample, DTD, DTLC, Status
+  * Reduced_data.csv : (samples x genes) matrix of expression data
+  * run_details.txt: general info about the project, for display in "dataset overview" link
+    
+To see the directory structure and details of these files, look at the example
+https://www.dropbox.com/s/fzfnkw930hugxrl/corex_test2.zip?dl=0
