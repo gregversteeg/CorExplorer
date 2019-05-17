@@ -3,6 +3,7 @@ require_once("util.php");
 ini_set('memory_limit', '1G');
 
 $CRID = getint("crid",1);
+$forceComp = getint("fc",0);
 
 if (!read_access($CRID))
 {
@@ -176,6 +177,10 @@ $('#popout_btn').click(function()
 </script>
 <?php
 
+if (0) #$pdata["pos_saved"] == 0)
+{
+	preset_positions();
+}
 $gids_shown = array();
 $actualMinWt = $MinWt;
 $actualMaxWt = 1;
@@ -928,6 +933,166 @@ function save_graph()
 
 <?php
 
+function preset_positions()
+{
+	global $DB, $MaxClstLvl, $CRID;
+	
+	# First arrange the genes around their level 1 clusters
+	$gx = array(); 
+	$gy = array();
+	$c2g = array();
+	$max_r = 0;
+
+	$gspace = 100;
+	$r0 = 150;
+	$dr = 150;
+	$max_r = $r0;
+	$cur_theta = array();
+	$cur_r = array();
+	$cur_dtheta = array();	# angle that gives us gspace dist on circumference
+
+	$st = dbps("select gid, cid  from g2c where crid=$CRID order by wt desc");
+	$st->bind_result($gid,$cid);
+	$st->execute();
+	while ($st->fetch())
+	{
+		if (!isset($c2g[$cid]))
+		{
+			$c2g[$cid] = array();
+			$cur_theta[$cid] = 0;
+			$cur_r[$cid] = $r0;
+			$cur_dtheta[$cid] = $gspace/$max_r;
+		}
+		if (!isset($gx[$gid]))
+		{
+			$c2g[$cid][] = $gid;
+			$gx[$gid] = $cur_r[$cid]*cos($cur_theta[$cid]);		
+			$gy[$gid] = $cur_r[$cid]*sin($cur_theta[$cid]);		
+
+			$cur_theta[$cid] += $cur_dtheta[$cid];
+			if ($cur_theta[$cid] > 2*pi())
+			{
+				$cur_theta[$cid] -= 2*pi();
+				$cur_r[$cid] += $dr;
+				$cur_dtheta[$cid] = $gspace/$cur_r[$cid];
+			}
+			if ($cur_r[$cid] > $max_r)
+			{
+				$max_r = $cur_r[$cid];
+			}
+		}
+	}
+	$st->close();
+
+	# arrange the level 1 around the level two in 
+	# concentric circles with 3 per circle, staggered
+
+	$c1x = array();
+	$c2x = array();
+	$nc = 3;  # number of clusters per circle
+	$dtheta = 2*pi()/$nc;
+	$r0 = 150; #$max_r + 150;
+	$dr = 150; #2*$max_r;
+	$max_r2 = 0; # outer radius of largest level 2 clump
+	$l2genes = array();
+
+	$c2c = array();
+	$clist = array();
+	$st = dbps("select cid1, cid2 from c2c join clst on clst.id=cid1 ".
+			" where clst.lvl=0 and c2c.crid=$CRID order by wt desc");
+	$st->bind_result($cid1,$cid2);
+	$st->execute();
+	while ($st->fetch())
+	{
+		if (!isset($clist[$cid2]))
+		{
+			$clist[$cid2] = array();
+			$l2genes[$cid2] = 0;
+		}
+		if (!isset($c2c[$cid1]))
+		{
+			$cur_n = count($clist[$cid2]);  # how many subclusters so far
+			$c2c[$cid1] = $cid2;
+			$clist[$cid2][] = $cid1;
+			$l2genes[$cid2] += count($c2g[$cid1]);
+
+			$cur_tier = floor($cur_n/$nc);
+			$cur_theta = $cur_tier*($dtheta/2.0) + $cur_n*$dtheta;
+			$cur_r = $r0 + $cur_tier*$dr;
+
+			if (($cur_r + $r0) > $max_r2)
+			{
+				$max_r2 = $cur_r + $r0;
+error_log("$cid2,$cur_tier,$max_r2,$cur_n");
+			}
+
+			$c1x[$cid1] = $cur_r*cos($cur_theta);		
+			$c1y[$cid1] = $cur_r*sin($cur_theta);		
+		}
+	}
+	$st->close();
+
+
+	# Now assign positions to the level 2
+	# Put them in a square, with biggest first
+
+	$c2x = array();
+	$c2y = array();
+	$N = ceil(sqrt(count($l2genes)));
+error_log("$max_r,$max_r2,$N");
+	$L = 2*$max_r2;   # tile size
+	arsort($l2genes);
+	$i = 0;
+	$j = 0;
+	foreach ($l2genes as $cid2 => $foo)
+	{
+		$c2x[$cid2] = ($i + 0.5)*$L;
+		$c2y[$cid2] = ($j + 0.5)*$L;
+
+		$i++;
+		if ($i == $N)
+		{
+			$i = 0;
+			$j++;
+		}	
+	}
+	
+	# Convert relative to absolute positions and upload
+
+	$stc2 = dbps("update clst set pos_x=?, pos_y=? where id=?");
+	$stc2->bind_param("iii",$x2,$y2,$cid2);
+
+	$stc1 = dbps("update clst set pos_x=?, pos_y=? where id=?");
+	$stc1->bind_param("iii",$x1,$y1,$cid1);
+
+	$stg = dbps("update glist set pos_x=?, pos_y=? where id=?");
+	$stg->bind_param("iii",$x0,$y0,$gid);
+	foreach ($clist as $cid2 => $c1list)
+	{
+		$x2 = $c2x[$cid2];
+		$y2 = $c2y[$cid2];
+		$stc2->execute();
+		foreach ($c1list as $cid1)
+		{
+			$x1 = $x2 + $c1x[$cid1];
+			$y1 = $y2 + $c1y[$cid1];
+			$stc1->execute();
+			foreach ($c2g[$cid1] as $gid)
+			{
+				$x0 = $x1 + $gx[$gid];
+				$y0 = $y1 + $gy[$gid];
+				$stg->execute();
+			}
+		}
+	}
+	$stc1->close();
+	$stc2->close();
+	$stg->close();
+
+	
+}
+	
+
 ##############################################################
 #
 # Gets the graph structure from the DB, then writes out the cytoscape.js data elements
@@ -935,14 +1100,18 @@ function save_graph()
 
 function build_graph(&$gids_shown,&$minwt,&$maxwt)
 {
-	global $DB, $CRID, $pdata,$MinWt;
+	global $DB, $CRID, $pdata,$MinWt,$forceComp;
 	global $go_enrich_pval, $kegg_enrich_pval, $numSizeBins;
 	global $MaxClstLvl, $WtStepdownFraction;
 
 	$numNodes = 0;
 
-	$links = array();
+	$links = array();  	# The best inclusion links
 	$elements = array();
+
+	$links2 = array();	# Rest of the links
+	$elements2 = array();
+
 	$CIDlist = array(); # for building the next-level query
 	$cid2num = array();
 	$cid2x = array(); $cid2y = array();
@@ -1030,8 +1199,17 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		$gene_node_data[$GID][] = array("cnum" => $cnum, "cid" => $CID, "wt" => $wt, "mi" => $mi, 
 				"x" => $gx, "y" => $gy);
 
-		$links[] = array("targ" => "$GIDtag", "src" => "$CIDtag", 
-				"wt" => $wt, "mi" => $mi, "lnum" => $gid_seen[$GID]);
+		$lnum = $gid_seen[$GID];
+		if ($lnum == 1)
+		{
+			$links[] = array("targ" => "$GIDtag", "src" => "$CIDtag", 
+				"wt" => $wt, "mi" => $mi, "lnum" => $lnum);
+		}
+		else
+		{
+			$links2[] = array("targ" => "$GIDtag", "src" => "$CIDtag", 
+				"wt" => $wt, "mi" => $mi, "lnum" => $lnum);
+		}
 	}
 	$st->close();
 	foreach ($gene_node_data as $GID => $darray)
@@ -1072,8 +1250,8 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		$cid 	= $gid2cid[$GID];	 
 		$elements[] = "{data: {id: '$GIDtag',  lbl:'$gname', cid:'$cid', lvl:'0', wt:$maxWt,".
 						"hugo:'$hugo', msg:'$msg'}, ".
-						"position:{x:$x,y:$y},".
-						"classes:'$classes'}";
+					"position:{x:$x,y:$y},".
+					"classes:'$classes'}";
 		$gids_shown[$GID] = 1;
 	}
 
@@ -1082,6 +1260,7 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 	# 
 
 	$cid1seen = array();
+	$max_cid_wt = array();
 
 	$st = $DB->prepare("select CID1, CID2,wt,mi from c2c where  CRID=?  ".
 				"  order by wt desc");  # DON'T CHANGE SORT!!
@@ -1098,6 +1277,11 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		if (!isset($cid1seen[$CID1]))
 		{
 			$cid1seen[$CID1] = 0;
+			$max_cid_wt[$CID1] = $wt;
+		}
+		if ($wt < $WtStepdownFraction*$max_cid_wt[$CID1])
+		{
+			continue;
 		}
 		$cid1seen[$CID1]++;
 
@@ -1117,12 +1301,38 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		{
 			$maxwt = $wt;
 		}
-
-		$links[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", 
-				"mi" => "$mi", "lnum" => $cid1seen[$CID1]);
+		$lnum = $cid1seen[$CID1];
+		if ($lnum == 1)
+		{
+			$links[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", 
+				"mi" => "$mi", "lnum" => $lnum);
+		}
+		else
+		{
+			$links2[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", 
+				"mi" => "$mi", "lnum" => $lnum);
+		}
 
 	}
 	$st->close();
+	
+	foreach ($cid2lvl as $cid1 => $lvl1)
+	{
+		if ($lvl1 == 1)
+		{
+			foreach ($cid2lvl as $cid2 => $lvl2)
+			{
+				if ($lvl2 == 1 && $cid2 > $cid1)
+				{
+					$CID2tag = "C$cid2";
+					$CID1tag = "C$cid1";
+					#$links[] = array("targ" => "$CID1tag", "src" => "$CID2tag", 
+					#	"wt" => "1.0","mi" => "1.0", "lnum" => 1);
+
+				}	
+			}
+		}
+	}
 	
 	#$wt_range = log($maxwt/$minwt);
 	$wt_range = $maxwt - $minwt;
@@ -1147,6 +1357,29 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 			$classes = "nodehide";
 		}	
 		$elements[] = "{data: { id:'$id', source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',".
+					" msg: 'weight:$wt,MI:$mi', width: '$width', opacity: '$opacity'},".
+						"classes:'$classes'}";
+	}
+	foreach ($links2 as $data)
+	{
+		$src =  $data["src"];
+		$targ =  $data["targ"];
+		$wt =  $data["wt"];
+		$mi =  $data["mi"];
+		$lnum =  $data["lnum"];
+		$id = $src."_".$targ;
+
+		#$diffwt = log($wt/$minwt); 
+		$diffwt = $wt - $minwt; 
+		$sizebin = min($numSizeBins,1 + floor($numSizeBins*$diffwt/$wt_range));
+		$opacity = 0.2 + (0.8/$numSizeBins)*$sizebin;
+		$width = (2*$sizebin)."px";
+		$classes = "";
+		if ($wt < $MinWt || $lnum > 1)
+		{
+			$classes = "nodehide";
+		}	
+		$elements2[] = "{data: { id:'$id', source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',".
 					" msg: 'weight:$wt,MI:$mi', width: '$width', opacity: '$opacity'},".
 						"classes:'$classes'}";
 	}
@@ -1225,7 +1458,7 @@ style:[
 	
   ],
 END;
-	if ($pdata["pos_saved"]==1 )
+	if ($pdata["pos_saved"]==1 && $forceComp==0 )
 	{
 		$html .= <<<END
 layout:{ name: 'preset',
@@ -1241,14 +1474,23 @@ END;
 	{
 		$html .= <<<END
 layout:{ name: 'cose',
-		nodeRepulsion: 4000000,
+		nodeRepulsion:4000000,
+		randomize:true,
 		stop:function(){
+			add_extras();
 			$('#loading').hide();
 		}
 	}
 });
 END;
 	}
+	$html .= "var other_links = [".implode(",\n",$elements2)."];\n";
+	$html .= <<<END
+function add_extras()
+{
+	cy.add(other_links);
+}
+END;
 	return $html;
 }
 
