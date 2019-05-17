@@ -382,7 +382,7 @@ function run_write_sel($name,$id,$CRID,$def="")
 		$selected = ($CRID==0 ? " selected " : "");
 		$html .= "<option $selected value='0'>$def</option>\n";
 	}
-	$html .= "\n</select>\n";
+	$html .= implode("\n",$opts)."\n</select>\n";
 	return $html;
 }
 function load_in_progress()
