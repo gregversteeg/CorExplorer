@@ -5,6 +5,8 @@ $CRID = getint("crid",0);
 $CID_sel = getint("cid",0);
 $type_sel = getval("type","both");
 $fdr_thresh = 0.005;
+$FromForm = getint("fromform",0); # tell us if it's initial page load or form submit
+$FDRsort = checkbox_val("chk_fdr",1,$FromForm);
 
 if (!read_access($CRID))
 {
@@ -23,13 +25,17 @@ if (!read_access($CRID))
 <form method="get">
 <input type="hidden" name="crid" value="<?php print $CRID ?>">
 <input type="hidden" name="ft" value="<?php echo $FT ?>">
+<input type="hidden" name="fromform" value="1">
 <table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
 		<td valign="top" align="center">
 			<table cellspacing=0 cellpadding=0 >
 				<tr>
-					<td> Factor: <?php print clst_sel("cid",$CID_sel,0,"--choose--") ?> </td>
+					<td> Factor: <?php print clst_sel_annot("cid",$CID_sel) ?> </td>
 					<td style="padding-left:15px"> <?php print_type_sel($type_sel) ?> </td>
+					<td style="padding-left:5px" title="Sort factor menu by best FDR (sort by number if unchecked)">
+							FDR sort <input type="checkbox" id="chk_fdr" name="chk_fdr" <?php checked($FDRsort) ?>>
+					</td>
 				</tr>
 			</table>
 		</td>
@@ -52,6 +58,10 @@ $('#popout_btn').click(function()
 {
  	var win = window.open(window.location.href, '_blank');
   	win.focus();
+});
+$('#chk_fdr').change(function()
+{
+	$(this).closest('form').submit();	
 });
 function go_click(term)
 {
@@ -77,7 +87,7 @@ if ($CID_sel != 0)
 			$goname = go_name($term);
 			$pval = sprintf("%1.0E",$pval);
 			print "<tr><td><a href='javascript:void(0)' onclick='go_click($term)'>$goname</a></td>";
-			print "<td>$pval</td><td>$descr</td></tr>\n";	
+			print "<td style='width:40px'>$pval</td><td>$descr</td></tr>\n";	
 		}
 		$st->close();
 		print "</table>\n";
@@ -123,6 +133,50 @@ function print_type_sel($sel)
 	}
 	print "</select>\n";
 
+}
+function pval_cmp($a,$b)
+{
+	if ($a[1] == $b[1])
+	{
+		return 0;
+	}
+	return ($a[1] < $b[1]) ? -1 : 1;
+}
+function clst_sel_annot($name,$CID)
+{
+	global $CRID, $FDRsort;
+
+	# First get the sort order and best GO 
+	$pvals = array();
+	$st = dbps("select clst.id,min(clst2go.pval) as pval,clst.lbl  from clst join clst2go on clst2go.cid=clst.id ".
+					" where clst.crid=? group by clst2go.cid ");	
+	$st->bind_param("i",$CRID);
+	$st->bind_result($cid,$pval,$lbl);
+	$st->execute();
+	while ($st->fetch())
+	{
+		$pvals[] = array($cid,$pval,$lbl);
+	}
+	$st->close();
+	if ($FDRsort)
+	{
+		usort($pvals, "pval_cmp");
+	}
+
+	$opts = array();
+	$selected = ($CID == 0 ? " selected " : "");
+	$opts[] = "<option value='0' $selected>--choose--</option>";
+
+	foreach ($pvals as $p)
+	{
+		$cid = $p[0];
+		$pval = $p[1];
+		$pval = sprintf("%1.0E",$pval);
+		$lbl = $p[2];
+		$selected = ($cid == $CID ? " selected " : "");
+		$opts[] = "<option value=$cid $selected>$lbl ($pval)</option>";
+	}
+	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";
 }
 
 
