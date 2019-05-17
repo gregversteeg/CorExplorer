@@ -172,7 +172,7 @@ var geneLabels = svg.append("g")
       ;
 var heatMap = svg.append("g")
         .selectAll(".cellg")
-        .data(vals,function(d){return d.g+":"+d.s;})
+        .data(vals)
         .enter()
         .append("rect")
         .attr("x", function(d) { return d.s * cellWidth; })

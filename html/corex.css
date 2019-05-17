@@ -108,5 +108,9 @@ a.headlink_sel
 	width:1000px;
 	margin: 0px auto;
 }
+.graybord
+{
+	border: 1px solid #d5d5d5; 
+}
 
 
