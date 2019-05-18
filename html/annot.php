@@ -108,7 +108,7 @@ body_start();
 <script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
 <h3>Compare GO Annotation Levels</h3>
 Graph shows cumulative count of factors having best GO FDR value less than or equal to 
-a given value. <br>(Horizontal axis shows the negative base-10 exponent of the FDR value).
+a given value.
 <p>
 <table>
 	<tr>
@@ -194,7 +194,7 @@ vis.append("g")
 vis.append("text")             
       .attr("transform", "translate(" + (width/2) + " ," + (height + margin.top + 20) + ")")
       .style("text-anchor", "middle")
-      .text("Best GO FDR");
+      .text("Best GO FDR (-log10(FDR)");
 
 var yAxis = d3.axisLeft()
     .scale(yscale)

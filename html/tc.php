@@ -101,6 +101,9 @@ body_start();
 ?>
 
 <h3>Compare Total Correlation</h3>
+Graph shows total correlation (TC) for each factor. Note that CorEx numbers factors in <br>
+descending order of TC. 
+<p>
 <table>
 	<tr>
 		<td valign="top">
@@ -142,7 +145,6 @@ var margin = {top: 20, right: 20, bottom: 100, left: 50},
     width = 600 - margin.left - margin.right,
     height = 400 - margin.top - margin.bottom;
 
-// create the svg with params making it auto-size to the window size
 var vis = d3.select("#graph")
 	.append("svg")
 	.attr("viewBox", "0 0 600 400")
