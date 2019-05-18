@@ -131,5 +131,5 @@ You need a CorEx run output as well as several auxiliary files, as follows:
   * Reduced_data.csv : (samples x genes) matrix of expression data
   * run_details.txt: general info about the project, for display in "dataset overview" link
     
-To see the directory structure and details of these files, look at the example
-https://www.dropbox.com/s/fzfnkw930hugxrl/corex_test2.zip?dl=0
+To see the directory structure and details of these files, look at the sample data available at
+http://corex.isi.edu/index.html?opt=dl
