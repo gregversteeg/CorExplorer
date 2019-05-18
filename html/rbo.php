@@ -1,6 +1,14 @@
 <?php
 require_once("util.php");
 
+#
+# Compare factor annotions in different CorEx datasets using the 
+# Rank-Biased Overlap method of Webber, Moffat, and Zobel:
+#
+# A similarity measure for indefinite rankings
+# ACM Transactions on Information Systems 
+# Volume 28 Issue 4, November 2010
+
 $selected_ids = array();
 
 $Lbltype = getval("lbltype","hugo");
@@ -18,8 +26,7 @@ if ($crid1 != 0)
 	check_read_access($crid2);
 	# don't load if not needed
 	$head_xtra = <<<END
-<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
-<link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
+<script src="https://d3js.org/d3.v5.min.js"></script>
 END;
 }
 
@@ -35,7 +42,14 @@ if (count($selected_ids) != 0 && count($selected_ids) != 2)
 }
 ?>
 
-<h3>Compare Factors using Rank-Biased Overlap (RBO) </h3>
+<h3>Compare Factors using Rank-Biased Overlap (RBO)<sup>1</sup> </h3>
+Factors are compared based on ranked gene content, with genes ranked by weight. 
+<br>
+Graph shows the best RBO match value for each factor in each project. Factors
+are ordered in descending order by best match. 
+<br>
+Table shows the best and second-best match for each factor, and their top GO annotations. 
+<p>
 <table>
 	<tr>
 		<td valign="top">
@@ -66,6 +80,17 @@ if (count($selected_ids) != 0 && count($selected_ids) != 2)
 				</tr>
 			</table>
 			</form>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2" align="left">
+<sup>1</sup>
+Webber,W., Moffat,A., Zobel,J.
+<br>
+<b>A similarity measure for indefinite rankings</b>
+<br>
+ACM Transactions on Information Systems Volume 28 Issue 4, November 2010
+
 		</td>
 	</tr>
 </table>
@@ -128,8 +153,6 @@ function dump_results()
 	#
 	$topN = 30;
 	$cid2genes1 = array();
-#$groups2 = array(11573);
-#$groups1 = array(11846);
 	foreach ($groups1 as $cid)
 	{
 		$cid2genes1[$cid] = array();
@@ -265,16 +288,10 @@ function dump_results()
 	#
 	# Set up the graph data
 	#
-	$vars = array("\"$pname1\"","\"$pname2\"");   # variables = selected runs
-	$varstr = "[".implode(",\n",$vars)."]";
+	$graph_pts = array();
+
 	# Some hoops in case number of groups differ
-	$samps = array();	
 	$nsamps = max(count($max_rbos1),count($max_rbos2));
-	for ($n = 0; $n <= $nsamps; $n++)
-	{
-		$samps[] = $n;
-	}
-	$sampstr = "[".implode(",\n",$samps)."]";
 	for ($i = count($max_rbos1); $i < $nsamps; $i++)
 	{
 		$max_rbos1[] = 0;
@@ -283,36 +300,146 @@ function dump_results()
 	{
 		$max_rbos2[] = 0;
 	}
-	$datastrs = array();
 	arsort($max_rbos1);
 	arsort($max_rbos2);
-	$datastrs[] = "[".implode(",\n",$max_rbos1)."]";
-	$datastrs[] = "[".implode(",\n",$max_rbos2)."]";
-	$datastr = "[".implode(",\n",$datastrs)."]";
+	$max_rbo = 0;
+	$n = 0;
+	foreach ($max_rbos1 as $foo => $rbo)
+	{
+		$graph_pts[] = "{i:0,n:$n,rbo:$rbo}";
+		$n++;
+		if ($rbo > $max_rbo)
+		{
+			$max_rbo = $rbo;
+		}
+	}
+	$n = 0;
+	foreach ($max_rbos2 as $foo => $rbo)
+	{
+		$graph_pts[] = "{i:1,n:$n,rbo:$rbo}";
+		$n++;
+		if ($rbo > $max_rbo)
+		{
+			$max_rbo = $rbo;
+		}
+	}
+	$nodestr = "[".implode(",",$graph_pts)."]";
 echo <<<END
-    		<canvas  id="canvasId" width="800" height="500" ></canvas>
+			<div  id="graph" style="width:900px;height:600px" ></div>
 <script>
-var data = {"y": {"vars": $varstr ,
-				  "smps": $sampstr ,
-				  "data": $datastr 
-				 }
-			};
-var conf = {"graphType": "Line",
-			"lineDecoration" : false,
-			"smpLabelInterval" : 40,
-			"smpTitle" : "Factor",
-			"smpLabelRotate" : 90,
-			"graphOrientation" : "vertical"
-			};                 
-var cX = new CanvasXpress("canvasId", data, conf);
+
+
+var clr_list = ["red","blue"];
+var proj_names = ["$pname1","$pname2"];
+
+function link_clr(idx)
+{
+	return clr_list[idx];
+}
+var nodes = $nodestr;
+var max_rbo = $max_rbo;
+var max_cnum = $nsamps;
+
+var links = new Array();
+var prev_i = nodes[0].i;
+for (var i = 1; i < nodes.length; i++)
+{
+	if (nodes[i].i == prev_i)
+	{
+		links.push({source:nodes[i-1], target:nodes[i], clr:link_clr(prev_i)});
+	}
+	prev_i = nodes[i].i;
+}
+
+var margin = {top: 20, right: 20, bottom: 100, left: 50},
+    width = 600 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom;
+
+var vis = d3.select("#graph")
+	.append("svg")
+	.attr("viewBox", "0 0 600 400")
+	.append("g")
+	.attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+	;
+
+var xscale = d3.scaleLinear().range([0,width]);
+var yscale = d3.scaleLinear().range([height,10]);
+
+xscale.domain([0,max_cnum]);
+yscale.domain([0, max_rbo]);
+
+vis.selectAll(".line")
+	.data(links)
+	.enter()
+	.append("line")
+	.attr("x1", function(d) { return xscale(d.source.n )})
+	.attr("y1", function(d) { return yscale(d.source.rbo )})
+	.attr("x2", function(d) { return xscale(d.target.n )})
+	.attr("y2", function(d) { return yscale(d.target.rbo )})
+	.style("stroke", function(d) { return d.clr});
+
+var xticks = [];
+for (c = 40; c <= max_cnum; c += 40)
+{
+	xticks.push(c);
+}
+var yticks = [];
+for (e = 0; e <= max_rbo; e += 0.2)
+{
+	yticks.push(e);
+}
+var xAxis = d3.axisBottom()
+    .scale(xscale)
+	.tickValues(xticks);
+
+vis.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+vis.append("text")             
+      .attr("transform", "translate(" + (width/2) + " ," + (height + margin.top + 20) + ")")
+      .style("text-anchor", "middle")
+      .text("Factor");
+
+var yAxis = d3.axisLeft()
+    .scale(yscale)
+	.tickValues(yticks);
+
+vis.append("g")
+      .call(yAxis);
+
+vis.append("text")             
+    .style("text-anchor", "middle")
+    .text("Best RBO");
+
+var legendRectSize = 10;
+var legendSpacing = 10;
+var legend = vis.selectAll('.legend')
+  .data(clr_list)
+  .enter()
+  .append('g')
+  .attr('class', 'legend')
+  .attr('transform', function(d, i) {
+    var height = legendRectSize + legendSpacing;
+    var horz = 300;
+    var vert =  10+ i*height;
+    return 'translate(' + horz + ',' + vert + ')';
+  });
+legend.append("rect")
+	.attr('width', legendRectSize)
+	.attr('height', legendRectSize)
+	.style('fill', function(d){return d})
+	.style('stroke', function(d){return d});
+legend.append('text')
+  .attr('x', legendRectSize + legendSpacing)
+  .attr('y', legendRectSize)
+  .text(function(d,i) { return proj_names[i]; });
 </script>
 END;
-
 
 	#
 	# Print the table
 	#
-	print "<div style='position:absolute;top:650px;width:900px'>\n";
 	print "<table border=true rules=all cellpadding=3 >\n";
 	print "<tr><td colspan=2 align=center><b>$pname1</b></td><td colspan=4 align=center><b>$pname2</b></td></tr>\n";
 	print "<tr><td>Factor</td><td>Annotation</td><td>Best&nbsp;Match<sup>*</sup></td><td>RBO score</td><td>Annotation</td><td>Second Match</td><td>RBO score</td><td>Annotation</td></tr>\n";
@@ -372,7 +499,6 @@ END;
 	}
 	print "</table>\n";
 	print "<sup>*</sup> Reverse best match and score are also shown, if different, and the entry is shaded <p>";
-	print "</div>\n";
 }
 #
 # Computes RBO_EXT for uneven lists, eqn. (32) from paper
