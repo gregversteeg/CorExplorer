@@ -43,6 +43,8 @@ $vars = array();   # variables = selected runs
 $evals = array();
 
 $max_eval = 0;
+$graph_pts = array();
+$names = array();
 foreach ($selected_ids as $crid => $foo)
 {
 	$evals[$crid] = array();
@@ -62,14 +64,12 @@ foreach ($selected_ids as $crid => $foo)
 		}
 	}
 	$pname = $crid2name[$crid];
-	$vars[] = "\"$pname\"";
+	$names[] = $pname;
 	$s->close();
 }
 
-$samps = array();	
 for ($n = 0; $n <= $max_eval; $n++)
 {
-	$samps[] = $n;
 	foreach ($selected_ids as $crid => $foo)
 	{
 		if (!isset($evals[$crid][$n]))
@@ -78,40 +78,27 @@ for ($n = 0; $n <= $max_eval; $n++)
 		}
 	}
 }
+$idx = 0;
+$idx2crid = array();
+$max_count = 0;
 foreach ($selected_ids as $crid => $foo)
 {
 	for ($n = $max_eval-1; $n >= 0; $n--)
 	{
 		$evals[$crid][$n] += $evals[$crid][$n+1];	
+		$graph_pts[] = "{i:$idx,e:$n,c:".$evals[$crid][$n]."}";
 	}
-	krsort($evals[$crid]);
-}
-
-$varstr = "[".implode(",\n",$vars)."]";
-$sampstr = "[".implode(",\n",$samps)."]";
-
-$datastrs = array();
-foreach ($selected_ids as $crid => $foo)
-{
-	$this_data = array();
-	for ($n = 0; $n <= $max_eval; $n++)
+	if ($evals[$crid][0] > $max_count)
 	{
-		if (isset($evals[$crid][$n]))
-		{
-			$this_data[] = $evals[$crid][$n];
-		}
-		else
-		{
-			$this_data[] = 0;
-		}
-	}	
-	$datastrs[] = "[".implode(",\n",$this_data)."]";
+		$max_count = $evals[$crid][0];
+	}
+	$idx2crid[$idx] = $crid;
+	$idx++;
 }
-$datastr = "[".implode(",\n",$datastrs)."]";
+
 
 $head_xtra = <<<END
-<link rel="stylesheet" href="http://www.canvasxpress.org/css/canvasXpress.css" type="text/css"/>
-<script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
+<script src="https://d3js.org/d3.v5.min.js"></script>
 END;
 
 head_section("GO Annotation Compare", $head_xtra);
@@ -120,10 +107,13 @@ body_start();
 
 <script type="text/javascript" src="http://www.canvasxpress.org/js/canvasXpress.min.js"></script>
 <h3>Compare GO Annotation Levels</h3>
+Graph shows cumulative count of factors having best GO FDR value less than or equal to 
+a given value. <br>(Horizontal axis shows the negative base-10 exponent of the FDR value).
+<p>
 <table>
 	<tr>
 		<td valign="top">
-    		<canvas  id="canvasId" width="900" height="700"></canvas>
+			<div  id="graph" style="width:900px;height:700px" ></div>
 		</td>
 		<td valign="top" style="padding-left:30px">
 <?php dump_checkboxes(); ?>
@@ -131,23 +121,115 @@ body_start();
 	</tr>
 </table>
 <script>
-var data = {"y": {"vars": <?php echo $varstr ?>,
-				  "smps":<?php echo $sampstr ?>,
-				  "data": <?php echo $datastr ?>
-				 }
-			};
-var conf = {"graphType": "Line",
-			"lineDecoration" : false,
-			"smpLabelInterval" : 10,
-			"smpTitle" : "Annotation E-Value",
-			"smpLabelRotate" : 90,
-			"graphOrientation" : "vertical"
-			};                 
-var cX = new CanvasXpress("canvasId", data, conf);
+
+var clr_list = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#ffffff', '#000000'];
+
+function link_clr(idx)
+{
+	return clr_list[idx];
+}
+var proj_names = <?php echo "['".implode("','",$names)."']" ?>;
+var num_projects = proj_names.length;
+var colors = clr_list.slice(0,num_projects);
+var nodes = <?php echo "[".implode(",",$graph_pts)."]" ?>;
+var max_eval = <?php echo $max_eval ?>;
+var max_count = <?php echo $max_count ?>;
+
+var links = new Array();
+var prev_i = nodes[0].i;
+for (var i = 1; i < nodes.length; i++)
+{
+	if (nodes[i].i == prev_i)
+	{
+		links.push({source:nodes[i-1], target:nodes[i], clr:link_clr(prev_i)});
+	}
+	prev_i = nodes[i].i;
+}
+var margin = {top: 20, right: 20, bottom: 100, left: 50},
+    width = 600 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom;
+
+var vis = d3.select("#graph")
+	.append("svg")
+	.attr("viewBox", "0 0 600 400")
+	.append("g")
+	.attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+	;
+
+var xscale = d3.scaleLinear().range([0,width]);
+var yscale = d3.scaleLinear().range([height,10]);
+
+xscale.domain([0,max_eval]);
+yscale.domain([0,max_count]);
+
+var eval_ticks = [];
+for (e = 10; e < max_eval; e+= 10)
+{
+	eval_ticks.push(e);
+}
+var cnt_ticks = [];
+for (c = 50; c <= max_count; c+= 50)
+{
+	cnt_ticks.push(c);
+}
+
+vis.selectAll(".line")
+	.data(links)
+	.enter()
+	.append("line")
+	.attr("x1", function(d) { return xscale(d.source.e )})
+	.attr("y1", function(d) { return yscale(d.source.c )})
+	.attr("x2", function(d) { return xscale(d.target.e )})
+	.attr("y2", function(d) { return yscale(d.target.c )})
+	.style("stroke", function(d) { return d.clr});
+
+var xAxis = d3.axisBottom()
+    .scale(xscale)
+	.tickValues(eval_ticks);
+
+vis.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+vis.append("text")             
+      .attr("transform", "translate(" + (width/2) + " ," + (height + margin.top + 20) + ")")
+      .style("text-anchor", "middle")
+      .text("Best GO FDR");
+
+var yAxis = d3.axisLeft()
+    .scale(yscale)
+	.tickValues(cnt_ticks);
+
+vis.append("g")
+      .call(yAxis);
+
+vis.append("text")             
+    .style("text-anchor", "middle")
+    .text("# Factors");
+
+var legendRectSize = 10;
+var legendSpacing = 10;
+var legend = vis.selectAll('.legend')
+  .data(colors)
+  .enter()
+  .append('g')
+  .attr('class', 'legend')
+  .attr('transform', function(d, i) {
+    var height = legendRectSize + legendSpacing;
+    var horz = 300;
+    var vert =  10+ i*height;
+    return 'translate(' + horz + ',' + vert + ')';
+  });
+legend.append("rect")
+	.attr('width', legendRectSize)
+	.attr('height', legendRectSize)
+	.style('fill', function(d){return d})
+	.style('stroke', function(d){return d});
+legend.append('text')
+  .attr('x', legendRectSize + legendSpacing)
+  .attr('y', legendRectSize)
+  .text(function(d,i) { return proj_names[i]; });
 </script>
-<pre>
-<?php #print_r($evals); ?>
-</pre>
 
 <?php
 
