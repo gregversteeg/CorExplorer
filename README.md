@@ -118,7 +118,7 @@ load_ensp_go_mapping.php (takes about 30 mins)
     * After logging in, the login link changes to a link with your username; click that.
     * Now you are at your Manage Projects page. The first section is New Project. 
     * Enter a test project name
-    * For data link use https://www.dropbox.com/s/fzfnkw930hugxrl/corex_test2.zip?dl=0
+    * Sample data is available at http://corex.isi.edu/index.html?opt=dl
     * Press "Submit"; the page will reload
     * Now the "Current projects" table has your new project
     * Click "view log" at the right side of the table to track the loading progress
