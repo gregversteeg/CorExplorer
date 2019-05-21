@@ -55,7 +55,7 @@ if (!read_access($CRID))
 							</td>
 							<td align="left" style="padding-left:20px">Num samples: <input name="ns" type="text" size="4" value="<?php print $numSamps ?>"> 
 							</td-->
-							<td align="left" style="padding-left:20px" title="Ceiling on expression Z-value (Z = log(expr) normalized by std dev)">Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>" > 
+							<td align="left" style="padding-left:20px" title="Ceiling on expression Z-value (Z = log(1+expr) normalized by std dev)">Max Z: <input name="maxz" type="text" size="2" value="<?php print $maxZ ?>" > 
 							</td>
 							<td align="left" style="padding-left:20px" title="<?php print tip_text('hugo_names') ?>">HUGO names:
 								 <input name="use_hugo" id="use_hugo_chk" type="checkbox" <?php checked($Use_hugo) ?>>
@@ -140,7 +140,7 @@ cellHeight=10;
 cellWidth=2;
 numRows = genes.length + 1;
 numCols = samps.length;
-legendHeight = 20;
+legendHeight = 30;
 width = numCols*cellWidth + margin.left + margin.right;
 mapHeight = numRows*cellHeight;
 height = mapHeight + legendHeight + margin.top + margin.bottom;
@@ -206,7 +206,8 @@ function handleMouseOut(d,i)
 var colors = [{c:"#ffffff",s:0},{c:"#ff751a",s:1},{c:"#777777",s:2},{c:"#3366ff",s:3}];
 var legendRectSize = 10;
 var legendSpacing = 10;
-var legendItemWidth = legendRectSize + legendSpacing + 60;
+var legendItemWidth = legendRectSize + legendSpacing + 35;
+var legendX = 500;
 var legendY = mapHeight;
 var legend = svg.selectAll('.legend')
   .data(colors)
@@ -214,7 +215,7 @@ var legend = svg.selectAll('.legend')
   .append('g')
   .attr('class', 'legend')
   .attr('transform', function(d, i) {
-    var horz = i*legendItemWidth;
+    var horz = legendX + i*legendItemWidth;
     var vert = legendY;
     return 'translate(' + horz + ',' + vert + ')';
   });
@@ -227,6 +228,39 @@ legend.append('text')
   .attr('x', function(d) {return (d.s > 0 ? legendRectSize + legendSpacing : 0);})
   .attr('y', legendRectSize)
   .text(function(d) { return (d.s > 0 ? "R"+d.s : "risk strata:"); });
+
+var N = 10;
+var zStep = (2*maxZ)/N;
+var z = -maxZ;
+var legdata = [{z:z.toFixed(1),c:heatmap_color(z,1)}];
+for (i = 1; i <= N; i++)
+{
+	z += zStep;	
+	legdata.push({z:z.toFixed(1),c:heatmap_color(z,1)});
+}
+var legendRectSize = 10;
+var legendItemWidth = 30;
+var legendY = mapHeight;
+var legendX = 50;
+var zlegend = svg.selectAll('.zlegend')
+  .data(legdata)
+  .enter()
+  .append('g')
+  .attr('class', 'legend')
+  .attr('transform', function(d, i) {
+    var horz = legendX + i*legendItemWidth;
+    var vert = legendY;
+    return 'translate(' + horz + ',' + vert + ')';
+  });
+zlegend.append("rect")
+	.attr('width', legendRectSize)
+  .attr('height', legendRectSize)
+  .style('fill', function(d){return d.c})
+  .style('stroke', function(d){return d.c});
+zlegend.append('text')
+  .attr('x', function(d) {return (d.z < 0 ? -5 : -2);})
+  .attr('y', legendRectSize + 15)
+  .text(function(d) { return (d.z == 0 ? "0.0" : "" + d.z); });
 
 function heatmap_color(z,g)
 {
@@ -315,6 +349,9 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_s
 
 	# first get the samples sorted by continuous label
 	# also get the risk strata
+	# NB, for the strata, we are doing kind of a kludj. We are putting them in as
+	# the first row of the heatmap matrix, with values +maxZ, 0, -maxZ
+	#
 	$st = $DB->prepare("select sid,samp.lbl,risk_strat from lbls join samp on samp.id=lbls.sid ".
 				" where cid=? order by  clbl asc, sid asc ");
 	$st->bind_param("i",$cid);
@@ -325,6 +362,8 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_s
 	{
 		$samps[] = $sid;
 		$sampstrs[] = $sname;
+
+		# Fill out the risk strat "heatmap" data
 		$z=0;
 		if ($risk_strat == 3)
 		{
