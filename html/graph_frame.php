@@ -260,7 +260,9 @@ function slider_from_log(log)
 }
 function slider_to_log(val)
 {
-	return Math.log10(slider_offset + val);
+	// parseFloat just in case...since apparently using round can make
+	// it go back to text
+	return Math.log10(slider_offset + parseFloat(val));
 }
 var min_wt_init = <?php echo $MinWt ?>;
 var slider_init = slider_to_log(min_wt_init);
@@ -358,7 +360,7 @@ $(document).ready(function()
 
 	$("#txt_mw").change(function(data)
 	{
-		var txtval = slider_to_log($(this).val());
+		var txtval = slider_to_log(parseFloat($(this).val()));
 		var sliderval = $("#mw_slider").slider("option","value");
 		if (sliderval != txtval)
 		{
@@ -405,9 +407,8 @@ function do_reset()
 }
 function set_min_wt(wt)
 {
-	wt_round = wt.toFixed(4);
-	$("#txt_mw").val(wt_round);
-	$("#mw_slider").slider("value",slider_to_log(wt_round));
+	$("#txt_mw").val(wt.toFixed(4));
+	$("#mw_slider").slider("value",slider_to_log(wt));
 }
 function show_hide_nodes_edges()
 {
@@ -417,7 +418,7 @@ function show_hide_nodes_edges()
 	var bestinc = $('#chk_bestinc').prop("checked"); 
 	var keggterm = $("#sel_keggterm").val();
 	var goterm = $("#sel_goterm").val();
-	var minwt = $("#txt_mw").val();
+	var minwt = parseFloat($("#txt_mw").val());
 	var sel_cid = $("#sel_cid").val();
 
 	var toplevel_cid = (typeof top_level_clst[sel_cid] !== 'undefined');
@@ -735,26 +736,6 @@ function node_highlight2(idnum,idstr,onoff)
 		comp.nodes().addClass('nodehlt');	
 	}*/
 }
-function show_all_nodes()
-{
-	var minwt = $("#txt_mw").val();
-	var all = cy.elements("node");
-	for (j = 0; j < all.length; j++) 
-	{
-		cynode = all[j];
-		if (cynode.data('id').startsWith('G'))
-		{
-			if (cynode.data('wt') >= minwt)
-			{
-				cynode.removeClass('nodehide');
-			}
-		}
-		else
-		{
-			cynode.removeClass('nodehide');
-		}
-	} 
-}
 
 function add_drag_listeners()
 {
@@ -850,7 +831,7 @@ function handle_drag(evt)
 //
 function save_wt()
 {
-	var wt = $("#txt_mw").val();
+	var wt = parseFloat($("#txt_mw").val());
 	$.ajax({
 	   type: 'POST',
 	   url: 'ajax_save_weight.php', 
