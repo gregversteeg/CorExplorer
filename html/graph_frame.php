@@ -42,6 +42,38 @@ $kegg2clst = array();
         top: 95%;
         left: 10%;
 	}
+	.ui-button:focus { outline:none !important }
+	.ui-dialog 
+	{
+		padding:5px;
+	}
+	.ui-dialog .ui-dialog-content 
+	{
+		padding:5px;
+	}
+	.ui-dialog .ui-dialog-titlebar 
+	{
+		height: 20px;
+		padding:1px 0px 0px 10px;
+	}
+	.ui-dialog .ui-dialog-titlebar .ui-dialog-title
+	{
+		font-size:12px;
+	}
+	.ui-dialog .ui-dialog-titlebar .ui-dialog-titlebar-close
+	{
+		position:relative;
+		top:15px;
+		height: 7px; 
+		width: 7px; 
+		text-decoration:none;
+		border:none;
+	}
+	html, body
+	{
+		margin: 0px;
+		padding: 0px;
+	}
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.1.2/cytoscape.js"></script>
@@ -101,10 +133,10 @@ $kegg2clst = array();
 							<td valign="bottom"  style="padding-left:10px;" title="<?php print tip_text('hugo_names') ?>">HUGO names:
 								 <input name="use_hugo" id="use_hugo_chk" type="checkbox" checked>
 							</td>
-							<td  valign="bottom" style="padding-left:10px;" 
+							<!--td  valign="bottom" style="padding-left:10px;" 
 									title="<?php print tip_text('best_inc')?>" >Best inclusion only:
 								 <input name="bestinc" id="chk_bestinc" type="checkbox" checked>
-							</td>
+							</td-->
 							<td  valign="bottom" style="padding-left:10px"><a href="" onclick="do_reset();return false;">reset</a></td>
 						</tr>
 					</table>
@@ -205,6 +237,33 @@ cy.on('mouseout', 'node', function(evt)
 	$("body").css( "cursor", "default" );
 	this.removeClass('nodeshowtext');
 });
+var extra_links = [];
+var extra_links_showing = [];
+cy.on('click', 'node', function(evt)
+{
+	var x = evt.renderedPosition.x;
+	var y = evt.renderedPosition.y;
+	var cid = this.data('cid');
+	var lvl = this.data('lvl');
+	if (lvl == 1 || lvl == 2)
+	{
+		var content = "";
+		if (!extra_links[cid])
+		{
+			content = "<span onclick='ajax_getlinks(this," + cid + "," + lvl 
+						+ ");'><span style = 'text-decoration:underline;color:blue;'>" +
+					"Load&nbsp;Additional&nbsp;Links<span></span>";
+		}
+		else
+		{
+			content = "<span>All links for this factor are being shown already.</span>";
+		}
+		var html = ' <div id="nodectxt" title="' + this.data('lbl') + '" style="overflow:hidden;padding:0px" > ' +
+			content  +
+			'</div> ';
+		$(html).dialog({height:100, width:200, position:{my:"left top",at:"left+" + x + " top+" + y, of:"body"}});
+	}
+});
 cy.on('mouseover', 'edge', function(evt)
 {
 	$("#msg").html(this.data('msg'))
@@ -218,10 +277,10 @@ $('#sel_crid').change(function()
 	var crid = this.value;
 	location.href="/?crid=" + crid;
 });
-$('#chk_bestinc').change(function() 
-{
-	show_hide_nodes_edges();
-});
+//$('#chk_bestinc').change(function() 
+//{
+//	show_hide_nodes_edges();
+//});
 $('#use_hugo_chk').change(function() 
 {
 	update_gene_labels();
@@ -260,9 +319,7 @@ function slider_from_log(log)
 }
 function slider_to_log(val)
 {
-	// parseFloat just in case...since apparently using round can make
-	// it go back to text
-	return Math.log10(slider_offset + parseFloat(val));
+	return Math.log10(slider_offset + val);
 }
 var min_wt_init = <?php echo $MinWt ?>;
 var slider_init = slider_to_log(min_wt_init);
@@ -360,7 +417,7 @@ $(document).ready(function()
 
 	$("#txt_mw").change(function(data)
 	{
-		var txtval = slider_to_log(parseFloat($(this).val()));
+		var txtval = slider_to_log($(this).val());
 		var sliderval = $("#mw_slider").slider("option","value");
 		if (sliderval != txtval)
 		{
@@ -395,7 +452,7 @@ function do_reset()
 {
 	$("#txt_mw").val(min_wt_init);
 	$("#mw_slider").slider("value",slider_init);
-	$("#chk_bestinc").prop("checked",true);
+	//$("#chk_bestinc").prop("checked",true);
 	$("#use_hugo_chk").prop("checked",true);
 	$("#sel_cid").val("0");
 	$("#sel_keggterm").val("0");
@@ -407,18 +464,19 @@ function do_reset()
 }
 function set_min_wt(wt)
 {
-	$("#txt_mw").val(wt.toFixed(4));
-	$("#mw_slider").slider("value",slider_to_log(wt));
+	wt_round = wt.toFixed(4);
+	$("#txt_mw").val(wt_round);
+	$("#mw_slider").slider("value",slider_to_log(wt_round));
 }
 function show_hide_nodes_edges()
 {
 	//
 	// First collect the selector settings 
 	//
-	var bestinc = $('#chk_bestinc').prop("checked"); 
+	var bestinc = false; //$('#chk_bestinc').prop("checked"); 
 	var keggterm = $("#sel_keggterm").val();
 	var goterm = $("#sel_goterm").val();
-	var minwt = parseFloat($("#txt_mw").val());
+	var minwt = $("#txt_mw").val();
 	var sel_cid = $("#sel_cid").val();
 
 	var toplevel_cid = (typeof top_level_clst[sel_cid] !== 'undefined');
@@ -626,6 +684,30 @@ function clear_gene_highlight()
 		}
 	}
 }
+function ajax_getlinks(obj,cid,lvl)
+{
+	obj.innerHTML = "Loading...";
+	$.ajax({
+	   type: 'GET',
+	   url: 'ajax_getlinks.php', 
+	   data: {"crid" : <?php echo $CRID ?>, "cid" : cid, "lvl" : lvl},
+	   async: true, 
+	   success: function(data){
+			//alert(JSON.stringify(data["links"]));
+			extra_links[cid] = data["links"];
+			add_extras(extra_links[cid]);
+			for (cid1 in data["cids"])
+			{
+				// For a level 2 cluster, we mark all the level 1 as done too
+				extra_links[cid1] = [];
+			}
+			obj.innerHTML = "Done";
+	   },
+	   error: function() {
+			obj.innerHTML = "An error occurred";
+	   }
+	});
+}
 function ajax_get_gos(term)
 {
 	$.ajax({
@@ -736,6 +818,26 @@ function node_highlight2(idnum,idstr,onoff)
 		comp.nodes().addClass('nodehlt');	
 	}*/
 }
+function show_all_nodes()
+{
+	var minwt = $("#txt_mw").val();
+	var all = cy.elements("node");
+	for (j = 0; j < all.length; j++) 
+	{
+		cynode = all[j];
+		if (cynode.data('id').startsWith('G'))
+		{
+			if (cynode.data('wt') >= minwt)
+			{
+				cynode.removeClass('nodehide');
+			}
+		}
+		else
+		{
+			cynode.removeClass('nodehide');
+		}
+	} 
+}
 
 function add_drag_listeners()
 {
@@ -831,7 +933,7 @@ function handle_drag(evt)
 //
 function save_wt()
 {
-	var wt = parseFloat($("#txt_mw").val());
+	var wt = $("#txt_mw").val();
 	$.ajax({
 	   type: 'POST',
 	   url: 'ajax_save_weight.php', 
@@ -1148,7 +1250,7 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		}
 		if ($wt < $WtStepdownFraction*$max_gid_wt[$GID])
 		{
-			continue;
+			#continue;
 		}
 		$gid_seen[$GID]++;
 
@@ -1188,8 +1290,8 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		}
 		else
 		{
-			$links2[] = array("targ" => "$GIDtag", "src" => "$CIDtag", 
-				"wt" => $wt, "mi" => $mi, "lnum" => $lnum);
+			#$links2[] = array("targ" => "$GIDtag", "src" => "$CIDtag", 
+			#	"wt" => $wt, "mi" => $mi, "lnum" => $lnum);
 		}
 	}
 	$st->close();
@@ -1290,8 +1392,8 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		}
 		else
 		{
-			$links2[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", 
-				"mi" => "$mi", "lnum" => $lnum);
+			#$links2[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", 
+			#	"mi" => "$mi", "lnum" => $lnum);
 		}
 
 	}
@@ -1316,7 +1418,7 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 	}
 	
 	#$wt_range = log($maxwt/$minwt);
-	$wt_range = $maxwt - $minwt;
+	$wt_range = $maxwt; # - $minwt;
 
 	foreach ($links as $data)
 	{
@@ -1328,7 +1430,7 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		$id = $src."_".$targ;
 
 		#$diffwt = log($wt/$minwt); 
-		$diffwt = $wt - $minwt; 
+		$diffwt = $wt; # - $minwt; 
 		$sizebin = min($numSizeBins,1 + floor($numSizeBins*$diffwt/$wt_range));
 		$opacity = 0.2 + (0.8/$numSizeBins)*$sizebin;
 		$width = (2*$sizebin)."px";
@@ -1337,7 +1439,7 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		{
 			$classes = "nodehide";
 		}	
-		$elements[] = "{data: { id:'$id', source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',".
+		$elements[] = "{data: { source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',".
 					" msg: 'weight:$wt,MI:$mi', width: '$width', opacity: '$opacity'},".
 						"classes:'$classes'}";
 	}
@@ -1409,9 +1511,7 @@ style:[
       style: {
         'width': 'data(width)',
 		'opacity' : 'data(opacity)',
-        'line-color': 'green',
-        'target-arrow-color': 'blue',
-        'target-arrow-shape': 'triangle'
+        'line-color': 'green'
       }
     },
 	{
@@ -1458,18 +1558,31 @@ layout:{ name: 'cose',
 		nodeRepulsion:4000000,
 		randomize:true,
 		stop:function(){
-			add_extras();
+		//	add_extras();
 			$('#loading').hide();
 		}
 	}
 });
 END;
 	}
-	$html .= "var other_links = [".implode(",\n",$elements2)."];\n";
+	#$html .= "var other_links = [".implode(",\n",$elements2)."];\n";
 	$html .= <<<END
-function add_extras()
+function add_extras(links)
 {
-	cy.add(other_links);
+	var minwt = $("#txt_mw").val();
+	for (i = 0; i < links.length; i++)
+	{
+		var link = links[i];
+		if (parseFloat(link.data.wt) >= minwt)
+		{
+			link.classes = "";
+		}
+		else
+		{
+			link.classes = "nodehide";
+		}
+	}
+	cy.add(links);
 }
 END;
 	return $html;
