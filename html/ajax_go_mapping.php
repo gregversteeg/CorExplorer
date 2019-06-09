@@ -64,7 +64,6 @@ else
 }
 
 $cidstr = implode(",",$cids);
-error_log($cidstr);
 
 $return_data = array("go" => $GONUM, "kegg" => $KEGGNUM, "gids" => $gids, "cids" => $cids);
 

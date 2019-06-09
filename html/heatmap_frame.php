@@ -17,6 +17,7 @@ if (!read_access($CRID))
 ?>
 
 <head>
+<link rel="stylesheet" type="text/css" href="/font.css"> 
 <style>
 .axisLabel
 {
@@ -204,6 +205,7 @@ function handleMouseOut(d,i)
 }
 
 var colors = [{c:"#ffffff",s:0},{c:"#ff751a",s:1},{c:"#777777",s:2},{c:"#3366ff",s:3}];
+//var colors = [{c:"#ffffff",s:0},{c:"#3366ff",s:1},{c:"#777777",s:2},{c:"#ff751a",s:3}];
 var legendRectSize = 10;
 var legendSpacing = 10;
 var legendItemWidth = legendRectSize + legendSpacing + 35;
@@ -276,7 +278,7 @@ function heatmap_color(z,g)
 		}
 		else
 		{
-			return (z >= 0 ? "#ff751a" : "#3366ff");
+			return (z < 0 ? "#ff751a" : "#3366ff");
 		}
 	}
 }
@@ -367,7 +369,7 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_s
 		$z=0;
 		if ($risk_strat == 3)
 		{
-			$z = $maxZ;
+			$z = +$maxZ;
 		}
 		if ($risk_strat == 1)
 		{
@@ -392,7 +394,7 @@ function get_heat_data(&$heat_genes,&$heat_samps,&$heat_expr,&$heat_wts,&$samp_s
 	$genestrs[] = "{lbl:\"risk_strat\",i:0}";
 	$st = $DB->prepare("select gid,lbl,hugo,wt from g2c join glist on glist.id=g2c.gid ".
 				" where g2c.cid=? and g2c.wt >= ? ".
-				" order by g2c.mi desc limit $numGenes ");
+				" order by g2c.wt desc limit $numGenes ");
 	$st->bind_param("id",$cid,$minwt);
 	$st->bind_result($gid,$gname,$hugo,$wt);
 	$st->execute();

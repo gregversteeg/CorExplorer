@@ -31,6 +31,7 @@ if ($CID != 0)
 ?>
 
 <head>
+<link rel="stylesheet" type="text/css" href="/font.css"> 
 <style>
     #cy {
         width: 90%; 

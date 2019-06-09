@@ -572,5 +572,15 @@ function can_load_data()
 	return 0;
 }
 
+##################################################################
+
+function calc_link_params($wt,&$width,&$opacity)
+{
+	$numSizeBins = 5;
+
+	$sizebin = min($numSizeBins,1 + floor($numSizeBins*$wt));
+	$opacity = 0.2 + (0.8/$numSizeBins)*$sizebin;
+	$width = (2*$sizebin)."px";
+}
 
 ?>

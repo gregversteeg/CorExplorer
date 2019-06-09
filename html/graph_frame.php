@@ -14,7 +14,7 @@ if (!read_access($CRID))
 $pdata = array();
 load_proj_data($pdata,$CRID);
 
-$MinWt = getnum("mw",$pdata["def_wt"]);
+$MinWt = 0; #getnum("mw",$pdata["def_wt"]);
 
 $go_enrich_pval = 0.005;
 $kegg_enrich_pval = 0.005;
@@ -30,6 +30,7 @@ $kegg2clst = array();
 
 <head>
 <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+<link rel="stylesheet" type="text/css" href="/font.css"> 
 <style>
     #cy {
         width: 100%;
@@ -73,6 +74,7 @@ $kegg2clst = array();
 	{
 		margin: 0px;
 		padding: 0px;
+		font-family:sans-serif;
 	}
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
@@ -83,7 +85,7 @@ $kegg2clst = array();
 
 <table width="100%" cellspacing=0 cellpadding=0>
 	<tr>
-		<td valign="top" align="left">
+		<td valign="top" align="left" style="padding-left:3px">
 		<table cellspacing=0 cellpadding=0 >
 			<tr>
 				<td align="left" title="<?php print tip_text('clst_sel') ?>"> 
@@ -222,7 +224,7 @@ $graph_html = build_graph($gids_shown,$actualMinWt,$actualMaxWt);
 <script>
 <?php
 	print $graph_html;
-
+	
 	dump_clst_content();
 ?>
 cy.on('mouseover', 'node', function(evt)
@@ -238,30 +240,33 @@ cy.on('mouseout', 'node', function(evt)
 	this.removeClass('nodeshowtext');
 });
 var extra_links = [];
-var extra_links_showing = [];
+var extra_nodes = [];
 cy.on('click', 'node', function(evt)
 {
 	var x = evt.renderedPosition.x;
 	var y = evt.renderedPosition.y;
 	var cid = this.data('cid');
 	var lvl = this.data('lvl');
+
 	if (lvl == 1 || lvl == 2)
 	{
 		var content = "";
 		if (!extra_links[cid])
 		{
-			content = "<span onclick='ajax_getlinks(this," + cid + "," + lvl 
+			content = "<div><span onclick='ajax_getlinks(this," + cid + "," + lvl 
 						+ ");'><span style = 'text-decoration:underline;color:blue;'>" +
-					"Load&nbsp;Additional&nbsp;Links<span></span>";
+					"Load&nbsp;Additional&nbsp;Links<span></span></div>";
 		}
-		else
+		if (lvl ==1 && !extra_nodes[cid])
 		{
-			content = "<span>All links for this factor are being shown already.</span>";
+			content += "<p><div><span onclick='ajax_getnodes(this," + cid   
+						+ ");'><span style = 'text-decoration:underline;color:blue;'>" +
+					"Load&nbsp;Additional&nbsp;Genes<span></span></div>";
 		}
 		var html = ' <div id="nodectxt" title="' + this.data('lbl') + '" style="overflow:hidden;padding:0px" > ' +
 			content  +
 			'</div> ';
-		$(html).dialog({height:100, width:200, position:{my:"left top",at:"left+" + x + " top+" + y, of:"body"}});
+		$(html).dialog({height:200, width:200, position:{my:"left top",at:"left+" + x + " top+" + y, of:"body"}});
 	}
 });
 cy.on('mouseover', 'edge', function(evt)
@@ -285,6 +290,58 @@ $('#use_hugo_chk').change(function()
 {
 	update_gene_labels();
 }); 
+function unlock_nodes(cid,pos)
+{
+}
+function redraw_factor(cid)
+{
+	var cur_pan = cy.pan();
+	var cur_zoom = cy.zoom();
+	var clbl = 'C' + cid;
+	var center_node = cy.$('#' + clbl);
+	var factor_nodes = cy.filter(function( ele ){
+	  return ( ele.data('cid') == cid);
+	});
+	cy.nodes().lock();
+	var bbw = factor_nodes.boundingBox().w;
+	var bbh = factor_nodes.boundingBox().h;
+	var r = Math.sqrt(bbw*bbw + bbh*bbh)/3.0;
+	var N = 10;
+	var theta = 6.3/N;
+	for (var n = 1; n <= N; n++)
+	{
+		var newx = center_node.position('x') + Math.floor(r*Math.cos(n*theta));
+		var newy = center_node.position('y') + Math.floor(r*Math.sin(n*theta));
+		var newid = 'TEST' + n;	
+		cy.add({group: 'nodes', data: {id: newid, lbl: newid, cid: '' + cid, lvl: '0',t:1, wt: '1', msg: '', 
+				hugo: newid},position:{x:newx,y:newy}} );
+		cy.add({group: 'edges', data: {source: '' + clbl, target: newid, lnum:'1', wt: '1', msg: '', width: '4px', opacity: '0.5'}});
+	}
+	var top_node = center_node.predecessors().nodes();
+	var factor_eles = top_node.successors().union(top_node);
+	//alert( center_node.predecessors().nodes().length);  // Shows 1
+//	var factor_eles = cy.filter(function( ele ){
+//	  return ( (ele.data('cid') == cid) || (ele.data('source') == clbl));
+//	});
+	alert(factor_eles.length);
+	var layout = factor_eles.layout({ name: 'cose',
+		randomize:false,
+		nodeRepulsion:400000,
+		edgeElasticity:100,
+		nodeDimensionsIncludeLabels:true,
+		//numIter:2,
+		nodeOverlap:100,
+		stop:function(){
+			//alert("done");
+			cy.pan(cur_pan);
+			cy.zoom(cur_zoom);
+			cy.nodes().unlock();
+		}
+	});
+	layout.run();
+
+}
+		
 function update_gene_labels()
 {
  	var all = cy.elements("node");
@@ -533,7 +590,7 @@ function show_hide_nodes_edges()
 			}
 			else
 			{
-				if (wt >= minwt)
+				if (wt >= minwt || minwt == 0)
 				{	
 					edge.removeClass("nodehide");
 				}
@@ -545,7 +602,7 @@ function show_hide_nodes_edges()
 		}
 		else
 		{
-			if (wt >= minwt)
+			if (wt >= minwt || minwt == 0)
 			{	
 				edge.removeClass("nodehide");
 			}
@@ -583,7 +640,7 @@ function show_hide_nodes_edges()
 				node.addClass('nodehide');
 				continue;
 			}
-			if (wt >= minwt)
+			if (wt >= minwt || minwt == 0)
 			{
 				node.removeClass('nodehide');
 			}
@@ -694,12 +751,12 @@ function ajax_getlinks(obj,cid,lvl)
 	   async: true, 
 	   success: function(data){
 			//alert(JSON.stringify(data["links"]));
-			extra_links[cid] = data["links"];
-			add_extras(extra_links[cid]);
+			extra_links[cid] = 1;
+			add_extras(data["links"]);
 			for (cid1 in data["cids"])
 			{
 				// For a level 2 cluster, we mark all the level 1 as done too
-				extra_links[cid1] = [];
+				extra_links[cid1] = 1;
 			}
 			obj.innerHTML = "Done";
 	   },
@@ -707,6 +764,86 @@ function ajax_getlinks(obj,cid,lvl)
 			obj.innerHTML = "An error occurred";
 	   }
 	});
+}
+var ajax_new_nodes;
+var ajax_new_links;
+var ajax_add_cid;
+var ajax_update_obj;
+function ajax_getnodes(obj,cid,lvl)
+{
+	obj.innerHTML = "Retrieving data...";
+	$.ajax({
+	   type: 'GET',
+	   url: 'ajax_getnodes.php', 
+	   data: {"crid" : <?php echo $CRID ?>, "cid" : cid},
+	   async: true, 
+	   success: function(data){
+			//console.log(data["nodes"].length + "," + data["links"].length);
+			//console.log(JSON.stringify(data["nodes"]));
+			var msg = "Adding " + data["nodes"].length + " genes...";
+			obj.innerHTML = msg; 
+			// now we have to desynchronize the operation or the innerHTML we just
+			// set will not be rendered
+			ajax_add_cid = cid;
+			ajax_new_nodes = data["nodes"].slice(0);	
+			ajax_new_links = data["links"].slice(0);	
+			ajax_update_obj = obj;
+			extra_nodes[cid] = 1;
+			setTimeout(add_extra_nodes,100);
+	   },
+	   error: function() {
+			alert("error");
+			obj.innerHTML = "An error occurred";
+	   }
+	});
+}
+function add_extra_nodes()
+{
+	var cid = ajax_add_cid;
+	var nodes = ajax_new_nodes;
+	var links = ajax_new_links;
+
+	var cur_pan = cy.pan();
+	var cur_zoom = cy.zoom();
+	var clbl = 'C' + cid;
+	cy.nodes().lock();
+
+	var center_node = cy.$('#' + clbl);
+	var factor_nodes = center_node.successors().nodes();
+//alert(JSON.stringify(factor_nodes.boundingBox()));
+	var bbw = factor_nodes.boundingBox().w;
+	var bbh = factor_nodes.boundingBox().h;
+	var r = Math.sqrt(bbw*bbw + bbh*bbh)/3.0;
+	
+	var N = nodes.length;
+	var theta = (2*Math.PI)/N;
+	for (i = 0; i < nodes.length; i++)
+	{
+		nodes[i].position.x = center_node.position('x') + Math.floor(r*Math.cos(i*theta));
+		nodes[i].position.y = center_node.position('y') + Math.floor(r*Math.sin(i*theta));
+	}	
+	cy.add(nodes);
+	cy.add(links);
+
+	var top_node = center_node.predecessors().nodes(); // the 2nd level node
+	//var factor_eles = top_node.successors().union(top_node);
+	var factor_eles = center_node.successors().union(center_node);
+	var layout = factor_eles.layout({ name: 'cose',
+		randomize:false,
+		nodeRepulsion:400000,
+		edgeElasticity:100,
+		nodeDimensionsIncludeLabels:true,
+		//numIter:2,
+		nodeOverlap:100,
+		stop:function(){
+			cy.pan(cur_pan);
+			cy.zoom(cur_zoom);
+			cy.nodes().unlock();
+			show_hide_nodes_edges();
+			ajax_update_obj.innerHTML = "Done";
+		}
+	});
+	layout.run();
 }
 function ajax_get_gos(term)
 {
@@ -1184,7 +1321,7 @@ error_log("$max_r,$max_r2,$N");
 function build_graph(&$gids_shown,&$minwt,&$maxwt)
 {
 	global $DB, $CRID, $pdata,$MinWt,$forceComp;
-	global $go_enrich_pval, $kegg_enrich_pval, $numSizeBins;
+	global $go_enrich_pval, $kegg_enrich_pval;
 	global $MaxClstLvl, $WtStepdownFraction;
 
 	$numNodes = 0;
@@ -1322,7 +1459,7 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 			$msg .= " ".json_encode($desc, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_APOS);
 		}
 		$nclst = count($info);
-		$msg .= "<br>contained in $nclst clusters: ".implode("; ",$info);
+		$msg .= "<br>contained in $nclst factors: ".implode("; ",$info);
 		$classes = array();
 		$classes[] = "altlbl"; # make hugo name be default
 		if ($maxWt < $MinWt)
@@ -1399,27 +1536,11 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 	}
 	$st->close();
 	
-	foreach ($cid2lvl as $cid1 => $lvl1)
-	{
-		if ($lvl1 == 1)
-		{
-			foreach ($cid2lvl as $cid2 => $lvl2)
-			{
-				if ($lvl2 == 1 && $cid2 > $cid1)
-				{
-					$CID2tag = "C$cid2";
-					$CID1tag = "C$cid1";
-					#$links[] = array("targ" => "$CID1tag", "src" => "$CID2tag", 
-					#	"wt" => "1.0","mi" => "1.0", "lnum" => 1);
-
-				}	
-			}
-		}
-	}
 	
 	#$wt_range = log($maxwt/$minwt);
 	$wt_range = $maxwt; # - $minwt;
-
+	
+	$idnum = 0;
 	foreach ($links as $data)
 	{
 		$src =  $data["src"];
@@ -1427,19 +1548,16 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		$wt =  $data["wt"];
 		$mi =  $data["mi"];
 		$lnum =  $data["lnum"];
-		$id = $src."_".$targ;
+		#$id = $src."_".$targ;
+		$idnum++;
 
-		#$diffwt = log($wt/$minwt); 
-		$diffwt = $wt; # - $minwt; 
-		$sizebin = min($numSizeBins,1 + floor($numSizeBins*$diffwt/$wt_range));
-		$opacity = 0.2 + (0.8/$numSizeBins)*$sizebin;
-		$width = (2*$sizebin)."px";
+		calc_link_params($wt,$width,$opacity);
 		$classes = "";
 		if ($wt < $MinWt || $lnum > 1)
 		{
 			$classes = "nodehide";
 		}	
-		$elements[] = "{data: { source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',".
+		$elements[] = "{data: { source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',id: '$idnum',".
 					" msg: 'weight:$wt,MI:$mi', width: '$width', opacity: '$opacity'},".
 						"classes:'$classes'}";
 	}
@@ -1451,18 +1569,15 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		$mi =  $data["mi"];
 		$lnum =  $data["lnum"];
 		$id = $src."_".$targ;
+		$idnum++;
 
-		#$diffwt = log($wt/$minwt); 
-		$diffwt = $wt - $minwt; 
-		$sizebin = min($numSizeBins,1 + floor($numSizeBins*$diffwt/$wt_range));
-		$opacity = 0.2 + (0.8/$numSizeBins)*$sizebin;
-		$width = (2*$sizebin)."px";
+		calc_link_params($wt,$width,$opacity);
 		$classes = "";
 		if ($wt < $MinWt || $lnum > 1)
 		{
 			$classes = "nodehide";
 		}	
-		$elements2[] = "{data: { id:'$id', source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',".
+		$elements2[] = "{data: { id:'$id', source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt', id: '$idnum',".
 					" msg: 'weight:$wt,MI:$mi', width: '$width', opacity: '$opacity'},".
 						"classes:'$classes'}";
 	}
@@ -1483,17 +1598,24 @@ style:[
 		'font-size' : function(ele){return (ele.data('id').startsWith('C') ? '100px' : '50px');},
 		'background-color' : function(ele){
 			var lvl = parseInt(ele.data('lvl'));
-			if (lvl >= 2)
+			if (ele.data('xtra'))
 			{
-				return 'blue';
-			}
-			else if (lvl == 1)
-			{
-				return 'black';
+				return 'orange';
 			}
 			else
 			{
-				return 'red';
+				if (lvl >= 2)
+				{
+					return 'blue';
+				}
+				else if (lvl == 1)
+				{
+					return 'black';
+				}
+				else
+				{
+					return 'red';
+				}
 			}
 		},
 		'width' : function(ele){return (ele.data('id').startsWith('C') ? '50px' : '15px');},
@@ -1563,6 +1685,7 @@ layout:{ name: 'cose',
 		}
 	}
 });
+
 END;
 	}
 	#$html .= "var other_links = [".implode(",\n",$elements2)."];\n";

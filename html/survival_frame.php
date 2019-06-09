@@ -64,6 +64,7 @@ if ($CID_pair != "" or $CID != 0)
 ?>
 
 <head>
+<link rel="stylesheet" type="text/css" href="/font.css"> 
 <style>
 .hiddenline line{
 	stroke:white;

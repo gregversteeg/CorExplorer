@@ -1,6 +1,21 @@
-
+html, div, span, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	font-size: 100%;
+	font: inherit;
+}
 a 
 {
+	font-size: 100%;
+	font: inherit;
 	color: #3786C2;
 }
 .header, .sidebar, .content, .footer { border: 1px solid #d5d5d5; }
