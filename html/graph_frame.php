@@ -14,7 +14,7 @@ if (!read_access($CRID))
 $pdata = array();
 load_proj_data($pdata,$CRID);
 
-$MinWt = 0; #getnum("mw",$pdata["def_wt"]);
+$MinWt = getnum("mw",$pdata["def_wt"]);
 
 $go_enrich_pval = 0.005;
 $kegg_enrich_pval = 0.005;
@@ -292,54 +292,6 @@ $('#use_hugo_chk').change(function()
 }); 
 function unlock_nodes(cid,pos)
 {
-}
-function redraw_factor(cid)
-{
-	var cur_pan = cy.pan();
-	var cur_zoom = cy.zoom();
-	var clbl = 'C' + cid;
-	var center_node = cy.$('#' + clbl);
-	var factor_nodes = cy.filter(function( ele ){
-	  return ( ele.data('cid') == cid);
-	});
-	cy.nodes().lock();
-	var bbw = factor_nodes.boundingBox().w;
-	var bbh = factor_nodes.boundingBox().h;
-	var r = Math.sqrt(bbw*bbw + bbh*bbh)/3.0;
-	var N = 10;
-	var theta = 6.3/N;
-	for (var n = 1; n <= N; n++)
-	{
-		var newx = center_node.position('x') + Math.floor(r*Math.cos(n*theta));
-		var newy = center_node.position('y') + Math.floor(r*Math.sin(n*theta));
-		var newid = 'TEST' + n;	
-		cy.add({group: 'nodes', data: {id: newid, lbl: newid, cid: '' + cid, lvl: '0',t:1, wt: '1', msg: '', 
-				hugo: newid},position:{x:newx,y:newy}} );
-		cy.add({group: 'edges', data: {source: '' + clbl, target: newid, lnum:'1', wt: '1', msg: '', width: '4px', opacity: '0.5'}});
-	}
-	var top_node = center_node.predecessors().nodes();
-	var factor_eles = top_node.successors().union(top_node);
-	//alert( center_node.predecessors().nodes().length);  // Shows 1
-//	var factor_eles = cy.filter(function( ele ){
-//	  return ( (ele.data('cid') == cid) || (ele.data('source') == clbl));
-//	});
-	alert(factor_eles.length);
-	var layout = factor_eles.layout({ name: 'cose',
-		randomize:false,
-		nodeRepulsion:400000,
-		edgeElasticity:100,
-		nodeDimensionsIncludeLabels:true,
-		//numIter:2,
-		nodeOverlap:100,
-		stop:function(){
-			//alert("done");
-			cy.pan(cur_pan);
-			cy.zoom(cur_zoom);
-			cy.nodes().unlock();
-		}
-	});
-	layout.run();
-
 }
 		
 function update_gene_labels()
@@ -723,10 +675,11 @@ function show_hide_nodes_edges()
 }
 function highlight_go_genes(term)
 {
+	if (term == 0) return;
 	for (var i = 0; i < go2gene[term].length; i++)
 	{
 		var gid = go2gene[term][i];
-		node_highlight(1,"G" + gid,1);
+		gene_node_highlight(1,"G" + gid,1);
 	}
 }
 function clear_gene_highlight()
@@ -802,6 +755,7 @@ function add_extra_nodes()
 	var cid = ajax_add_cid;
 	var nodes = ajax_new_nodes;
 	var links = ajax_new_links;
+	var goterm = $("#sel_goterm").val();
 
 	var cur_pan = cy.pan();
 	var cur_zoom = cy.zoom();
@@ -840,6 +794,7 @@ function add_extra_nodes()
 			cy.zoom(cur_zoom);
 			cy.nodes().unlock();
 			show_hide_nodes_edges();
+			highlight_go_genes(goterm);
 			ajax_update_obj.innerHTML = "Done";
 		}
 	});
@@ -894,6 +849,26 @@ function node_highlight(idnum,idstr,onoff)
 		//cynode.style('background-color','black');
 		cynode.removeClass('nodehlt');
 	}	
+}
+function gene_node_highlight(idnum,idstr,onoff)
+{
+	if (idnum == 0) {return;}
+	var nodes = cy.nodes();
+	for (var i = 0; i < nodes.length; i++)
+	{
+		var id = nodes[i].data("id");
+		if (id == idstr || id.startsWith(idstr + '_'))
+		{
+			if (onoff == 1)
+			{
+				nodes[i].addClass('nodehlt');
+			}	
+			else	
+			{
+				nodes[i].removeClass('nodehlt');
+			}	
+		}
+	}
 }
 function gene_zoom(idnum,idstr)
 {
@@ -1153,164 +1128,6 @@ function save_graph()
 
 <?php
 
-function preset_positions()
-{
-	global $DB, $MaxClstLvl, $CRID;
-	
-	# First arrange the genes around their level 1 clusters
-	$gx = array(); 
-	$gy = array();
-	$c2g = array();
-	$max_r = 0;
-
-	$gspace = 100;
-	$r0 = 150;
-	$dr = 150;
-	$max_r = $r0;
-	$cur_theta = array();
-	$cur_r = array();
-	$cur_dtheta = array();	# angle that gives us gspace dist on circumference
-
-	$st = dbps("select gid, cid  from g2c where crid=$CRID order by wt desc");
-	$st->bind_result($gid,$cid);
-	$st->execute();
-	while ($st->fetch())
-	{
-		if (!isset($c2g[$cid]))
-		{
-			$c2g[$cid] = array();
-			$cur_theta[$cid] = 0;
-			$cur_r[$cid] = $r0;
-			$cur_dtheta[$cid] = $gspace/$max_r;
-		}
-		if (!isset($gx[$gid]))
-		{
-			$c2g[$cid][] = $gid;
-			$gx[$gid] = $cur_r[$cid]*cos($cur_theta[$cid]);		
-			$gy[$gid] = $cur_r[$cid]*sin($cur_theta[$cid]);		
-
-			$cur_theta[$cid] += $cur_dtheta[$cid];
-			if ($cur_theta[$cid] > 2*pi())
-			{
-				$cur_theta[$cid] -= 2*pi();
-				$cur_r[$cid] += $dr;
-				$cur_dtheta[$cid] = $gspace/$cur_r[$cid];
-			}
-			if ($cur_r[$cid] > $max_r)
-			{
-				$max_r = $cur_r[$cid];
-			}
-		}
-	}
-	$st->close();
-
-	# arrange the level 1 around the level two in 
-	# concentric circles with 3 per circle, staggered
-
-	$c1x = array();
-	$c2x = array();
-	$nc = 3;  # number of clusters per circle
-	$dtheta = 2*pi()/$nc;
-	$r0 = 150; #$max_r + 150;
-	$dr = 150; #2*$max_r;
-	$max_r2 = 0; # outer radius of largest level 2 clump
-	$l2genes = array();
-
-	$c2c = array();
-	$clist = array();
-	$st = dbps("select cid1, cid2 from c2c join clst on clst.id=cid1 ".
-			" where clst.lvl=0 and c2c.crid=$CRID order by wt desc");
-	$st->bind_result($cid1,$cid2);
-	$st->execute();
-	while ($st->fetch())
-	{
-		if (!isset($clist[$cid2]))
-		{
-			$clist[$cid2] = array();
-			$l2genes[$cid2] = 0;
-		}
-		if (!isset($c2c[$cid1]))
-		{
-			$cur_n = count($clist[$cid2]);  # how many subclusters so far
-			$c2c[$cid1] = $cid2;
-			$clist[$cid2][] = $cid1;
-			$l2genes[$cid2] += count($c2g[$cid1]);
-
-			$cur_tier = floor($cur_n/$nc);
-			$cur_theta = $cur_tier*($dtheta/2.0) + $cur_n*$dtheta;
-			$cur_r = $r0 + $cur_tier*$dr;
-
-			if (($cur_r + $r0) > $max_r2)
-			{
-				$max_r2 = $cur_r + $r0;
-error_log("$cid2,$cur_tier,$max_r2,$cur_n");
-			}
-
-			$c1x[$cid1] = $cur_r*cos($cur_theta);		
-			$c1y[$cid1] = $cur_r*sin($cur_theta);		
-		}
-	}
-	$st->close();
-
-
-	# Now assign positions to the level 2
-	# Put them in a square, with biggest first
-
-	$c2x = array();
-	$c2y = array();
-	$N = ceil(sqrt(count($l2genes)));
-error_log("$max_r,$max_r2,$N");
-	$L = 2*$max_r2;   # tile size
-	arsort($l2genes);
-	$i = 0;
-	$j = 0;
-	foreach ($l2genes as $cid2 => $foo)
-	{
-		$c2x[$cid2] = ($i + 0.5)*$L;
-		$c2y[$cid2] = ($j + 0.5)*$L;
-
-		$i++;
-		if ($i == $N)
-		{
-			$i = 0;
-			$j++;
-		}	
-	}
-	
-	# Convert relative to absolute positions and upload
-
-	$stc2 = dbps("update clst set pos_x=?, pos_y=? where id=?");
-	$stc2->bind_param("iii",$x2,$y2,$cid2);
-
-	$stc1 = dbps("update clst set pos_x=?, pos_y=? where id=?");
-	$stc1->bind_param("iii",$x1,$y1,$cid1);
-
-	$stg = dbps("update glist set pos_x=?, pos_y=? where id=?");
-	$stg->bind_param("iii",$x0,$y0,$gid);
-	foreach ($clist as $cid2 => $c1list)
-	{
-		$x2 = $c2x[$cid2];
-		$y2 = $c2y[$cid2];
-		$stc2->execute();
-		foreach ($c1list as $cid1)
-		{
-			$x1 = $x2 + $c1x[$cid1];
-			$y1 = $y2 + $c1y[$cid1];
-			$stc1->execute();
-			foreach ($c2g[$cid1] as $gid)
-			{
-				$x0 = $x1 + $gx[$gid];
-				$y0 = $y1 + $gy[$gid];
-				$stg->execute();
-			}
-		}
-	}
-	$stc1->close();
-	$stc2->close();
-	$stg->close();
-
-	
-}
 	
 
 ##############################################################
