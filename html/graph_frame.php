@@ -241,6 +241,10 @@ cy.on('mouseout', 'node', function(evt)
 });
 var extra_links = [];
 var extra_nodes = [];
+var tip_links = "Click this link to load all links for genes in this factor. " +
+				" (Only the highest-weight links are currently being shown.)";
+var tip_genes = "Click this link to show all genes in this factor. " +
+				" (Only the genes for which this factor is their best factor are currently being shown.)";
 cy.on('click', 'node', function(evt)
 {
 	var x = evt.renderedPosition.x;
@@ -253,13 +257,13 @@ cy.on('click', 'node', function(evt)
 		var content = "";
 		if (!extra_links[cid])
 		{
-			content = "<div><span onclick='ajax_getlinks(this," + cid + "," + lvl 
+			content = "<div><span title='" + tip_links + "' onclick='ajax_getlinks(this," + cid + "," + lvl 
 						+ ");'><span style = 'text-decoration:underline;color:blue;'>" +
 					"Load&nbsp;Additional&nbsp;Links<span></span></div>";
 		}
 		if (lvl ==1 && !extra_nodes[cid])
 		{
-			content += "<p><div><span onclick='ajax_getnodes(this," + cid   
+			content += "<p><div><span title='" + tip_genes + "' onclick='ajax_getnodes(this," + cid   
 						+ ");'><span style = 'text-decoration:underline;color:blue;'>" +
 					"Load&nbsp;Additional&nbsp;Genes<span></span></div>";
 		}
@@ -426,7 +430,7 @@ $(document).ready(function()
 
 	$("#txt_mw").change(function(data)
 	{
-		var txtval = slider_to_log($(this).val());
+		var txtval = slider_to_log(parseFloat($(this).val()));
 		var sliderval = $("#mw_slider").slider("option","value");
 		if (sliderval != txtval)
 		{
@@ -485,7 +489,7 @@ function show_hide_nodes_edges()
 	var bestinc = false; //$('#chk_bestinc').prop("checked"); 
 	var keggterm = $("#sel_keggterm").val();
 	var goterm = $("#sel_goterm").val();
-	var minwt = $("#txt_mw").val();
+	var minwt = parseFloat($("#txt_mw").val());
 	var sel_cid = $("#sel_cid").val();
 
 	var toplevel_cid = (typeof top_level_clst[sel_cid] !== 'undefined');
@@ -907,48 +911,6 @@ function node_zoom(idnum,idstr)
 		});
 	cy.fit(edges); 
 	cy.center(center_node);
-}
-function node_highlight2(idnum,idstr,onoff)
-{
-	if (idnum == 0) {return; }
-	var cynode = cy.getElementById(idstr);
-	if (onoff == 1)
-	{
-		//cynode.style('background-color','yellow');
-		//cynode.addClass('nodehlt');
-	}	
-	else	
-	{
-		//cynode.style('background-color','black');
-		cynode.removeClass('nodehlt');
-	}	
-	/*comps = cynode.components();
-	for (i = 0; i < comps.length; i++)
-	{
-		comp = comps[i];
-		alert(comp.size());
-		comp.nodes().addClass('nodehlt');	
-	}*/
-}
-function show_all_nodes()
-{
-	var minwt = $("#txt_mw").val();
-	var all = cy.elements("node");
-	for (j = 0; j < all.length; j++) 
-	{
-		cynode = all[j];
-		if (cynode.data('id').startsWith('G'))
-		{
-			if (cynode.data('wt') >= minwt)
-			{
-				cynode.removeClass('nodehide');
-			}
-		}
-		else
-		{
-			cynode.removeClass('nodehide');
-		}
-	} 
 }
 
 function add_drag_listeners()
