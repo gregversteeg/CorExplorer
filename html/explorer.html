@@ -3,6 +3,8 @@ require_once("util.php");
 
 $CRID = getint("crid",crid_default());
 $CID = getint("cid",0);
+$GID = getint("gid",0);
+$GONUM = getint("go",0);
 
 $bestCID = 0; $bestCLbl = ""; $bestPval = 1.0;
 get_best_cluster($bestCID,$bestCLbl,$bestPval);
@@ -86,7 +88,7 @@ head_section("CorEx Browser",$xtra);
 		<td width='100%' height='100%' id='viewport' style="border:1px solid white">
 <div id="dialogL" title="Factor Graph" style="overflow:hidden;padding:0px" >
 <iframe id="graph_frame" width='100%' height='100%' 
-		src='/frame.php?ft=graph&fn=1&crid=<?php echo $CRID ?>&cid=<?php echo $CID ?>'
+		src='/frame.php?ft=graph&fn=1&crid=<?php echo $CRID ?>&cid=<?php echo $CID ?>&gid=<?php echo $GID?>&go=<?php echo $GONUM ?>'
 		 style='border:none;overflow:hidden' ></iframe>
 </div>
 <div id="dialogRT" title="Survival"  pval:<?php echo $bestPval ?>)" style="overflow:hidden;padding:0px" >

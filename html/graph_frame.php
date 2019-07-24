@@ -3,6 +3,8 @@ require_once("util.php");
 ini_set('memory_limit', '1G');
 
 $CRID = getint("crid",1);
+$GID = getint("gid",0);
+$GONUM = getint("go",0);
 $forceComp = getint("fc",0);
 
 if (!read_access($CRID))
@@ -91,7 +93,7 @@ $kegg2clst = array();
 				<td align="left" title="<?php print tip_text('clst_sel') ?>"> 
 						Factor: <?php print clst_sel("cid",0,-1,"--all--") ?> </td>
 				<td align="left"  title="<?php print tip_text('gene_sel') ?>" style="padding-left:25px">
-						Gene: <?php print gene_sel("gid",0,0,$gids_shown) ?> 
+						Gene: <?php print gene_sel("gid",$GID,0,$gids_shown) ?> 
 				</td>
 				<td>&nbsp;
 				</td>
@@ -115,7 +117,7 @@ $kegg2clst = array();
 							<td >GO enriched:</td>
 						</tr>
 						<tr>
-							<td ><?php print go_enrich_sel("goterm",0,$go2clst) ?>
+							<td ><?php print go_enrich_sel("goterm",$GONUM,$go2clst) ?>
 						</tr>
 					</table>
 				</td>
@@ -336,6 +338,9 @@ function slider_to_log(val)
 }
 var min_wt_init = <?php echo $MinWt ?>;
 var slider_init = slider_to_log(min_wt_init);
+
+var gid_sel = <?php echo $GID ?>;
+var gonum_sel = <?php echo $GONUM ?>;
 $(document).ready(function() 
 {
 	// 
@@ -458,6 +463,18 @@ $(document).ready(function()
 	node_highlight(sel_gid.val(), "G" + sel_gid.val(), 1);
 
 	add_drag_listeners();
+
+	if (gid_sel != 0)
+	{
+		var idstr = "G" + gid_sel;
+		node_highlight(gid_sel,idstr,1);
+		gene_zoom(gid_sel,idstr);
+
+	}
+	if (gonum_sel != 0)
+	{
+		sel_goterm.trigger('change');	
+	}
 
 });  // end of document.ready
 
@@ -768,7 +785,6 @@ function add_extra_nodes()
 
 	var center_node = cy.$('#' + clbl);
 	var factor_nodes = center_node.successors().nodes();
-//alert(JSON.stringify(factor_nodes.boundingBox()));
 	var bbw = factor_nodes.boundingBox().w;
 	var bbh = factor_nodes.boundingBox().h;
 	var r = Math.sqrt(bbw*bbw + bbh*bbh)/3.0;
@@ -1495,7 +1511,8 @@ function go_enrich_sel($name, $sel,&$go2clst)
 	global $CRID, $DB, $go_enrich_pval;
 
 	$opts = array();
-	$opts[] = "<option value='0' selected>none</option>";
+	$selected = ($sel == 0 ? "selected" : "");
+	$opts[] = "<option value='0' $selected>none</option>";
 	$terms_seen = array();
 	$st = dbps("select gos.term as term, gos.descr as descr,clst.id as cid ".
 				" from clst2go join gos on gos.term=clst2go.term ".
@@ -1523,7 +1540,8 @@ function go_enrich_sel($name, $sel,&$go2clst)
 		}
 		$terms_seen[$term] = 1;
 		$goname = go_name($term);
-		$opts[] = "<option value='$term' >$goname $descr</option>";
+		$selected = ($sel == $term ? "selected" : "");
+		$opts[] = "<option value='$term' $selected >$goname $descr</option>";
 	}
 	$st->close();
 	return "<select name='$name' id='sel_$name'>\n".implode("\n",$opts)."\s</select>\n";

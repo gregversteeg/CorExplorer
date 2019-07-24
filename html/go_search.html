@@ -45,7 +45,7 @@ Dataset:
 		</td>
 	</tr>
 	<tr>
-		<td>P-value:</td>
+		<td>FDR:</td>
 		<td>
 			 <input name="pval" type="text" size="4" value="<?php print $Pval ?>">
 		</td>
@@ -118,7 +118,7 @@ $s->bind_result($cid,$clbl,$pval,$crid,$pname,$godesc,$goterm);
 $s->execute();
 $count = 0;
 print "<table rules=all border=true cellpadding=3>\n";
-print "<tr><td>GO</td><td>GO description</td><td>Dataset</td><td>Factor</td><td>P-value</td></tr>\n";
+print "<tr><td>GO</td><td>GO description</td><td>Dataset</td><td>Factor</td><td>FDR</td></tr>\n";
 while ($s->fetch())
 {
 	if (!read_access($crid))
@@ -128,7 +128,7 @@ while ($s->fetch())
 	$count++;
 	$pval = sprintf("%1.0E",$pval);
 	$goname = go_name($goterm);
-	$clink = "<a href='/explorer.html?crid=$crid&cid=$cid' target='_blank'>$clbl</a>";
+	$clink = "<a href='/explorer.html?crid=$crid&cid=$cid&go=$goterm' target='_blank'>$clbl</a>";
 	print "<tr><td>$goname</td><td>$godesc</td><td>$pname</td><td>$clink</td><td>$pval</td></tr>\n";
 }
 $s->close();
