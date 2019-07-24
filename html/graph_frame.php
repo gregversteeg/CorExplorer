@@ -256,10 +256,10 @@ cy.on('click', 'node', function(evt)
 
 	if (lvl == 1 || lvl == 2)
 	{
-		var content = "";
+		var content = "<p>";
 		if (!extra_links[cid])
 		{
-			content = "<div><span title='" + tip_links + "' onclick='ajax_getlinks(this," + cid + "," + lvl 
+			content += "<div><span title='" + tip_links + "' onclick='ajax_getlinks(this," + cid + "," + lvl 
 						+ ");'><span style = 'text-decoration:underline;color:blue;'>" +
 					"Load&nbsp;Additional&nbsp;Links<span></span></div>";
 		}
@@ -268,6 +268,15 @@ cy.on('click', 'node', function(evt)
 			content += "<p><div><span title='" + tip_genes + "' onclick='ajax_getnodes(this," + cid   
 						+ ");'><span style = 'text-decoration:underline;color:blue;'>" +
 					"Load&nbsp;Additional&nbsp;Genes<span></span></div>";
+		}
+		if (lvl ==1)
+		{
+			content += "<p><div><span onclick='scale_factor(" + cid   + 
+				",1.5);'><span style = 'text-decoration:underline;color:blue;'>" +
+					"Expand&nbsp;Factor<span></span></div>";
+			content += "<p><div><span onclick='scale_factor(" + cid   + 
+				",.66);'><span style = 'text-decoration:underline;color:blue;'>" +
+					"Shrink&nbsp;Factor<span></span></div>";
 		}
 		var html = ' <div id="nodectxt" title="' + this.data('lbl') + '" style="overflow:hidden;padding:0px" > ' +
 			content  +
@@ -819,6 +828,23 @@ function add_extra_nodes()
 		}
 	});
 	layout.run();
+}
+function scale_factor(cid,factor)
+{
+	var clbl = 'C' + cid;
+	var center_node = cy.$('#' + clbl);
+	var x0 = center_node.position("x");
+	var y0 = center_node.position("y");
+	var factor_nodes = center_node.successors().nodes();
+	for (var i = 0; i < factor_nodes.length; i++)
+	{
+		var x1 = factor_nodes[i].position("x");	
+		var y1 = factor_nodes[i].position("y");	
+		var new_x1 = x0 + Math.floor(factor*(x1 - x0));
+		var new_y1 = y0 + Math.floor(factor*(y1 - y0));
+		factor_nodes[i].position("x",new_x1);
+		factor_nodes[i].position("y",new_y1);
+	}
 }
 function ajax_get_gos(term)
 {
