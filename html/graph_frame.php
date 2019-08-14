@@ -590,7 +590,11 @@ function show_hide_nodes_edges()
 			}
 			else
 			{	
-				edge.addClass("nodehide");
+				var targ = edge.data("target");
+				if (targ.startsWith('G'))
+				{
+					edge.addClass("nodehide");
+				}
 			}
 		}
 	}
@@ -1150,9 +1154,6 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 	$links = array();  	# The best inclusion links
 	$elements = array();
 
-	$links2 = array();	# Rest of the links
-	$elements2 = array();
-
 	$CIDlist = array(); # for building the next-level query
 	$cid2num = array();
 	$cid2x = array(); $cid2y = array();
@@ -1245,11 +1246,6 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		{
 			$links[] = array("targ" => "$GIDtag", "src" => "$CIDtag", 
 				"wt" => $wt, "mi" => $mi, "lnum" => $lnum);
-		}
-		else
-		{
-			#$links2[] = array("targ" => "$GIDtag", "src" => "$CIDtag", 
-			#	"wt" => $wt, "mi" => $mi, "lnum" => $lnum);
 		}
 	}
 	$st->close();
@@ -1348,11 +1344,6 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 			$links[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", 
 				"mi" => "$mi", "lnum" => $lnum);
 		}
-		else
-		{
-			#$links2[] = array("targ" => "$CID1tag", "src" => "$CID2tag", "wt" => "$wt", 
-			#	"mi" => "$mi", "lnum" => $lnum);
-		}
 
 	}
 	$st->close();
@@ -1361,7 +1352,6 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 	#$wt_range = log($maxwt/$minwt);
 	$wt_range = $maxwt; # - $minwt;
 	
-	$idnum = 0;
 	foreach ($links as $data)
 	{
 		$src =  $data["src"];
@@ -1369,36 +1359,18 @@ function build_graph(&$gids_shown,&$minwt,&$maxwt)
 		$wt =  $data["wt"];
 		$mi =  $data["mi"];
 		$lnum =  $data["lnum"];
-		#$id = $src."_".$targ;
-		$idnum++;
+		$idstr = $src."_".$targ;
 
 		calc_link_params($wt,$width,$opacity);
 		$classes = "";
 		if ($wt < $MinWt || $lnum > 1)
 		{
-			$classes = "nodehide";
+			if (substr($src,0,1) == 'G')
+			{
+				$classes = "nodehide";
+			}
 		}	
-		$elements[] = "{data: { source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',id: '$idnum',".
-					" msg: 'weight:$wt,MI:$mi', width: '$width', opacity: '$opacity'},".
-						"classes:'$classes'}";
-	}
-	foreach ($links2 as $data)
-	{
-		$src =  $data["src"];
-		$targ =  $data["targ"];
-		$wt =  $data["wt"];
-		$mi =  $data["mi"];
-		$lnum =  $data["lnum"];
-		$id = $src."_".$targ;
-		$idnum++;
-
-		calc_link_params($wt,$width,$opacity);
-		$classes = "";
-		if ($wt < $MinWt || $lnum > 1)
-		{
-			$classes = "nodehide";
-		}	
-		$elements2[] = "{data: { id:'$id', source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt', id: '$idnum',".
+		$elements[] = "{data: { source: '$src', target: '$targ', lnum:'$lnum', wt:'$wt',id: '$idstr',".
 					" msg: 'weight:$wt,MI:$mi', width: '$width', opacity: '$opacity'},".
 						"classes:'$classes'}";
 	}
@@ -1509,7 +1481,6 @@ layout:{ name: 'cose',
 
 END;
 	}
-	#$html .= "var other_links = [".implode(",\n",$elements2)."];\n";
 	$html .= <<<END
 function add_extras(links)
 {

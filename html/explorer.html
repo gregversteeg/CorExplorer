@@ -84,8 +84,23 @@ head_section("CorEx Browser",$xtra);
 			</table>
 		</td>
 	</tr>
+<?php
+	if (!supported_browser())
+	{
+		$str = supported_browsers();
+		echo <<<END
 	<tr>
-		<td width='100%' height='100%' id='viewport' style="border:1px solid white">
+		<td valign='top' align='left'>$str</td>
+	</tr>
+</table>
+END;
+		exit();
+	}	
+	$ffFix = (is_firefox() ? "padding-top:50px;" : "");
+
+?>
+	<tr>
+		<td width='100%' height='100%' id='viewport' style="border:1px solid white;<?php echo $ffFix ?>">
 <div id="dialogL" title="Factor Graph" style="overflow:hidden;padding:0px" >
 <iframe id="graph_frame" width='100%' height='100%' 
 		src='/frame.php?ft=graph&fn=1&crid=<?php echo $CRID ?>&cid=<?php echo $CID ?>&gid=<?php echo $GID?>&go=<?php echo $GONUM ?>'
@@ -112,11 +127,11 @@ var rt_width = vp_width - left_width;
 var rt_top_height = Math.floor(.5*vp_height);
 var rt_bot_height = vp_height - rt_top_height;
 $( function() {
-    dlg1 = $( "#dialogL" ).dialog({height:vp_height, width:left_width, 
+    dlg1 = $( "#dialogL" ).dialog({height:vp_height, width:left_width, collision:"none",
 			position:{my:"left top",at:"left top",of:"#viewport"}});
-    dlg2 = $( "#dialogRT" ).dialog({height:rt_top_height, width:rt_width, 
+    dlg2 = $( "#dialogRT" ).dialog({height:rt_top_height, width:rt_width, collision:"none",
 			position:{my:"right top",at:"right top",of:"#viewport"}});
-    dlg3 = $( "#dialogRB" ).dialog({height:rt_bot_height, width:rt_width, 
+    dlg3 = $( "#dialogRB" ).dialog({height:rt_bot_height, width:rt_width, collision:"none",
 			position:{my:"right bottom",at:"right bottom",of:"#viewport"}});
   } );
 </script>
