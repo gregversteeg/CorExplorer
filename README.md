@@ -124,6 +124,12 @@ load_ensp_go_mapping.php (takes about 30 mins)
     * Click "view log" at the right side of the table to track the loading progress
     * Loading should finish in about 30 mins and the status will change to READY
     
+17. Note that the cluster graph gets rendered in the browser, and it can be slow with many genes (e.g. for
+    more than 10,000 genes it can take several hours.) However, it only needs to be rendered one time, and then 
+    you use the "Save Graph" button to save the coordinates that were generated. Also you can adjust the Link Weight
+    slider and then use the "Save Link Weight" button to save the default setting. (Note these buttons only
+    appear when you are logged in under a username that has privileges to edit the project.)
+    
 ## Loading your own projects
 
 You need a CorEx run output as well as several auxiliary files, as follows:
